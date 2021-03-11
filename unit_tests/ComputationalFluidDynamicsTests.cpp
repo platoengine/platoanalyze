@@ -244,7 +244,7 @@ scale
 {
     for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
-        aOutputWS(aCellOrdinal, tIndex) *= aScalar;
+        aOutputWS(aCellOrdinal, tIndex) = aOutputWS(aCellOrdinal, tIndex) * aScalar;
     }
 }
 // function scale
@@ -3937,7 +3937,7 @@ inline void is_positive_number
 {
     if(aInput <= static_cast<Plato::Scalar>(0.0))
     {
-        THROWERR(std::string("Invalid '") + aName + "', expected a positive value and instead it was '") + std::to_string(aInput) + "'.")
+        THROWERR(std::string("Invalid '") + aName + "', expected a positive value and instead it was '" + std::to_string(aInput) + "'.")
     }
 }
 
@@ -5780,7 +5780,8 @@ template<Plato::OrdinalType NumNodes,
          Plato::OrdinalType SpaceDim,
          typename ConfigT,
          typename SourceT,
-         typename ResultT>
+         typename ResultT,
+	 typename ScalarT>
 DEVICE_TYPE inline void
 calculate_flux_divergence
 (const Plato::OrdinalType & aCellOrdinal,
@@ -5788,7 +5789,7 @@ calculate_flux_divergence
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<SourceT> & aFlux,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
- Plato::Scalar aMultiplier = 1.0)
+ const ScalarT & aMultiplier)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
@@ -6265,15 +6266,15 @@ public:
             tCellVolume(aCellOrdinal) = tCellVolume(aCellOrdinal) * tCubWeight;
 
             // 1. add previous diffusive force contribution to residual, i.e. R -= (\theta_3-1) K T^n
-            auto tMultiplier = (tArtificialDamping - static_cast<Plato::Scalar>(1));
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevTempWS, tPrevThermalFlux);
             ControlT tPenalizedDiffusivityRatio = Plato::Fluids::penalize_thermal_diffusivity<mNumNodesPerCell>
                 (aCellOrdinal, tThermalDiffusivityRatio, tThermalDiffusivityPenaltyExponent, tControlWS);
-            ControlT tPenalizedEffectiveConductivity = tEffConductivity * tPenalizedDiffusivityRatio;
-            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tPenalizedEffectiveConductivity, tPrevThermalFlux);
+	    ControlT tPenalizedEffectiveConductivity = tEffConductivity * tPenalizedDiffusivityRatio;
+            ControlT tMultiplierControlT = static_cast<Plato::Scalar>(-1.0) * 
+	        (tArtificialDamping - static_cast<Plato::Scalar>(1.0)) * tPenalizedEffectiveConductivity;
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, -tMultiplier);
+                (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, tMultiplierControlT);
 
             // 2. add previous convective force contribution to residual, i.e. R += C T^n
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
@@ -6285,9 +6286,9 @@ public:
             // 3. add current diffusive force contribution to residual, i.e. R += \theta_3 K T^{n+1}
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCurTempWS, tCurThermalFlux);
-            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tCurThermalFlux);
+	    tMultiplierControlT = static_cast<Plato::Scalar>(-1.0) * tArtificialDamping * tPenalizedEffectiveConductivity;
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tCurThermalFlux, aResultWS, tArtificialDamping);
+                (aCellOrdinal, tGradient, tCellVolume, tCurThermalFlux, aResultWS, tMultiplierControlT);
 
             // 4. add previous heat source contribution to residual, i.e. R -= \alpha Q^n
             auto tHeatSourceDimensionlessConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
@@ -6312,12 +6313,13 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS);
 
             // 8. add stabilizing force contribution to residual, i.e. R += C_u T^n - Q_u^n
-            tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            auto tMultiplierScalarT = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tMultiplier);
-            tMultiplier = tStabilization * tHeatSourceDimensionlessConstant * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tMultiplierScalarT);
+            tMultiplierScalarT = tStabilization * tHeatSourceDimensionlessConstant * 
+		static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tMultiplier);
+                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tMultiplierScalarT);
         }, "energy conservation residual");
     }
 
@@ -12838,7 +12840,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFluxDivergence)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
-        Plato::Fluids::calculate_flux_divergence<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tCellVolume, tFlux, tResult);
+        Plato::Fluids::calculate_flux_divergence<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tCellVolume, tFlux, tResult, 1.0);
     }, "unit test calculate_flux_divergence");
 
     auto tTol = 1e-4;
