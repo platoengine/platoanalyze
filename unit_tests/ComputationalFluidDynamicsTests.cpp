@@ -2057,10 +2057,6 @@ build_scalar_function_worksets
     tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalsMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
 
-    auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
-    Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
-    aWorkSets.set("critical time step", tCriticalTimeStep);
-
     using ConfigT = typename EvaluationT::ConfigScalarType;
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
         ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
@@ -2121,10 +2117,6 @@ build_scalar_function_worksets
         ( Plato::ScalarMultiVectorT<ControlT>("control", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
     tWorkSetBuilder.buildControlWorkSet(aNumCells, aMaps.mControlOrdinalsMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
-
-    auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
-    Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
-    aWorkSets.set("critical time step", tCriticalTimeStep);
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
@@ -2222,15 +2214,6 @@ build_vector_function_worksets
     auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
     Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
     aWorkSets.set("critical time step", tCriticalTimeStep);
-
-    if(aVariables.defined("artificial compressibility"))
-    {
-        auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-            ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-        Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-            (aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("artificial compressibility"), tArtificialCompressWS->mData);
-        aWorkSets.set("artificial compressibility", tArtificialCompressWS);
-    }
 }
 // function build_vector_function_worksets
 
@@ -2320,15 +2303,6 @@ build_vector_function_worksets
     auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
     Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
     aWorkSets.set("critical time step", tCriticalTimeStep);
-
-    if(aVariables.defined("artificial compressibility"))
-    {
-        auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-            ( Plato::ScalarMultiVector("artificial compressibility", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-        Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-            (aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("artificial compressibility"), tArtificialCompressWS->mData);
-        aWorkSets.set("artificial compressibility", tArtificialCompressWS);
-    }
 }
 // function build_vector_function_worksets
 
@@ -7804,9 +7778,6 @@ private:
     static constexpr auto mNumConfigDofsPerNode = PhysicsT::SimplexT::mNumConfigDofsPerNode; /*!< number of configuration degrees of freedom per cell */
     static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell; /*!< number of configuration degrees of freedom per cell */
 
-    static constexpr auto mNumTimeStepsDofsPerNode = 1; /*!< number of time step dofs per node */
-    static constexpr auto mNumACompressDofsPerNode = 1; /*!< number of artificial compressibility dofs per node */
-
     // forward automatic differentiation evaluation types
     using ResidualEvalT      = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using GradConfigEvalT    = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
@@ -9746,23 +9717,20 @@ public:
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
         {
-            Plato::Scalar tOutput(0);
-            Plato::Primal tPrimal;
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not in the criteria list");
+        }
 
-            constexpr Plato::OrdinalType tSteadyStateStep = 1;
-            auto tPressure = Kokkos::subview(mPressure, tSteadyStateStep, Kokkos::ALL());
-            auto tVelocity = Kokkos::subview(mVelocity, tSteadyStateStep, Kokkos::ALL());
-            auto tTemperature = Kokkos::subview(mTemperature, tSteadyStateStep, Kokkos::ALL());
-            tPrimal.vector("current pressure", tPressure);
-            tPrimal.vector("current velocity", tVelocity);
-            tPrimal.vector("current temperature", tTemperature);
-            tOutput += tItr->second->value(aControl, tPrimal);
-            return tOutput;
-        }
-        else
-        {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
-        }
+        Plato::Primal tPrimal;
+        constexpr Plato::OrdinalType tSteadyStateStep = 1;
+        auto tPressure = Kokkos::subview(mPressure, tSteadyStateStep, Kokkos::ALL());
+        auto tVelocity = Kokkos::subview(mVelocity, tSteadyStateStep, Kokkos::ALL());
+        auto tTemperature = Kokkos::subview(mTemperature, tSteadyStateStep, Kokkos::ALL());
+        tPrimal.vector("current pressure", tPressure);
+        tPrimal.vector("current velocity", tVelocity);
+        tPrimal.vector("current temperature", tTemperature);
+
+        auto tOutput = tItr->second->value(aControl, tPrimal);
+     	return tOutput;
     }
 
     Plato::ScalarVector criterionGradient
@@ -9772,31 +9740,29 @@ public:
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
         {
-            Plato::Dual tDual;
-            tDual.scalar("step", 1.0);
-            this->setDualVariables(tDual);
-
-            Plato::Primal tPrimal;
-            tPrimal.scalar("step", 1.0);
-            this->setPrimalStates(tPrimal);
-
-            this->calculateElemCharacteristicSize(tPrimal);
-            this->calculateCriticalTimeStep(tPrimal);
-
-            this->calculateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
-            this->calculateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
-            this->calculatePressureAdjoint(aName, aControl, tPrimal, tDual);
-            this->calculatePredictorAdjoint(aControl, tPrimal, tDual);
-
-            Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-            this->calculateGradientControl(aName, aControl, tPrimal, tDual, tTotalDerivative);
-
-            return tTotalDerivative;
-        }
-        else
-        {
             THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
         }
+
+        Plato::Dual tDual;
+        tDual.scalar("step", 1.0);
+        this->setDualVariables(tDual);
+
+        Plato::Primal tPrimal;
+        tPrimal.scalar("step", 1.0);
+        this->setPrimalStates(tPrimal);
+
+        this->calculateElemCharacteristicSize(tPrimal);
+        this->calculateCriticalTimeStep(tPrimal);
+
+        this->calculateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
+        this->calculateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
+        this->calculatePressureAdjoint(aName, aControl, tPrimal, tDual);
+        this->calculatePredictorAdjoint(aControl, tPrimal, tDual);
+
+        Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
+        this->calculateGradientControl(aName, aControl, tPrimal, tDual, tTotalDerivative);
+
+        return tTotalDerivative;
     }
 
     Plato::ScalarVector criterionGradientX
@@ -9806,31 +9772,29 @@ public:
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
         {
-            Plato::Dual tDual;
-            tDual.scalar("step", 1.0);
-            this->setDualVariables(tDual);
-
-            Plato::Primal tPrimal;
-            tPrimal.scalar("step", 1.0);
-            this->setPrimalStates(tPrimal);
-
-            this->calculateElemCharacteristicSize(tPrimal);
-            this->calculateCriticalTimeStep(tPrimal);
-
-            this->calculateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
-            this->calculateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
-            this->calculatePressureAdjoint(aName, aControl, tPrimal, tDual);
-            this->calculatePredictorAdjoint(aControl, tPrimal, tDual);
-
-            Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-            this->calculateGradientConfig(aName, aControl, tPrimal, tDual, tTotalDerivative);
-
-            return tTotalDerivative;
-        }
-        else
-        {
             THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
         }
+
+        Plato::Dual tDual;
+        tDual.scalar("step", 1.0);
+        this->setDualVariables(tDual);
+
+        Plato::Primal tPrimal;
+        tPrimal.scalar("step", 1.0);
+        this->setPrimalStates(tPrimal);
+
+        this->calculateElemCharacteristicSize(tPrimal);
+        this->calculateCriticalTimeStep(tPrimal);
+
+        this->calculateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
+        this->calculateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
+        this->calculatePressureAdjoint(aName, aControl, tPrimal, tDual);
+        this->calculatePredictorAdjoint(aControl, tPrimal, tDual);
+
+        Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
+        this->calculateGradientConfig(aName, aControl, tPrimal, tDual, tTotalDerivative);
+
+        return tTotalDerivative;
     }
 
 private:
@@ -10016,9 +9980,9 @@ private:
             for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
             {
                 const Teuchos::ParameterEntry& tEntry = tCriteriaParams.entry(tIndex);
-                if(tEntry.isList())
+                if(tEntry.isList() == false)
                 {
-                    THROWERR("Parameter in Criteria block is not supported.  Expect lists only.")
+                    THROWERR("Parameter in Criteria block is not supported. Expect lists only.")
                 }
                 auto tName = tCriteriaParams.name(tIndex);
                 auto tCriterion = tScalarFuncFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
@@ -10754,9 +10718,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Criteria'>"
-            "    <ParameterList name='My Average Surface Pressure'>"
+            "    <ParameterList name='Outlet Average Surface Pressure'>"
             "      <Parameter name='Type' type='string' value='Scalar Function'/> "
             "      <Parameter  name='Sides' type='Array(string)' value='{x+}'/>"
+            "      <Parameter name='Scalar Function Type' type='string' value='Average Surface Pressure'/>"
+            "    </ParameterList>"
+            "    <ParameterList name='Inlet Average Surface Pressure'>"
+            "      <Parameter name='Type' type='string' value='Scalar Function'/> "
+            "      <Parameter  name='Sides' type='Array(string)' value='{x-}'/>"
             "      <Parameter name='Scalar Function Type' type='string' value='Average Surface Pressure'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -10848,8 +10817,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    auto tCriterionValue = tProblem.criterionValue(tControls, "My Average Surface Pressure");
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
+
+    // call outlet criterion
+    auto tTol = 1e-2;
+    auto tCriterionValue = tProblem.criterionValue(tControls, "Outlet Average Surface Pressure");
+    TEST_FLOATING_EQUALITY(0.0, tCriterionValue, tTol);
+    tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Pressure");
+    TEST_FLOATING_EQUALITY(0.0896025, tCriterionValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
@@ -12278,16 +12253,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureResidual)
     Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
     tWorkSets.set("critical time step", tTimeStep);
 
-    TEST_EQUALITY(3,tNumNodesPerCell);
-    auto tAC = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, tNumNodesPerCell) );
-    auto tHostAC = Kokkos::create_mirror(tAC->mData);
-    tHostAC(0, 0) = 0.1; tHostAC(1, 0) = 0.4;
-    tHostAC(0, 1) = 0.2; tHostAC(1, 1) = 0.5;
-    tHostAC(0, 2) = 0.3; tHostAC(1, 2) = 0.6;
-    Kokkos::deep_copy(tAC->mData, tHostAC);
-    tWorkSets.set("artificial compressibility", tAC);
-
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
@@ -12389,16 +12354,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_ThetaTwo_Set)
     Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
     tWorkSets.set("critical time step", tTimeStep);
 
-    TEST_EQUALITY(3,tNumNodesPerCell);
-    auto tAC = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, tNumNodesPerCell) );
-    auto tHostAC = Kokkos::create_mirror(tAC->mData);
-    tHostAC(0, 0) = 0.1; tHostAC(1, 0) = 0.4;
-    tHostAC(0, 1) = 0.2; tHostAC(1, 1) = 0.5;
-    tHostAC(0, 2) = 0.3; tHostAC(1, 2) = 0.6;
-    Kokkos::deep_copy(tAC->mData, tHostAC);
-    tWorkSets.set("artificial compressibility", tAC);
-
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
@@ -12412,52 +12367,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_ThetaTwo_Set)
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
         {{2.7858527,1.3956888,0.8915759},{0.31446667,0.3289583,0.43647778}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-        }
-    }
-    //Plato::print_array_2D(tResult, "results");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInertialForces)
-{
-    constexpr Plato::OrdinalType tNumCells = 2;
-    constexpr Plato::OrdinalType tSpaceDims = 2;
-    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    Plato::ScalarVector tBasisFunctions("basis functions", tNumNodesPerCell);
-    Plato::blas1::fill(0.33333333333333333333333, tBasisFunctions);
-    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
-    Plato::blas1::fill(0.5, tCellVolume);
-    Plato::ScalarVector tCurPress("current pressure", tNumCells);
-    auto tHostCurPress = Kokkos::create_mirror(tCurPress);
-    tHostCurPress(0) = 7; tHostCurPress(1) = 8;
-    Kokkos::deep_copy(tCurPress, tHostCurPress);
-    Plato::ScalarVector tPrevPress("previous pressure", tNumCells);
-    auto tHostPrevPress = Kokkos::create_mirror(tPrevPress);
-    tHostPrevPress(0) = 1; tHostPrevPress(1) = 2;
-    Kokkos::deep_copy(tPrevPress, tHostPrevPress);
-    Plato::ScalarMultiVector tArtificialCompress("artificial compressibility", tNumCells, tNumNodesPerCell);
-    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
-    tHostArtificialCompress(0,0) = 0.1; tHostArtificialCompress(0,1) = 0.2; tHostArtificialCompress(0,2) = 0.3;
-    tHostArtificialCompress(1,0) = 0.4; tHostArtificialCompress(1,1) = 0.5; tHostArtificialCompress(1,2) = 0.6;
-    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
-    Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
-
-    // call device function
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        Plato::Fluids::integrate_inertial_pressure_forces<tNumNodesPerCell>
-            (aCellOrdinal, tBasisFunctions, tCellVolume, tCurPress, tPrevPress, tArtificialCompress, tResult);
-    }, "unit test integrate_inertial_pressure_forces");
-
-    // test values
-    auto tTol = 1e-4;
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{10.0,5.0,3.333333},{2.5,2.0,1.666667}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -14790,9 +14699,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Plato::ScalarVector tTimeSteps("critical time step", 1);
     Plato::blas1::fill(4.0, tTimeSteps);
     tPrimal.vector("critical time step", tTimeSteps);
-    Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
-    Plato::blas1::fill(5.0, tArtCompress);
-    tPrimal.vector("artificial compressibility", tArtCompress);
 
     // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
@@ -14895,22 +14801,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Kokkos::deep_copy(tHostTimeStepWS, tTimeStepWS);
     TEST_FLOATING_EQUALITY(4.0, tHostTimeStepWS(0), tTol);
 
-    // test artificial compressibility results
-    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    auto tArtCompressWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
-    TEST_EQUALITY(tNumCells, tArtCompressWS.extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tArtCompressWS.extent(1));
-    auto tHostArtCompressWS = Kokkos::create_mirror(tArtCompressWS);
-    Kokkos::deep_copy(tHostArtCompressWS, tArtCompressWS);
-    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (decltype(tNumNodesPerCell) tDof = 0; tDof < tNumNodesPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(5.0, tHostArtCompressWS(tCell, tDof), tTol);
-        }
-    }
-
     // test controls results
+    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
     auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
     TEST_EQUALITY(tNumCells, tControlWS.extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tControlWS.extent(1));
@@ -14987,9 +14879,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     Plato::ScalarVector tTimeSteps("critical time step", 1);
     Plato::blas1::fill(4.0, tTimeSteps);
     tPrimal.vector("critical time step", tTimeSteps);
-    Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
-    Plato::blas1::fill(5.0, tArtCompress);
-    tPrimal.vector("artificial compressibility", tArtCompress);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
@@ -15095,22 +14984,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     Kokkos::deep_copy(tHostTimeStepWS, tTimeStepWS);
     TEST_FLOATING_EQUALITY(4.0, tHostTimeStepWS(0), tTol);
 
-    // test artificial compressibility results
-    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    auto tArtCompressWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
-    TEST_EQUALITY(tNumCells, tArtCompressWS.extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tArtCompressWS.extent(1));
-    auto tHostArtCompressWS = Kokkos::create_mirror(tArtCompressWS);
-    Kokkos::deep_copy(tHostArtCompressWS, tArtCompressWS);
-    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (decltype(tNumNodesPerCell) tDof = 0; tDof < tNumNodesPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(5.0, tHostArtCompressWS(tCell, tDof), tTol);
-        }
-    }
-
     // test controls results
+    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
     auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
     TEST_EQUALITY(tNumCells, tControlWS.extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tControlWS.extent(1));
