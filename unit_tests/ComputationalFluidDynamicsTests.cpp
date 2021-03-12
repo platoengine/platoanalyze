@@ -34,6 +34,7 @@
 #include "SurfaceIntegralUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
+#include "Plato_Diagnostics.hpp"
 #include "alg/PlatoSolverFactory.hpp"
 
 #include "PlatoTestHelpers.hpp"
@@ -1103,6 +1104,41 @@ public:
         { return true; }
         else
         { return false; }
+    }
+
+    void print()
+    {
+        this->printScalarMap();
+        this->printVectorMap();
+    }
+
+private:
+    void printVectorMap()
+    {
+        if(mVectors.empty())
+        {
+            return;
+        }
+
+        std::cout << "Print Vector Map\n";
+        for(auto& tPair : mVectors)
+        {
+            std::cout << "name = " << tPair.first << ", norm = " << Plato::blas1::norm(tPair.second) << "\n" << std::flush;
+        }
+    }
+
+    void printScalarMap()
+    {
+        if(mScalars.empty())
+        {
+            return;
+        }
+
+        std::cout << "Print Scalar Map\n";
+        for(auto& tPair : mScalars)
+        {
+            std::cout << "name = " << tPair.first << ", value = " << tPair.second << "\n" << std::flush;
+        }
     }
 };
 // struct Variables
@@ -6026,6 +6062,7 @@ private:
     using ResultT = typename EvaluationT::ResultScalarType;
 
 public:
+    virtual ~AbstractCellVolumeIntegral(){}
     virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResultWS) const = 0;
 };
 
@@ -9585,6 +9622,8 @@ private:
     Plato::ScalarMultiVector mPredictor;
     Plato::ScalarMultiVector mTemperature;
 
+    Plato::ScalarVector mCriticalTimeStep;
+
     Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
@@ -9712,6 +9751,14 @@ public:
 
     Plato::Scalar criterionValue
     (const Plato::ScalarVector & aControl,
+     const Plato::Solutions    & aSolution,
+     const std::string         & aName)
+    {
+        return (this->criterionValue(aControl, aName));
+    }
+
+    Plato::Scalar criterionValue
+    (const Plato::ScalarVector & aControl,
      const std::string         & aName)
     {
         auto tItr = mCriteria.find(aName);
@@ -9735,6 +9782,14 @@ public:
 
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
+     const Plato::Solutions    & aSolution,
+     const std::string         & aName)
+    {
+        return (this->criterionGradient(aControl, aName));
+    }
+
+    Plato::ScalarVector criterionGradient
+    (const Plato::ScalarVector & aControl,
      const std::string         & aName)
     {
         auto tItr = mCriteria.find(aName);
@@ -9744,24 +9799,20 @@ public:
         }
 
         Plato::Dual tDual;
-        tDual.scalar("step", 1.0);
-        this->setDualVariables(tDual);
-
         Plato::Primal tPrimal;
-        tPrimal.scalar("step", 1.0);
+        this->setDualVariables(tDual);
         this->setPrimalStates(tPrimal);
+        tDual.vector("critical time step", mCriticalTimeStep);
+        tPrimal.vector("critical time step", mCriticalTimeStep);
 
-        this->calculateElemCharacteristicSize(tPrimal);
-        this->calculateCriticalTimeStep(tPrimal);
-
-        this->calculateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
-        this->calculateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
-        this->calculatePressureAdjoint(aName, aControl, tPrimal, tDual);
-        this->calculatePredictorAdjoint(aControl, tPrimal, tDual);
-
-        Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-        this->calculateGradientControl(aName, aControl, tPrimal, tDual, tTotalDerivative);
-
+        if(mCalculateHeatTransfer)
+        {
+            this->updateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
+        }
+        this->updateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
+        this->updatePressureAdjoint(aName, aControl, tPrimal, tDual);
+        this->updatePredictorAdjoint(aControl, tPrimal, tDual);
+        auto tTotalDerivative = this->calculateGradientControl(aName, aControl, tPrimal, tDual);
         return tTotalDerivative;
     }
 
@@ -9776,23 +9827,20 @@ public:
         }
 
         Plato::Dual tDual;
-        tDual.scalar("step", 1.0);
-        this->setDualVariables(tDual);
-
         Plato::Primal tPrimal;
-        tPrimal.scalar("step", 1.0);
+        this->setDualVariables(tDual);
         this->setPrimalStates(tPrimal);
+        tDual.vector("critical time step", mCriticalTimeStep);
+        tPrimal.vector("critical time step", mCriticalTimeStep);
 
-        this->calculateElemCharacteristicSize(tPrimal);
-        this->calculateCriticalTimeStep(tPrimal);
-
-        this->calculateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
-        this->calculateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
-        this->calculatePressureAdjoint(aName, aControl, tPrimal, tDual);
-        this->calculatePredictorAdjoint(aControl, tPrimal, tDual);
-
-        Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-        this->calculateGradientConfig(aName, aControl, tPrimal, tDual, tTotalDerivative);
+        if(mCalculateHeatTransfer)
+        {
+            this->updateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
+        }
+        this->updateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
+        this->updatePressureAdjoint(aName, aControl, tPrimal, tDual);
+        this->updatePredictorAdjoint(aControl, tPrimal, tDual);
+        auto tTotalDerivative = this->calculateGradientConfig(aName, aControl, tPrimal, tDual);
 
         return tTotalDerivative;
     }
@@ -10134,13 +10182,13 @@ private:
         if(tIteration > 1)
         {
             auto tPreviousVelocity = aVariables.vector("previous velocity");
-            auto tCriticalTimeStep = this->criticalTimeStep(aVariables, tPreviousVelocity);
-            aVariables.vector("critical time step", tCriticalTimeStep);
+            mCriticalTimeStep = this->criticalTimeStep(aVariables, tPreviousVelocity);
+            aVariables.vector("critical time step", mCriticalTimeStep);
         }
         else
         {
-            auto tCriticalTimeStep = this->initialCriticalTimeStep(aVariables);
-            aVariables.vector("critical time step", tCriticalTimeStep);
+            mCriticalTimeStep = this->initialCriticalTimeStep(aVariables);
+            aVariables.vector("critical time step", mCriticalTimeStep);
         }
     }
 
@@ -10559,7 +10607,7 @@ private:
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
 
-    void calculatePredictorAdjoint
+    void updatePredictorAdjoint
     (const Plato::ScalarVector & aControl,
      const Plato::Primal       & aPrimal,
            Plato::Dual         & aDual)
@@ -10567,16 +10615,18 @@ private:
         auto tCurrentPredictorAdjoint = aDual.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
 
+        // calculate right-hand-side vector
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tGradResVelWrtPredictor = mCorrectorResidual.gradientPredictor(aControl, aPrimal);
+        auto tJacCorrectorResWrtPredictor = mCorrectorResidual.gradientPredictor(aControl, aPrimal);
         Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPredictor, tCurrentVelocityAdjoint, tRHS);
+        Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtPredictor, tCurrentVelocityAdjoint, tRHS);
 
         auto tCurrentPressureAdjoint = aDual.vector("current pressure adjoint");
         auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPredictor, tCurrentPressureAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
+        // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
@@ -10584,7 +10634,7 @@ private:
         tSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
-    void calculatePressureAdjoint
+    void updatePressureAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aPrimal,
@@ -10593,20 +10643,22 @@ private:
         auto tCurrentPressAdjoint = aDual.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
 
+        // calculate right-hand-side vector
         auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aPrimal);
-        auto tGradResVelWrtCurPress = mCorrectorResidual.gradientCurrentPress(aControl, aPrimal);
+        auto tJacResVelWrtCurPress = mCorrectorResidual.gradientCurrentPress(aControl, aPrimal);
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
+        Plato::MatrixTimesVectorPlusVector(tJacResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
+        // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
-        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aPrimal);
-        tSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
+        auto tJacPressResWrtCurPress = mPressureResidual.gradientCurrentPress(aControl, aPrimal);
+        tSolver->solve(*tJacPressResWrtCurPress, tCurrentPressAdjoint, tRHS);
     }
 
-    void calculateTemperatureAdjoint
+    void updateTemperatureAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aPrimal,
@@ -10615,17 +10667,19 @@ private:
         auto tCurrentTempAdjoint = aDual.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
 
-        auto tRHS = mCriteria[aName]->gradientCurrentTemp(aControl, aPrimal);
-        Plato::blas1::scale(-1.0, tRHS);
+        // calculate right-hand-side vector
+        auto tGradObjWrtCurrentTemp = mCriteria[aName]->gradientCurrentTemp(aControl, aPrimal);
+        Plato::blas1::scale(-1.0, tGradObjWrtCurrentTemp);
 
+        // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
-        auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aPrimal);
-        tSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
+        auto tJacobianCurrentTemp = mTemperatureResidual->gradientCurrentTemp(aControl, aPrimal);
+        tSolver->solve(*tJacobianCurrentTemp, tCurrentTempAdjoint, tGradObjWrtCurrentTemp);
     }
 
-    void calculateCorrectorAdjoint
+    void updateCorrectorAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aPrimal,
@@ -10634,22 +10688,30 @@ private:
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
 
+        // calculate right hand side vector
         auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aPrimal);
+        if(mCalculateHeatTransfer)
+        {
+            auto tCurrentTempAdjoint = aDual.vector("current temperature adjoint");
+            auto tJacTempResWrtCurVel = mTemperatureResidual->gradientCurrentVel(aControl, aPrimal);
+            Plato::MatrixTimesVectorPlusVector(tJacTempResWrtCurVel, tCurrentTempAdjoint, tRHS);
+        }
         Plato::blas1::scale(-1.0, tRHS);
 
+        // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        auto tJacobianVelocity = mCorrectorResidual.gradientCurrentVel(aControl, aPrimal);
-        tSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
+        auto tJacCorrectorResWrtCurVel = mCorrectorResidual.gradientCurrentVel(aControl, aPrimal);
+        tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRHS);
     }
 
-    void calculateGradientControl
+    Plato::ScalarVector
+    calculateGradientControl
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aPrimal,
-     const Plato::Dual         & aDual,
-           Plato::ScalarVector & aTotalDerivative)
+     const Plato::Dual         & aDual)
     {
         auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aPrimal);
 
@@ -10669,15 +10731,15 @@ private:
         auto tGradResVelWrtControl = mCorrectorResidual.gradientControl(aControl, aPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, tGradCriterionWrtControl);
 
-        Plato::blas1::axpy(1.0, tGradCriterionWrtControl, aTotalDerivative);
+        return tGradCriterionWrtControl;
     }
 
-    void calculateGradientConfig
+    Plato::ScalarVector
+    calculateGradientConfig
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aPrimal,
-     const Plato::Dual         & aDual,
-           Plato::ScalarVector & aTotalDerivative)
+     const Plato::Dual         & aDual)
     {
         auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aPrimal);
 
@@ -10697,7 +10759,7 @@ private:
         auto tGradResVelWrtConfig = mCorrectorResidual.gradientConfig(aControl, aPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, tGradCriterionWrtConfig);
 
-        Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
+        return tGradCriterionWrtConfig;
     }
 };
 // class QuasiImplicit
@@ -10710,6 +10772,113 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionGradient)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Criteria'>"
+            "    <ParameterList name='Inlet Average Surface Pressure'>"
+            "      <Parameter name='Type' type='string' value='Scalar Function'/> "
+            "      <Parameter  name='Sides' type='Array(string)' value='{x-}'/>"
+            "      <Parameter name='Scalar Function Type' type='string' value='Average Surface Pressure'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Outlet Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,3,3);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    //tProblem.output("cfd_test_problem");
+
+    // call outlet criterion
+    Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
 {
