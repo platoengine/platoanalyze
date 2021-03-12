@@ -6,6 +6,8 @@
 #include <MueLu_CreateTpetraPreconditioner.hpp>
 #include <Xpetra_CrsMatrix.hpp>
 #include <Xpetra_CrsMatrixWrap.hpp>
+#include "Amesos2.hpp"
+#include "Amesos2_Version.hpp"
 
 namespace Plato {
 /******************************************************************************//**
@@ -301,7 +303,7 @@ TpetraLinearSolver::TpetraLinearSolver(
     Omega_h::Mesh&          aMesh,
     Comm::Machine           aMachine,
     int                     aDofsPerNode
-) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode)))
+) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))), mSolverEndTime(time(&mTimer))
 {
   if(aSolverParams.isType<std::string>("Solver Package"))
     mSolverPackage = aSolverParams.get<std::string>("Solver Package");
@@ -326,7 +328,7 @@ TpetraLinearSolver::TpetraLinearSolver(
       tMaxIterations = 300;
 
     double tTolerance;
-    if(aSolverParams.isType<int>("Tolerance"))
+    if(aSolverParams.isType<double>("Tolerance"))
       tTolerance = aSolverParams.get<double>("Tolerance");
     else
       tTolerance = 1e-14;
@@ -375,11 +377,31 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
 
   const double tTolerance = solver->achievedTol();
   if (result == Belos::Converged) {
-    //std::cout << "The Belos solve took " << numIters << " iteration(s) to reach "
-    //  "a relative residual tolerance of " << tTolerance << "." << std::endl;
+    //std::cout << "Belos solver required " << numIters << " iterations to reach a tolerance of "
+    //          << tTolerance << "." << std::endl;
   } else {
-    std::cout << "The Belos solve took " << numIters << " iteration(s), but did not converge. Achieved tolerance = "
-              << tTolerance << "." << std::endl;
+    std::cout << "Belos solver did not converge to desired tolerance. Iterations: " << numIters 
+              << ". Achieved tolerance: " << tTolerance << "." << std::endl;
+  }
+}
+
+void
+TpetraLinearSolver::amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tpetra_MultiVector> X, Teuchos::RCP<Tpetra_MultiVector> B) 
+{
+  if( Amesos2::query(mSolver) )
+  {
+    Teuchos::RCP<Amesos2::Solver<Tpetra_Matrix, Tpetra_MultiVector>> tAmesos2Solver =
+                 Amesos2::create<Tpetra_Matrix, Tpetra_MultiVector>(mSolver, A, X, B);
+    tAmesos2Solver->symbolicFactorization();
+    tAmesos2Solver->numericFactorization();
+    tAmesos2Solver->solve();
+  }
+  else
+  {
+    const std::string tErrorMessage = std::string("The specified Amesos2 solver '") + mSolver 
+                                    + "' is not currently enabled. Typical options: "
+                                    + "{'superlu','superlu_dist','klu2','mumps','umfpack'}";
+    THROWERR(tErrorMessage)
   }
 }
 
@@ -393,6 +415,10 @@ TpetraLinearSolver::solve(
     Plato::ScalarVector   aB
 )
 {
+  mSolverStartTime = time(&mTimer);
+  const double tAnalyzeElapsedTime = difftime(mSolverStartTime, mSolverEndTime);
+  std::cout << "Analyze elapsed time: " << tAnalyzeElapsedTime << ". " << std::flush;
+
   Teuchos::RCP<Tpetra_Matrix> A = mSystem->fromMatrix(aA);
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
   Teuchos::RCP<Tpetra_MultiVector> B = mSystem->fromVector(aB);
@@ -411,12 +437,18 @@ TpetraLinearSolver::solve(
 
   if(mSolverPackage == "Belos")
     belosSolve<Tpetra_MultiVector, Tpetra_Operator> (A, X, B, M);
+  else if (mSolverPackage == "Amesos2")
+    amesos2Solve(A, X, B);
   else
   {
     std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";
     throw std::invalid_argument(tInvalid_solver);
   }
   mSystem->toVector(aX,X);
+
+  mSolverEndTime = time(&mTimer);
+  const double tTpetraElapsedTime = difftime(mSolverEndTime, mSolverStartTime);
+  std::cout << "Tpetra elapsed time: " << tTpetraElapsedTime << "." << std::endl;
 }
 
 } // end namespace Plato
