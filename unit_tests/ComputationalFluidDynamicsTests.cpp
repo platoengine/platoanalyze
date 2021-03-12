@@ -720,14 +720,13 @@ inline Type parse_parameter
 {
     if( !aInputs.isSublist(aBlock) )
     {
-        THROWERR(std::string("Parameter Sublist '") + aBlock + "' within Paramater List '" 
-            + aInputs.name() + "' is not defined.")
+        THROWERR(std::string("Parameter Sublist '") + aBlock + "' within Paramater List '" + aInputs.name() + "' is not defined.")
     }
     auto tSublist = aInputs.sublist(aBlock);
 
     if( !tSublist.isParameter(aTag) )
     {
-        THROWERR(std::string("Parameter with '") + aTag + "' is not defined in Parameter Sublist with name '" + aBlock + "'.")
+        THROWERR(std::string("Parameter with tag '") + aTag + "' is not defined in Parameter Sublist '" + aBlock + "'.")
     }
     auto tOutput = tSublist.get<Type>(aTag);
     return tOutput;
@@ -2777,6 +2776,21 @@ strain_rate
 }
 // function strain_rate
 
+inline bool
+is_impermeability_defined
+(Teuchos::ParameterList & aInputs)
+{
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    if( !tHyperbolic.isSublist("Dimensionless Properties") )
+    {
+        THROWERR("Parameter Sublist 'Dimensionless Properties' is not defined.")
+    }
+    auto tSublist = tHyperbolic.sublist("Dimensionless Properties");
+    return (tSublist.isParameter("Impermeability Number"));
+}
+
+
+
 
 /***************************************************************************//**
  * \tparam PhysicsT    Plato physics type
@@ -2791,43 +2805,36 @@ strain_rate
  * where \f$\theta\f$ denotes the controls, \f$\alpha\f$ denotes the Brinkman
  * penalization parameter.
  ******************************************************************************/
+/*
 template<typename PhysicsT, typename EvaluationT>
 class InternalDissipationEnergy : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
 private:
-    static constexpr auto mNumSpatialDims    = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell   = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumVelDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of velocity dofs per node */
+    static constexpr auto mNumSpatialDims    = PhysicsT::SimplexT::mNumSpatialDims;         
+    static constexpr auto mNumNodesPerCell   = PhysicsT::SimplexT::mNumNodesPerCell;        
+    static constexpr auto mNumVelDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerCell; 
 
     // local forward automatic differentiation typenames
-    using ResultT  = typename EvaluationT::ResultScalarType;           /*!< result FAD type */
-    using CurVelT  = typename EvaluationT::CurrentMomentumScalarType;  /*!< current velocity FAD type */
-    using ConfigT  = typename EvaluationT::ConfigScalarType;           /*!< configuration FAD type */
-    using ControlT = typename EvaluationT::ControlScalarType;          /*!< control FAD type */
-    using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>; /*!< strain rate FAD type */
+    using ResultT  = typename EvaluationT::ResultScalarType;          
+    using CurVelT  = typename EvaluationT::CurrentMomentumScalarType;  
+    using ConfigT  = typename EvaluationT::ConfigScalarType;           
+    using ControlT = typename EvaluationT::ControlScalarType;          
+    using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>; 
 
     // set local typenames
-    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>; /*!< local short name/notation for cubature rule class */
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>; 
 
     // member parameters
-    std::string mFuncName; /*!< scalar function name */
-    Plato::Scalar mPrNum = 1.0; /*!< Prandtl number */
-    Plato::Scalar mDaNum = 1.0; /*!< Darcy number */
-    Plato::Scalar mBrinkmanConvexityParam = 0.5; /*!< convexity parameter for Brinkmann penalization model */
+    std::string mFuncName;
+    Plato::Scalar mImpermeability = 1.0; 
+    Plato::Scalar mBrinkmanConvexityParam = 0.5; 
 
     // member metadata
-    Plato::DataMap& mDataMap; /*!< holds output metadata */
-    CubatureRule mCubatureRule; /*!< cubature integration rule */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
+    Plato::DataMap& mDataMap;
+    CubatureRule mCubatureRule; 
+    const Plato::SpatialDomain& mSpatialDomain; 
 
 public:
-    /***************************************************************************//**
-     * \brief Constructor
-     * \param [in] aName    scalar function name
-     * \param [in] aDomain  holds mesh and entity sets (e.g. node and side sets) metadata
-     * \param [in] aDataMap holds output metadata
-     * \param [in] aInputs  input file metadata
-     ******************************************************************************/
     InternalDissipationEnergy
     (const std::string          & aName,
      const Plato::SpatialDomain & aDomain,
@@ -2838,34 +2845,19 @@ public:
          mCubatureRule(CubatureRule()),
          mSpatialDomain(aDomain)
     {
-        mDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", aInputs);
-        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
+        this->setImpermeability(aInputs);
         this->setBrinkmannModel(aInputs);
     }
 
-    /***************************************************************************//**
-     * \brief Destructor
-     ******************************************************************************/
     virtual ~InternalDissipationEnergy(){}
 
-    /***************************************************************************//**
-     * \fn std::string name
-     * \brief Returns scalar function name
-     * \return scalar function name
-     ******************************************************************************/
     std::string name() const override { return mFuncName; }
 
-    /***************************************************************************//**
-     * \fn void evaluate
-     * \brief Evaluate scalar function inside the computational domain \f$ \Omega \f$.
-     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
-     * \param [in] aResult   1D output work set of size number of cells
-     ******************************************************************************/
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     {
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0, mNumSpatialDims> tIntrplVectorField;
 
         // set local worksets
         auto tNumCells = mSpatialDomain.numCells();
@@ -2882,8 +2874,7 @@ public:
         auto tCurVelWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurVelT>>(aWorkSets.get("current velocity"));
 
         // transfer member data to device
-        auto tPrNum = mPrNum;
-        auto tDaNum = mDaNum;
+        auto tImpermeability = mImpermeability;
         auto tBrinkConvexParam = mBrinkmanConvexityParam;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
@@ -2900,9 +2891,8 @@ public:
             Plato::blas2::dot<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
 
             // calculate fictitious material model (i.e. brinkman model) contribution to internal energy
-            auto tPermeability = tPrNum / tDaNum;
             ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPermeability, tBrinkConvexParam, tControlWS);
+                (aCellOrdinal, tImpermeability, tBrinkConvexParam, tControlWS);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
             Plato::blas1::dot<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
             aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelDotCurVel(aCellOrdinal);
@@ -2913,21 +2903,10 @@ public:
         }, "internal energy");
     }
 
-    /***************************************************************************//**
-     * \fn void evaluateBoundary
-     * \brief Evaluate scalar function along the computational boudary \f$ d\Gamma \f$.
-     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
-     * \param [in] aResult   1D output work set of size number of cells
-     ******************************************************************************/
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     { return; }
 
 private:
-    /***************************************************************************//**
-     * \fn void setBrinkmannModel
-     * \brief Set parameters for the Brinkmann fictitious material penalization model.
-     * \param [in] aInputs input file metadata
-     ******************************************************************************/
     void setBrinkmannModel(Teuchos::ParameterList & aInputs)
     {
         auto tMyCriterionInputs = aInputs.sublist("Criteria").sublist(mFuncName);
@@ -2937,7 +2916,25 @@ private:
             mBrinkmanConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
         }
     }
+
+    void setImpermeability
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(Plato::Fluids::is_impermeability_defined(aInputs))
+        {
+            auto tHyperbolic = aInputs.sublist("Hyperbolic");
+            mImpermeability = Plato::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
+        }
+        else
+        {
+            auto tHyperbolic = aInputs.sublist("Hyperbolic");
+            auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
+            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            mImpermeability = tPrNum / tDaNum;
+        }
+    }
 };
+*/
 // class InternalDissipationEnergy
 
 
@@ -3888,14 +3885,14 @@ inline bool calculate_brinkman_forces
         THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
 
-    auto tOutput = false;
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if(tHyperbolic.isSublist("Momentum Conservation"))
+    auto tScenario = tHyperbolic.get<std::string>("Scenario", "Analysis");
+    auto tLowerScenario = Plato::tolower(tScenario);
+    if(tLowerScenario == "density to")
     {
-        auto tMomentumConservation = tHyperbolic.sublist("Momentum Conservation");
-        tOutput = tMomentumConservation.get<bool>("Calculate Brinkman Forces", false);
+	return true;
     }
-    return tOutput;
+    return false;
 }
 // function calculate_brinkman_forces
 
@@ -4453,6 +4450,12 @@ private:
 };
 
 
+
+
+
+
+
+
 template<typename PhysicsT, typename EvaluationT>
 class BrinkmanForces
 {
@@ -4469,8 +4472,8 @@ private:
     using ControlT = typename EvaluationT::ControlScalarType; /*!< control FAD type */
     using PrevVelT = typename EvaluationT::PreviousMomentumScalarType; /*!< previous velocity FAD type */
 
-    Plato::Scalar mPermeability = 1.0; /*!< permeability dimensionless number */
     Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+    Plato::Scalar mImpermeability = 1.0; /*!< permeability dimensionless number */
     Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
 
     Plato::DataMap& mDataMap; /*!< output database */
@@ -4486,7 +4489,7 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        this->setPermeability(aInputs);
+        this->setImpermeability(aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
     }
 
@@ -4522,8 +4525,8 @@ public:
         auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member host scalar data to device
-        auto tPermeability = mPermeability;
         auto tStabilization = mStabilization;
+        auto tImpermeability = mImpermeability;
         auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
@@ -4537,7 +4540,7 @@ public:
             auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPermeability, tBrinkmanConvexityParam, tControlWS);
+                (aCellOrdinal, tImpermeability, tBrinkmanConvexityParam, tControlWS);
             Plato::Fluids::calculate_brinkman_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, aResultWS);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
@@ -4551,13 +4554,21 @@ public:
     }
 
 private:
-    void setPermeability
+    void setImpermeability
     (Teuchos::ParameterList & aInputs)
     {
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
-        auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-        mPermeability = tPrNum / tDaNum;
+	if(Plato::Fluids::is_impermeability_defined(aInputs))
+	{
+            auto tHyperbolic = aInputs.sublist("Hyperbolic");
+            mImpermeability = Plato::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
+	}
+	else
+	{
+            auto tHyperbolic = aInputs.sublist("Hyperbolic");
+            auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
+            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            mImpermeability = tPrNum / tDaNum;
+	}
     }
 };
 
@@ -4998,7 +5009,7 @@ private:
     // set member scalar data
     Plato::Scalar mBuoyancy = 1.0; /*!< buoyancy dimensionless number */
     Plato::Scalar mViscocity = 1.0; /*!< viscocity dimensionless number */
-    Plato::Scalar mPermeability = 1.0; /*!< permeability dimensionless number */
+    Plato::Scalar mPermeability = 1.0; /*!< viscocity dimensionless number */
     Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
     Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
 
@@ -8611,11 +8622,13 @@ public:
             return ( std::make_shared<Plato::Fluids::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
+	/*
         else if( tCriterionLowerTag == "internal dissipation energy" && tFlowLowerTag == "incompressible")
         {
             return ( std::make_shared<Plato::Fluids::InternalDissipationEnergy<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
+	*/
         else
         {
             THROWERR(std::string("'Scalar Function Type' with tag '") + tCriterionTag
@@ -10650,11 +10663,17 @@ private:
         Plato::MatrixTimesVectorPlusVector(tJacResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
+	// prepare constraints dofs
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mPressureEssentialBCs.get(tBcDofs, tBcValues);
+
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
         auto tJacPressResWrtCurPress = mPressureResidual.gradientCurrentPress(aControl, aPrimal);
+        Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacPressResWrtCurPress, tRHS);
         tSolver->solve(*tJacPressResWrtCurPress, tCurrentPressAdjoint, tRHS);
     }
 
@@ -10723,13 +10742,16 @@ private:
         auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
 
-        auto tCurrentTemperatureAdjoint = aDual.vector("current temperature adjoint");
-        auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
-
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
         auto tGradResVelWrtControl = mCorrectorResidual.gradientControl(aControl, aPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, tGradCriterionWrtControl);
+
+	if(mCalculateHeatTransfer)
+	{
+            auto tCurrentTemperatureAdjoint = aDual.vector("current temperature adjoint");
+            auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aPrimal);
+            Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
+	}
 
         return tGradCriterionWrtControl;
     }
@@ -10787,12 +10809,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1e5'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
