@@ -26,7 +26,7 @@ class IntermediateDensityPenalty : public Plato::SimplexMechanics<EvaluationType
     static constexpr Plato::OrdinalType mNumVoigtTerms = Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
     
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
@@ -38,41 +38,45 @@ class IntermediateDensityPenalty : public Plato::SimplexMechanics<EvaluationType
 
   public:
     /**************************************************************************/
-    IntermediateDensityPenalty(Omega_h::Mesh& aMesh, 
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap& aDataMap, 
-           Teuchos::ParameterList& aInputParams,
-           std::string aFunctionName) :
-           Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-           mPenaltyAmplitude(1.0)
+    IntermediateDensityPenalty(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aInputParams,
+              std::string              aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mPenaltyAmplitude(1.0)
     /**************************************************************************/
     {
-      auto tInputs = aInputParams.get<Teuchos::ParameterList>(aFunctionName);
-      mPenaltyAmplitude = tInputs.get<Plato::Scalar>("Penalty Amplitude", 1.0);
+        auto tInputs = aInputParams.get<Teuchos::ParameterList>(aFunctionName);
+        mPenaltyAmplitude = tInputs.get<Plato::Scalar>("Penalty Amplitude", 1.0);
     }
 
     /**************************************************************************
      * Unit testing constructor
     /**************************************************************************/
-    IntermediateDensityPenalty(Omega_h::Mesh& aMesh, 
-               Omega_h::MeshSets& aMeshSets,
-               Plato::DataMap& aDataMap) :
-               Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "IntermediateDensityPenalty"),
-               mPenaltyAmplitude(1.0)
+    IntermediateDensityPenalty(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, "IntermediateDensityPenalty"),
+        mPenaltyAmplitude(1.0)
     /**************************************************************************/
     {
-
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const 
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT<StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT<ConfigScalarType>      & aConfig,
+              Plato::ScalarVectorT<ResultScalarType>       & aResult,
+              Plato::Scalar                                  aTimeStep = 0.0
+    ) const 
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       auto tPenaltyAmplitude = mPenaltyAmplitude;
 

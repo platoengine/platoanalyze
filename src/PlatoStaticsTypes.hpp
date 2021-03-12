@@ -29,7 +29,7 @@ using HostScalarVectorT = typename Kokkos::View<ScalarType*, Kokkos::HostSpace, 
 using HostScalarVector  = HostScalarVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
-using ScalarMultiVectorT = typename Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace>;
+using ScalarMultiVectorT = typename Kokkos::View<ScalarType**, Plato::Layout, Plato::MemSpace>;
 using ScalarMultiVector  = ScalarMultiVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
@@ -37,12 +37,37 @@ using HostMultiScalarVectorT = typename Kokkos::View<ScalarType**, Kokkos::HostS
 using HostMultiScalarVector  = HostMultiScalarVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
-using ScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::LayoutRight, Plato::MemSpace>;
+using ScalarArray3DT = typename Kokkos::View<ScalarType***, Plato::Layout, Plato::MemSpace>;
 using ScalarArray3D  = ScalarArray3DT<Plato::Scalar>;
 
 template <typename ScalarType>
 using HostScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
 using HostScalarArray3D  = HostScalarArray3DT<Plato::Scalar>;
+
+struct Solution {
+  explicit
+  Solution(){}
+
+  explicit
+  Solution(ScalarMultiVector aState) : State(aState) {}
+
+  explicit
+  Solution(ScalarMultiVector aState,
+           ScalarMultiVector aStateDot
+          ) : State(aState), StateDot(aStateDot) {}
+
+  explicit
+  Solution(ScalarMultiVector aState,
+           ScalarMultiVector aStateDot,
+           ScalarMultiVector aStateDotDot
+          ) : State(aState), StateDot(aStateDot), StateDotDot(aStateDotDot) {}
+
+  ScalarMultiVector State;
+  ScalarMultiVector StateDot;
+  ScalarMultiVector StateDotDot;
+};
+typedef Solution Adjoint;
+
 
 struct DataMap
 {

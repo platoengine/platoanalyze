@@ -36,9 +36,9 @@ inline Plato::Scalar compute_shear_modulus(const Plato::Scalar & aElasticModulus
 *******************************************************************************/
 inline Plato::Scalar compute_bulk_modulus(const Plato::Scalar & aElasticModulus, const Plato::Scalar & aPoissonRatio)
 {
-    auto tShearModulus = aElasticModulus /
+    auto tBulkModulus = aElasticModulus /
         ( static_cast<Plato::Scalar>(3) * ( static_cast<Plato::Scalar>(1) - ( static_cast<Plato::Scalar>(2) * aPoissonRatio) ) );
-    return (tShearModulus);
+    return (tBulkModulus);
 }
 // function compute_bulk_modulus
 

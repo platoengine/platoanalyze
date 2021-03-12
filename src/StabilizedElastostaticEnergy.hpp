@@ -10,7 +10,7 @@
 #include "Kinetics.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
-#include "parabolic/AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "ElasticModelFactory.hpp"
 #include "ToMap.hpp"
@@ -33,7 +33,7 @@ namespace Plato
 template<typename EvaluationType, typename IndicatorFunctionType>
 class StabilizedElastostaticEnergy : 
   public Plato::SimplexStabilizedMechanics<EvaluationType::SpatialDim>,
-  public Plato::Parabolic::AbstractScalarFunction<EvaluationType>
+  public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 {
   private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
@@ -49,23 +49,24 @@ class StabilizedElastostaticEnergy :
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerNode;
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerCell;
 
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
-    using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
     using NodeStateScalarType = typename EvaluationType::NodeStateScalarType;
     using ControlScalarType   = typename EvaluationType::ControlScalarType;
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
 
+    using FunctionBaseType = Plato::Elliptic::AbstractScalarFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
     
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyTensorWeighting;
     Plato::ApplyWeighting<mSpaceDim, mSpaceDim,      IndicatorFunctionType> mApplyVectorWeighting;
     Plato::ApplyWeighting<mSpaceDim, 1,              IndicatorFunctionType> mApplyScalarWeighting;
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
 
     Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> mMaterialModel;
 
@@ -73,37 +74,40 @@ class StabilizedElastostaticEnergy :
 
   public:
     /**************************************************************************/
-    StabilizedElastostaticEnergy(Omega_h::Mesh&          aMesh,
-                                 Omega_h::MeshSets&      aMeshSets,
-                                 Plato::DataMap&         aDataMap,
-                                 Teuchos::ParameterList& aProblemParams,
-                                 Teuchos::ParameterList& aPenaltyParams,
-                                 std::string&            aFunctionName ) :
-            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyTensorWeighting(mIndicatorFunction),
-            mApplyVectorWeighting(mIndicatorFunction),
-            mApplyScalarWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>())
+    StabilizedElastostaticEnergy(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap&          aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams,
+        const std::string&             aFunctionName
+    ) :
+        FunctionBaseType      (aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyTensorWeighting (mIndicatorFunction),
+        mApplyVectorWeighting (mIndicatorFunction),
+        mApplyScalarWeighting (mIndicatorFunction),
+        mCubatureRule         (std::make_shared<CubatureType>())
     /**************************************************************************/
     {
       Plato::ElasticModelFactory<mSpaceDim> mmfactory(aProblemParams);
-      mMaterialModel = mmfactory.create();
+      mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
 
       if( aProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )
         mPlottable = aProblemParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT <StateScalarType>     & aStateWS,
-                  const Plato::ScalarMultiVectorT <PrevStateScalarType> & aPrevStateWS,
-                  const Plato::ScalarMultiVectorT <ControlScalarType>   & aControlWS,
-                  const Plato::ScalarArray3DT     <ConfigScalarType>    & aConfigWS,
-                        Plato::ScalarVectorT      <ResultScalarType>    & aResultWS,
-                        Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>     & aStateWS,
+        const Plato::ScalarMultiVectorT <ControlScalarType>   & aControlWS,
+        const Plato::ScalarArray3DT     <ConfigScalarType>    & aConfigWS,
+              Plato::ScalarVectorT      <ResultScalarType>    & aResultWS,
+              Plato::Scalar aTimeStep = 0.0
+    ) const override
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
       typename Plato::fad_type_t<Plato::SimplexStabilizedMechanics

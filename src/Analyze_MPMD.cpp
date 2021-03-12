@@ -4,10 +4,10 @@
 #include <fenv.h>
 #endif
 
-void safeExit(){
+void safeExit(int aExitCode=0){
   Kokkos::finalize_all();
   MPI_Finalize();
-  exit(0);
+  exit(aExitCode);
 }
 
 /******************************************************************************/
@@ -28,16 +28,17 @@ int main(int aArgc, char **aArgv)
     }
     catch(...)
     {
-      safeExit();
+      int tErrorCode = 1;
+      safeExit(tErrorCode);
     }
 
     MPI_Comm tLocalComm;
     tPlatoInterface->getLocalComm(tLocalComm);
 
-    MPMD_App* tMyApp = nullptr;
+    Plato::MPMD_App* tMyApp = nullptr;
     try
     {
-      tMyApp = new MPMD_App(aArgc, aArgv, tLocalComm);
+      tMyApp = new Plato::MPMD_App(aArgc, aArgv, tLocalComm);
     }
     catch(...)
     {
@@ -51,10 +52,18 @@ int main(int aArgc, char **aArgv)
     }
     catch(...)
     {
-      safeExit();
+      int tErrorCode = 1;
+      safeExit(tErrorCode);
     }
 
-    tPlatoInterface->perform();
+    try
+    {
+      tPlatoInterface->perform();
+    }
+    catch(...)
+    {
+      safeExit();
+    }
 
     if(tMyApp)
     {

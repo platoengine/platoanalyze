@@ -261,7 +261,7 @@ inline void multiply(const Plato::OrdinalType& aNumCells,
     if(aB.extent(2) != aC.extent(2))
     {
         tError << "\nDimension mismatch. Mismatch in input (B) and output (C) matrices column count. "
-            << "A has " << aA.extent(2) << " columns and C has " << aC.extent(2) << " columns.\n";
+            << "B has " << aB.extent(2) << " columns and C has " << aC.extent(2) << " columns.\n";
         THROWERR(tError.str())
     }
     if(aA.extent(0) != aNumCells)

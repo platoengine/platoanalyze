@@ -47,8 +47,8 @@ public:
     **********************************************************************************/
     template<typename InputScalarType, typename WeightScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
-                                       Kokkos::View<InputScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const & aInputOutput,
-                                       Kokkos::View<WeightScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const & aControl) const
+                                       Kokkos::View<InputScalarType**, Plato::Layout, Plato::MemSpace> const & aInputOutput,
+                                       Kokkos::View<WeightScalarType**, Plato::Layout, Plato::MemSpace> const & aControl) const
     {
         // apply weighting
         //

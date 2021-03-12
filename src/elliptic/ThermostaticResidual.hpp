@@ -12,13 +12,15 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "ToMap.hpp"
+#include "InterpolateFromNodal.hpp"
 
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 #include "elliptic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyWeighting.hpp"
 #include "NaturalBCs.hpp"
 #include "SimplexFadTypes.hpp"
+#include "BodyLoads.hpp"
 
 #include "ExpInstMacros.hpp"
 
@@ -38,79 +40,86 @@ class ThermostaticResidual :
   private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
 
-    using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
-    using Plato::SimplexThermal<mSpaceDim>::mNumDofsPerCell;
-    using Plato::SimplexThermal<mSpaceDim>::mNumDofsPerNode;
+    using PhysicsType = typename Plato::SimplexThermal<mSpaceDim>;
 
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
+    using PhysicsType::mNumDofsPerCell;
+    using PhysicsType::mNumDofsPerNode;
+
+    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
-    Omega_h::Matrix< mSpaceDim, mSpaceDim> mCellConductivity;
-    
     Plato::Scalar mQuadratureWeight;
 
     IndicatorFunctionType mIndicatorFunction;
     ApplyWeighting<mSpaceDim,mSpaceDim,IndicatorFunctionType> mApplyWeighting;
 
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads;
+
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
+
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mMaterialModel;
 
     std::vector<std::string> mPlottable;
 
   public:
     /**************************************************************************/
-    ThermostaticResidual(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap,
-                         Teuchos::ParameterList& aProblemParams,
-                         Teuchos::ParameterList& penaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(penaltyParams),
-            mApplyWeighting(mIndicatorFunction),
-            mBoundaryLoads(nullptr)
+    ThermostaticResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & penaltyParams
+    ) :
+        Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
+        mIndicatorFunction(penaltyParams),
+        mApplyWeighting(mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        mBodyLoads(nullptr),
+        mBoundaryLoads(nullptr)
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
-      auto tMaterialModel = tMaterialFactory.create();
-      mCellConductivity = tMaterialModel->getConductivityMatrix();
+        Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
+        mMaterialModel = tMaterialFactory.create(aSpatialDomain.getMaterialName());
 
-      mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (Plato::OrdinalType tDim=2; tDim<=mSpaceDim; tDim++)
-      { 
-        mQuadratureWeight /= Plato::Scalar(tDim);
-      }
+        // parse body loads
+        // 
+        if(aProblemParams.isSublist("Body Loads"))
+        {
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aProblemParams.sublist("Body Loads"));
+        }
 
-      // parse boundary Conditions
-      // 
-      if(aProblemParams.isSublist("Natural Boundary Conditions"))
-      {
-          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
-      }
+        // parse boundary Conditions
+        // 
+        if(aProblemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+        }
 
-      auto tResidualParams = aProblemParams.sublist("Thermostatics");
-      if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
-        mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
-    
+        auto tResidualParams = aProblemParams.sublist("Elliptic");
+        if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
+        {
+            mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
-
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT<StateScalarType  > & aState,
-              const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-              const Plato::ScalarArray3DT<ConfigScalarType > & aConfig,
-              Plato::ScalarMultiVectorT<ResultScalarType > & aResult,
-              Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType  > & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType > & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      Kokkos::deep_copy(aResult, 0.0);
-
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -118,24 +127,33 @@ class ThermostaticResidual :
       Plato::ScalarVectorT<ConfigScalarType>
         tCellVolume("cell weight",tNumCells);
 
-      Kokkos::View<GradScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<GradScalarType**, Plato::Layout, Plato::MemSpace>
         tGrad("temperature gradient",tNumCells,mSpaceDim);
 
       Plato::ScalarArray3DT<ConfigScalarType>
         tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tFlux("thermal flux",tNumCells,mSpaceDim);
+
+      Plato::ScalarVectorT<StateScalarType> 
+        tTemperature("Gauss point temperature", tNumCells);
+
 
       // create a bunch of functors:
       Plato::ComputeGradientWorkset<mSpaceDim>  tComputeGradient;
 
       Plato::ScalarGrad<mSpaceDim>            tScalarGrad;
-      Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mCellConductivity);
+      Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mMaterialModel);
       Plato::FluxDivergence<mSpaceDim>        tFluxDivergence;
+
+      Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode> tInterpolateFromNodal;
+
     
       auto& tApplyWeighting  = mApplyWeighting;
-      auto tQuadratureWeight = mQuadratureWeight;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
+      auto tBasisFunctions    = mCubatureRule->getBasisFunctions();
+
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
       {
     
@@ -148,7 +166,8 @@ class ThermostaticResidual :
     
         // compute flux
         //
-        tThermalFlux(aCellOrdinal, tFlux, tGrad);
+        tInterpolateFromNodal(aCellOrdinal, tBasisFunctions, aState, tTemperature);
+        tThermalFlux(aCellOrdinal, tFlux, tGrad, tTemperature);
     
         // apply weighting
         //
@@ -156,17 +175,35 @@ class ThermostaticResidual :
     
         // compute stress divergence
         //
-        tFluxDivergence(aCellOrdinal, aResult, tFlux, tGradient, tCellVolume);
+        tFluxDivergence(aCellOrdinal, aResult, tFlux, tGradient, tCellVolume, -1.0);
         
       },"flux divergence");
 
-      if( mBoundaryLoads != nullptr )
+      if( mBodyLoads != nullptr )
       {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
+          mBodyLoads->get( mSpatialDomain, aState, aControl, aResult, -1.0 );
       }
 
-      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" );
+      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad", mSpatialDomain);
+      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" , mSpatialDomain);
+    }
+
+    /**************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType  > & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType > & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    /**************************************************************************/
+    {
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult,  1.0 );
+        }
     }
 };
 // class ThermostaticResidual

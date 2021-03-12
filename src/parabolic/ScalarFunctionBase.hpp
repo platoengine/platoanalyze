@@ -1,5 +1,4 @@
-#ifndef PLATO_PARABOLIC_SCALAR_FUNCTION_BASE_HPP
-#define PLATO_PARABOLIC_SCALAR_FUNCTION_BASE_HPP
+#pragma once
 
 #include "PlatoStaticsTypes.hpp"
 
@@ -10,7 +9,7 @@ namespace Parabolic
 {
 
 /******************************************************************************//**
- * \brief Scalar function inc base class
+ * @brief Scalar function base class
  **********************************************************************************/
 class ScalarFunctionBase
 {
@@ -18,75 +17,77 @@ public:
     virtual ~ScalarFunctionBase(){}
 
     /******************************************************************************//**
-     * \fn virtual std::string name() const
-     * \brief Return function name
-     * \return user defined function name
+     * @brief Return function name
+     * @return user defined function name
      **********************************************************************************/
     virtual std::string name() const = 0;
 
     /******************************************************************************//**
-     * \fn virtual Plato::Scalar value(const Plato::ScalarMultiVector & aStates,
-     *                                 const Plato::ScalarVector & aControl,
-     *                                 Plato::Scalar aTimeStep = 0.0) const
-     * \brief Return function value
-     * \param [in] aState state variables
-     * \param [in] aControl design variables
-     * \param [in] aTimeStep current time step increment
-     * \return function value
+     * @brief Return function value
+     * @param [in] aSolution state variables
+     * @param [in] aControl design variables
+     * @param [in] aTimeStep current time step
+     * @return function value
      **********************************************************************************/
-    virtual Plato::Scalar value(const Plato::ScalarMultiVector & aStates,
-                                const Plato::ScalarVector & aControl,
-                                Plato::Scalar aTimeStep = 0.0) const = 0;
+    virtual Plato::Scalar
+    value(const Plato::Solution     & aSolution,
+          const Plato::ScalarVector & aControl,
+                Plato::Scalar         aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
-     * \fn virtual Plato::ScalarVector gradient_z(const Plato::ScalarMultiVector & aStates,
-     *                                            const Plato::ScalarVector & aControl,
-     *                                            Plato::Scalar aTimeStep = 0.0) const
-     * \brief Return function gradient wrt design variables
-     * \param [in] aState state variables
-     * \param [in] aControl design variables
-     * \param [in] aTimeStep current time step increment
-     * \return function gradient wrt design variables
+     * @brief Return function gradient wrt design variables
+     * @param [in] aSolution state variables
+     * @param [in] aControl design variables
+     * @param [in] aTimeStep current time step
+     * @return function gradient wrt design variables
      **********************************************************************************/
-    virtual Plato::ScalarVector gradient_z(const Plato::ScalarMultiVector & aStates,
-                                           const Plato::ScalarVector & aControl,
-                                           Plato::Scalar aTimeStep = 0.0) const = 0;
+    virtual Plato::ScalarVector
+    gradient_z(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
-     * \fn virtual Plato::ScalarVector gradient_u(const Plato::ScalarMultiVector & aStates,
-     *                                            const Plato::ScalarVector & aControl,
-     *                                            Plato::Scalar aTimeStep,
-     *                                            Plato::OrdinalType aStepIndex) const
-     * \brief Return function gradient wrt state variables
-     * \param [in] aState state variables
-     * \param [in] aControl design variables
-     * \param [in] aTimeStep current time step increment
-     * \param [in] aStepIndex current time step index
-     * \return function gradient wrt state variables
+     * @brief Return function gradient wrt state variables
+     * @param [in] aSolution state variables
+     * @param [in] aControl design variables
+     * @param [in] aStepIndex step index of state for which gradient is computed
+     * @param [in] aTimeStep current time step
+     * @return function gradient wrt state variables
      **********************************************************************************/
-    virtual Plato::ScalarVector gradient_u(const Plato::ScalarMultiVector & aStates,
-                                           const Plato::ScalarVector & aControl,
-                                           Plato::Scalar aTimeStep = 0.0,
-                                           Plato::OrdinalType aStepIndex = 0) const = 0;
+    virtual Plato::ScalarVector
+    gradient_u(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
-     * \fn virtual Plato::ScalarVector gradient_x(const Plato::ScalarMultiVector & aStates,
-     *                                            const Plato::ScalarVector & aControl,
-     *                                            Plato::Scalar aTimeStep = 0.0) const
-     * \brief Return function gradient wrt configurtion variables
-     * \param [in] aState state variables
-     * \param [in] aControl design variables
-     * \param [in] aTimeStep current time step increment
-     * \return function gradient wrt configurtion variables
+     * @brief Return function gradient wrt state dot variables
+     * @param [in] aSolution state variables
+     * @param [in] aControl design variables
+     * @param [in] aStepIndex step index of state for which gradient is computed
+     * @param [in] aTimeStep current time step
+     * @return function gradient wrt state dot variables
      **********************************************************************************/
-    virtual Plato::ScalarVector gradient_x(const Plato::ScalarMultiVector & aStates,
-                                           const Plato::ScalarVector & aControl,
-                                           Plato::Scalar aTimeStep = 0.0) const = 0;
-};
-// class ScalarFunctionBase
+    virtual Plato::ScalarVector
+    gradient_v(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep = 0.0) const = 0;
+
+    /******************************************************************************//**
+     * @brief Return function gradient wrt configurtion variables
+     * @param [in] aSolution state variables
+     * @param [in] aControl design variables
+     * @param [in] aTimeStep current time step
+     * @return function gradient wrt configurtion variables
+     **********************************************************************************/
+    virtual Plato::ScalarVector
+    gradient_x(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const = 0;
+
+}; // class ScalarFunctionBase
 
 } // namespace Parabolic
 
 } // namespace Plato
-
-#endif

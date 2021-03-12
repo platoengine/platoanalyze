@@ -53,6 +53,10 @@ private:
     using ConfigScalarType = typename EvaluationType::ConfigScalarType;
     using ResultScalarType = typename EvaluationType::ResultScalarType;
 
+    using FunctionBaseType = Plato::Elliptic::AbstractVectorFunction<EvaluationType>;
+
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>;
+
 private:
     Plato::Scalar mDensity;
     Plato::Scalar mMassPropDamp;
@@ -64,34 +68,35 @@ private:
     Plato::ApplyProjection<ProjectionType> mApplyProjection;
 
     Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
 
 public:
     /******************************************************************************//**
      *
      * @brief Constructor
-     * @param [in] aMesh mesh data base
-     * @param [in] aMeshSets mesh sets data base
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap problem-specific data storage
      * @param [in] aProblemParams parameter list with input data
      * @param [in] aPenaltyParams parameter list with penalty model input data
      *
     **********************************************************************************/
-    explicit AdjointStructuralDynamicsResidual(Omega_h::Mesh& aMesh, 
-                                               Omega_h::MeshSets& aMeshSets,
-                                               Plato::DataMap& aDataMap,
-                                               Teuchos::ParameterList & aProblemParams,
-                                               Teuchos::ParameterList& aPenaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
-            mMassPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Mass Damping", 0.0)),
-            mStiffPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Stiffness Damping", 0.0)),
-            mProjectionFunction(),
-            mPenaltyFunction(aPenaltyParams),
-            mApplyPenalty(mPenaltyFunction),
-            mApplyProjection(mProjectionFunction),
-            mCellStiffness(),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>>())
+    explicit
+    AdjointStructuralDynamicsResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap),
+        mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
+        mMassPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Mass Damping", 0.0)),
+        mStiffPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Stiffness Damping", 0.0)),
+        mProjectionFunction(),
+        mPenaltyFunction(aPenaltyParams),
+        mApplyPenalty(mPenaltyFunction),
+        mApplyProjection(mProjectionFunction),
+        mCellStiffness(),
+        mCubatureRule(std::make_shared<CubatureType>())
     {
         this->initialize(aProblemParams);
     }
@@ -99,26 +104,27 @@ public:
     /******************************************************************************//**
      *
      * @brief Constructor
-     * @param [in] aMesh mesh data base
-     * @param [in] aMeshSets mesh sets data base
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap problem-specific data storage
      * @param [in] aProblemParams parameter list with input data
      *
     **********************************************************************************/
-    explicit AdjointStructuralDynamicsResidual(Omega_h::Mesh& aMesh, 
-                                               Omega_h::MeshSets& aMeshSets, 
-                                               Plato::DataMap& aDataMap, 
-                                               Teuchos::ParameterList & aProblemParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
-            mMassPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Mass Damping", 0.0)),
-            mStiffPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Stiffness Damping", 0.0)),
-            mProjectionFunction(),
-            mPenaltyFunction(3.0, 0.0),
-            mApplyPenalty(mPenaltyFunction),
-            mApplyProjection(mProjectionFunction),
-            mCellStiffness(),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>>())
+    explicit
+    AdjointStructuralDynamicsResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aProblemParams
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap),
+        mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
+        mMassPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Mass Damping", 0.0)),
+        mStiffPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Stiffness Damping", 0.0)),
+        mProjectionFunction(),
+        mPenaltyFunction(3.0, 0.0),
+        mApplyPenalty(mPenaltyFunction),
+        mApplyProjection(mProjectionFunction),
+        mCellStiffness(),
+        mCubatureRule(std::make_shared<CubatureType>())
     {
         this->initialize(aProblemParams);
     }
@@ -126,22 +132,25 @@ public:
     /******************************************************************************//**
      *
      * @brief Constructor
-     * @param [in] aMesh mesh data base
-     * @param [in] aMeshSets mesh sets data base
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap problem-specific data storage
      *
     **********************************************************************************/
-    explicit AdjointStructuralDynamicsResidual(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mDensity(1),
-            mMassPropDamp(0.0),
-            mStiffPropDamp(0.0),
-            mProjectionFunction(),
-            mPenaltyFunction(3.0, 0.0),
-            mApplyPenalty(mPenaltyFunction),
-            mApplyProjection(mProjectionFunction),
-            mCellStiffness(),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>>())
+    explicit
+    AdjointStructuralDynamicsResidual(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap),
+        mDensity(1),
+        mMassPropDamp(0.0),
+        mStiffPropDamp(0.0),
+        mProjectionFunction(),
+        mPenaltyFunction(3.0, 0.0),
+        mApplyPenalty(mPenaltyFunction),
+        mApplyProjection(mProjectionFunction),
+        mCellStiffness(),
+        mCubatureRule(std::make_shared<CubatureType>())
     {
         this->initialize();
     }
@@ -234,11 +243,13 @@ public:
      * @param [in] aAngularFrequency angular frequency
      *
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfiguration,
-                  Plato::ScalarMultiVectorT<ResultScalarType> & aResidual,
-                  Plato::Scalar aAngularFrequency = 0.0) const
+    void
+    evaluate(
+          const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+          const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+          const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfiguration,
+                Plato::ScalarMultiVectorT <ResultScalarType>  & aResidual,
+                Plato::Scalar aAngularFrequency = 0.0) const
     {
         // Elastic force functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradientWorkset;
@@ -297,6 +308,29 @@ public:
         }, "Adjoint Elastodynamcis Residual Calculation");
     }
 
+    /******************************************************************************//**
+     *
+     * @brief Evaluate structural dynamics adjoint residual boundary.
+     *
+     * The structural dynamics adjoint residual is given by:
+     *
+     * @param [in] aState states per cells
+     * @param [in] aControl controls per cells
+     * @param [in] aConfiguration coordinates per cells
+     * @param [in,out] aResidual residual per cells
+     * @param [in] aAngularFrequency angular frequency
+     *
+    **********************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfiguration,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & aResidual,
+              Plato::Scalar aAngularFrequency = 0.0) const
+    {
+    }
 private:
     /**************************************************************************//**
      *

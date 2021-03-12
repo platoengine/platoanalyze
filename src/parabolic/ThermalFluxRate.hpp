@@ -1,13 +1,14 @@
 #ifndef THERMAL_FLUX_RATE_HPP
 #define THERMAL_FLUX_RATE_HPP
 
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 
 #include "ScalarGrad.hpp"
 #include "ThermalFlux.hpp"
 #include "ScalarProduct.hpp"
 #include "SimplexThermal.hpp"
-#include "SimplexFadTypes.hpp"
+
+#include "parabolic/ParabolicSimplexFadTypes.hpp"
 #include "parabolic/AbstractScalarFunction.hpp"
 
 namespace Plato
@@ -30,60 +31,63 @@ class ThermalFluxRate :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
-    using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
+    using StateDotScalarType  = typename EvaluationType::StateDotScalarType;
     using ControlScalarType   = typename EvaluationType::ControlScalarType;
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
+
+ 
+    using FunctionType = Plato::Parabolic::AbstractScalarFunction<EvaluationType>;
     
     std::shared_ptr<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>> mBoundaryLoads;
 
   public:
     /**************************************************************************/
-    ThermalFluxRate(Omega_h::Mesh& aMesh,
-                    Omega_h::MeshSets& aMeshSets,
-                    Plato::DataMap& aDataMap,
-                    Teuchos::ParameterList& problemParams) :
-            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Thermal Flux Rate"),
-            mBoundaryLoads(nullptr)
+    ThermalFluxRate(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & problemParams
+    ) :
+        FunctionType   (aSpatialDomain, aDataMap, "Thermal Flux Rate"),
+        mBoundaryLoads (nullptr)
     /**************************************************************************/
     {
-      if(problemParams.isSublist("Natural Boundary Conditions"))
-      {
-          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>(problemParams.sublist("Natural Boundary Conditions"));
-      }
+        if(problemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>
+                (problemParams.sublist("Natural Boundary Conditions"));
+        }
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<PrevStateScalarType> & aPrevState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>    & aState,
+        const Plato::ScalarMultiVectorT <StateDotScalarType> & aStateDot,
+        const Plato::ScalarMultiVectorT <ControlScalarType>  & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>   & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>   & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-
-      Kokkos::deep_copy(aResult, 0.0);
-
-      auto numCells = mMesh.nelems();
+        auto numCells = mSpatialDomain.numCells();
 
       if( mBoundaryLoads != nullptr )
       {
         Plato::ScalarMultiVectorT<ResultScalarType> boundaryLoads("boundary loads", numCells, mNumDofsPerCell);
         Kokkos::deep_copy(boundaryLoads, 0.0);
 
-        mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, boundaryLoads, 1.0/aTimeStep );
-        mBoundaryLoads->get( &mMesh, mMeshSets, aPrevState, aControl, aConfig, boundaryLoads, 1.0/aTimeStep );
+        mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, boundaryLoads );
 
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0,numCells), LAMBDA_EXPRESSION(const int & cellOrdinal)
         {
           for( int iNode=0; iNode<mNumNodesPerCell; iNode++) {
-            aResult(cellOrdinal) += (aState(cellOrdinal, iNode) - aPrevState(cellOrdinal, iNode))*boundaryLoads(cellOrdinal,iNode);
+            aResult(cellOrdinal) += aStateDot(cellOrdinal, iNode) * boundaryLoads(cellOrdinal,iNode);
           }
         },"scalar product");
       }

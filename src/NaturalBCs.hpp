@@ -85,26 +85,25 @@ public :
      * \tparam ConfigScalarType  configuration FAD type
      * \tparam ResultScalarType  result FAD type
      *
-     * \param [in]  aMesh     Omega_h mesh database.
-     * \param [in]  aMeshSets Omega_h side set database.
-     * \param [in]  aState    2-D view of state variables.
-     * \param [in]  aControl  2-D view of control variables.
-     * \param [in]  aConfig   3-D view of configuration variables.
-     * \param [out] aResult   Assembled vector to which the boundary terms will be added
-     * \param [in]  aScale    scalar multiplier
+     * \param [in]  aState        2-D view of state variables.
+     * \param [in]  aControl      2-D view of control variables.
+     * \param [in]  aConfig       3-D view of configuration variables.
+     * \param [out] aResult       Assembled vector to which the boundary terms will be added
+     * \param [in]  aScale        scalar multiplier
      *
     *******************************************************************************/
     template<typename StateScalarType,
              typename ControlScalarType,
              typename ConfigScalarType,
              typename ResultScalarType>
-    void get( Omega_h::Mesh* aMesh,
-              const Omega_h::MeshSets& aMeshSets,
-              const Plato::ScalarMultiVectorT<  StateScalarType>&,
-              const Plato::ScalarMultiVectorT<ControlScalarType>&,
-              const Plato::ScalarArray3DT    < ConfigScalarType>&,
-              const Plato::ScalarMultiVectorT< ResultScalarType>&,
-              Plato::Scalar aScale = 1.0) const;
+    void get(
+        const Plato::SpatialModel &,
+        const Plato::ScalarMultiVectorT<  StateScalarType> &,
+        const Plato::ScalarMultiVectorT<ControlScalarType> &,
+        const Plato::ScalarArray3DT    < ConfigScalarType> &,
+        const Plato::ScalarMultiVectorT< ResultScalarType> &,
+              Plato::Scalar aScale = 1.0,
+              Plato::Scalar aCurrentTime = 0.0) const;
 };
 // class NaturalBCs
 
@@ -153,8 +152,10 @@ std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
 NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
 (const std::string & aName, Teuchos::ParameterList &aSubList)
 {
-    bool tBC_Value = aSubList.isType<Plato::Scalar>("Value");
-    bool tBC_Values = aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values");
+    bool tBC_Value = (aSubList.isType<Plato::Scalar>("Value") || aSubList.isType<std::string>("Value"));
+
+    bool tBC_Values = (aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values") ||
+                       aSubList.isType<Teuchos::Array<std::string>>("Values"));
 
     const auto tType = aSubList.get < std::string > ("Type");
     std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
@@ -167,15 +168,48 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
     }
     else if (tBC_Values)
     {
-        auto tValues = aSubList.get<Teuchos::Array<Plato::Scalar>>("Values");
-        aSubList.set("Vector", tValues);
+        if(aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values"))
+        {
+            auto tValues = aSubList.get<Teuchos::Array<Plato::Scalar>>("Values");
+            aSubList.set("Vector", tValues);
+        } else
+        if(aSubList.isType<Teuchos::Array<std::string>>("Values"))
+        {
+            auto tValues = aSubList.get<Teuchos::Array<std::string>>("Values");
+            aSubList.set("Vector", tValues);
+        } else
+        {
+            std::stringstream tMsg;
+            tMsg << "Natural Boundary Condition: unexpected type encountered for 'Values' Parameter Keyword."
+                 << "Specify 'type' of 'Array(double)' or 'Array(string)'.";
+            THROWERR(tMsg.str().c_str())
+        }
     }
     else if (tBC_Value)
     {
-        Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
-        auto tValue = aSubList.get<Plato::Scalar>("Value");
-        tFluxVector[0] = tValue;
-        aSubList.set("Vector", tFluxVector);
+
+        auto tDof = aSubList.get<Plato::OrdinalType>("Index", 0);
+
+        if(aSubList.isType<Plato::Scalar>("Value"))
+        {
+            Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
+            auto tValue = aSubList.get<Plato::Scalar>("Value");
+            tFluxVector[tDof] = tValue;
+            aSubList.set("Vector", tFluxVector);
+        } else
+        if(aSubList.isType<std::string>("Value"))
+        {
+            Teuchos::Array<std::string> tFluxVector(NumDofs, "0.0");
+            auto tValue = aSubList.get<std::string>("Value");
+            tFluxVector[tDof] = tValue;
+            aSubList.set("Vector", tFluxVector);
+        } else
+        {
+            std::stringstream tMsg;
+            tMsg << "Natural Boundary Condition: unexpected type encountered for 'Value' Parameter Keyword."
+                 << "Specify 'type' of 'double' or 'string'.";
+            THROWERR(tMsg.str().c_str())
+        }
     }
     else
     {
@@ -312,17 +346,19 @@ template<typename StateScalarType,
          typename ControlScalarType,
          typename ConfigScalarType,
          typename ResultScalarType>
-void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(Omega_h::Mesh* aMesh,
-     const Omega_h::MeshSets& aMeshSets,
-     const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
-     const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
-     const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
-     const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
-     Plato::Scalar aScale) const
+void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(
+     const Plato::SpatialModel                           & aSpatialModel,
+     const Plato::ScalarMultiVectorT <  StateScalarType> & aState,
+     const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+     const Plato::ScalarArray3DT     < ConfigScalarType> & aConfig,
+     const Plato::ScalarMultiVectorT < ResultScalarType> & aResult,
+           Plato::Scalar aScale,
+           Plato::Scalar aCurrentTime
+) const
 {
     for (const auto &tMyBC : mBCs)
     {
-        tMyBC->get(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+        tMyBC->get(aSpatialModel, aState, aControl, aConfig, aResult, aScale, aCurrentTime);
     }
 }
 

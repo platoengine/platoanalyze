@@ -103,7 +103,7 @@ VonMisesYieldFunction<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
 /******************************************************************************//**
  * \brief Von Mises yield criterion for 1D problems (i.e. uniaxial stress)
  *
- * \f$ sigma_{VM} = \sigma_{11} } \f$
+ * \f$ sigma_{VM} = \sigma_{11} \f$
  *
  * \param [in] aCellOrdinal cell/element local ordinal
  * \param [in] aCauchyStress cell/element Cauchy stress tensors

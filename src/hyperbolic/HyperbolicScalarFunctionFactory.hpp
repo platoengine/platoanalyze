@@ -2,8 +2,7 @@
 
 #include <memory>
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "HyperbolicScalarFunctionBase.hpp"
 #include <Teuchos_ParameterList.hpp>
@@ -40,11 +39,11 @@ public:
      * @param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     std::shared_ptr<Plato::Hyperbolic::ScalarFunctionBase>
-    create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName);
+    create(
+        Plato::SpatialModel    & aSpatialModel,
+        Plato::DataMap         & aDataMap,
+        Teuchos::ParameterList & aInputParams,
+        std::string            & aFunctionName);
 }; // class ScalarFunctionFactory
 
 } // namespace Hyperbolic

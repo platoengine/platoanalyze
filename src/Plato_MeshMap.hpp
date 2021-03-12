@@ -403,7 +403,7 @@ class MeshMap
         auto d_x = Kokkos::subview(aLocations, (size_t)Dim::X, Kokkos::ALL());
         auto d_y = Kokkos::subview(aLocations, (size_t)Dim::Y, Kokkos::ALL());
         auto d_z = Kokkos::subview(aLocations, (size_t)Dim::Z, Kokkos::ALL());
-        decltype(d_x) d_r("radii", d_x.size());
+        decltype(d_x) d_r("radii", d_x.layout());
         Kokkos::deep_copy(d_r, aRadius);
 
         ArborX::BVH<DeviceType>

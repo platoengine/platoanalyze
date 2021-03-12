@@ -7,7 +7,6 @@
 #include "ThermalFlux.hpp"
 #include "ThermalContent.hpp"
 #include "FluxDivergence.hpp"
-#include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "Simp.hpp"
@@ -15,16 +14,17 @@
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
 
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
+#include "ThermalMassMaterial.hpp"
 #include "parabolic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "ProjectToNode.hpp"
 #include "ApplyWeighting.hpp"
 #include "NaturalBCs.hpp"
-#include "SimplexFadTypes.hpp"
 
-#include "ExpInstMacros.hpp"
+#include "parabolic/ParabolicSimplexFadTypes.hpp"
+#include "parabolic/ExpInstMacros.hpp"
 
 namespace Plato
 {
@@ -46,22 +46,15 @@ class HeatEquationResidual :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
-    using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
+    using StateDotScalarType  = typename EvaluationType::StateDotScalarType;
     using ControlScalarType   = typename EvaluationType::ControlScalarType;
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
 
-
-
-    Omega_h::Matrix< SpaceDim, SpaceDim> mCellConductivity;
-    Plato::Scalar mCellDensity;
-    Plato::Scalar mCellSpecificHeat;
-    
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim,SpaceDim,IndicatorFunctionType> mApplyFluxWeighting;
     Plato::ApplyWeighting<SpaceDim,mNumDofsPerNode,IndicatorFunctionType> mApplyMassWeighting;
@@ -69,28 +62,35 @@ class HeatEquationResidual :
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>> mBoundaryLoads;
 
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalMassMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalConductivityMaterialModel;
+
+
   public:
     /**************************************************************************/
     HeatEquationResidual(
-      Omega_h::Mesh& aMesh,
-      Omega_h::MeshSets& aMeshSets,
-      Plato::DataMap& aDataMap,
-      Teuchos::ParameterList& problemParams,
-      Teuchos::ParameterList& penaltyParams) :
-     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, {"Temperature"}),
-     mIndicatorFunction(penaltyParams),
-     mApplyFluxWeighting(mIndicatorFunction),
-     mApplyMassWeighting(mIndicatorFunction),
-     mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
-     mBoundaryLoads(nullptr)
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & problemParams,
+              Teuchos::ParameterList & penaltyParams
+    ) :
+     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap, {"Temperature"}),
+     mIndicatorFunction  (penaltyParams),
+     mApplyFluxWeighting (mIndicatorFunction),
+     mApplyMassWeighting (mIndicatorFunction),
+     mCubatureRule       (std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
+     mBoundaryLoads      (nullptr)
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<SpaceDim> mmfactory(problemParams);
-      auto materialModel = mmfactory.create();
-      mCellConductivity = materialModel->getConductivityMatrix();
-      mCellDensity      = materialModel->getMassDensity();
-      mCellSpecificHeat = materialModel->getSpecificHeat();
+        {
+            Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(problemParams);
+            mThermalConductivityMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
+        }
 
+        {
+            Plato::ThermalMassModelFactory<SpaceDim> mmfactory(problemParams);
+            mThermalMassMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
+        }
 
       // parse boundary Conditions
       // 
@@ -98,117 +98,114 @@ class HeatEquationResidual :
       {
           mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>(problemParams.sublist("Natural Boundary Conditions"));
       }
-    
     }
 
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT< StateScalarType     > & aState,
-              const Plato::ScalarMultiVectorT< PrevStateScalarType > & aPrevState,
-              const Plato::ScalarMultiVectorT< ControlScalarType   > & aControl,
-              const Plato::ScalarArray3DT    < ConfigScalarType    > & aConfig,
-                    Plato::ScalarMultiVectorT< ResultScalarType    > & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
 
-      using PrevGradScalarType =
-        typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, PrevStateScalarType, ConfigScalarType>;
+      Plato::ScalarArray3DT<ConfigScalarType> tGradient ("gradient", tNumCells, mNumNodesPerCell, SpaceDim);
 
-      Plato::ScalarVectorT<ConfigScalarType>
-        cellVolume("cell weight",numCells);
+      Plato::ScalarMultiVectorT<GradScalarType  > tGrad ("temperature gradient", tNumCells, SpaceDim);
+      Plato::ScalarMultiVectorT<ResultScalarType> tFlux ("thermal flux",         tNumCells, SpaceDim);
 
-      Plato::ScalarMultiVectorT<GradScalarType> tGrad("temperature gradient at step k",numCells,SpaceDim);
-      Plato::ScalarMultiVectorT<PrevGradScalarType> tPrevGrad("temperature gradient at step k-1",numCells,SpaceDim);
-
-      Plato::ScalarArray3DT<ConfigScalarType> gradient("gradient",numCells,mNumNodesPerCell,SpaceDim);
-
-      Plato::ScalarMultiVectorT<ResultScalarType> tFlux("thermal flux at step k",numCells,SpaceDim);
-      Plato::ScalarMultiVectorT<ResultScalarType> tPrevFlux("thermal flux at step k-1",numCells,SpaceDim);
-
-      Plato::ScalarVectorT<StateScalarType> tTemperature("Gauss point temperature at step k", numCells);
-      Plato::ScalarVectorT<PrevStateScalarType> tPrevTemperature("Gauss point temperature at step k-1", numCells);
-
-      Plato::ScalarVectorT<ResultScalarType> tThermalContent("Gauss point heat content at step k", numCells);
-      Plato::ScalarVectorT<ResultScalarType> tPrevThermalContent("Gauss point heat content at step k-1", numCells);
+      Plato::ScalarVectorT<ConfigScalarType>   tCellVolume        ("cell weight",                 tNumCells);
+      Plato::ScalarVectorT<StateScalarType >   tTemperature       ("Gauss point temperature",     tNumCells);
+      Plato::ScalarVectorT<StateDotScalarType> tTemperatureRate   ("Gauss point temperature dot", tNumCells);
+      Plato::ScalarVectorT<ResultScalarType>   tThermalEnergyRate ("Gauss point energy rate",     tNumCells);
 
       // create a bunch of functors:
-      Plato::ComputeGradientWorkset<SpaceDim>  computeGradient;
+      Plato::ComputeGradientWorkset<SpaceDim>  tComputeGradient;
 
-      Plato::ScalarGrad<SpaceDim>            scalarGrad;
-      Plato::ThermalFlux<SpaceDim>           thermalFlux(mCellConductivity);
-      Plato::FluxDivergence<SpaceDim>        fluxDivergence;
+      Plato::ScalarGrad<SpaceDim>            tScalarGrad;
+      Plato::ThermalFlux<SpaceDim>           tThermalFlux(mThermalConductivityMaterialModel);
+      Plato::FluxDivergence<SpaceDim>        tFluxDivergence;
 
-      Plato::InterpolateFromNodal<SpaceDim, mNumDofsPerNode> interpolateFromNodal;
-      Plato::ThermalContent thermalContent(mCellDensity, mCellSpecificHeat);
-      Plato::ProjectToNode<SpaceDim, mNumDofsPerNode> projectThermalContent;
+      Plato::InterpolateFromNodal <SpaceDim, mNumDofsPerNode> tInterpolateFromNodal;
+      Plato::ProjectToNode        <SpaceDim, mNumDofsPerNode> tProjectThermalEnergyRate;
+
+      Plato::ThermalContent<SpaceDim> tThermalContent(mThermalMassMaterialModel);
       
-      auto basisFunctions = mCubatureRule->getBasisFunctions();
+      auto tBasisFunctions = mCubatureRule->getBasisFunctions();
     
-      auto& applyFluxWeighting  = mApplyFluxWeighting;
-      auto& applyMassWeighting  = mApplyMassWeighting;
-      auto quadratureWeight = mCubatureRule->getCubWeight();
-      Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0,numCells), LAMBDA_EXPRESSION(Plato::OrdinalType cellOrdinal)
+      auto& tApplyFluxWeighting  = mApplyFluxWeighting;
+      auto& tApplyMassWeighting  = mApplyMassWeighting;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
+      Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType tCellOrdinal)
       {
     
-        computeGradient(cellOrdinal, gradient, aConfig, cellVolume);
-        cellVolume(cellOrdinal) *= quadratureWeight;
+        tComputeGradient(tCellOrdinal, tGradient, aConfig, tCellVolume);
+        tCellVolume(tCellOrdinal) *= tQuadratureWeight;
     
         // compute temperature gradient
         //
-        scalarGrad(cellOrdinal, tGrad, aState, gradient);
-        scalarGrad(cellOrdinal, tPrevGrad, aPrevState, gradient);
+        tScalarGrad(tCellOrdinal, tGrad, aState, tGradient);
     
         // compute flux
         //
-        thermalFlux(cellOrdinal, tFlux, tGrad);
-        thermalFlux(cellOrdinal, tPrevFlux, tPrevGrad);
+        tThermalFlux(tCellOrdinal, tFlux, tGrad);
     
         // apply weighting
         //
-        applyFluxWeighting(cellOrdinal, tFlux, aControl);
-        applyFluxWeighting(cellOrdinal, tPrevFlux, aControl);
+        tApplyFluxWeighting(tCellOrdinal, tFlux, aControl);
 
         // compute stress divergence
         //
-        fluxDivergence(cellOrdinal, aResult, tFlux,     gradient, cellVolume, aTimeStep/2.0);
-        fluxDivergence(cellOrdinal, aResult, tPrevFlux, gradient, cellVolume, aTimeStep/2.0);
-
+        tFluxDivergence(tCellOrdinal, aResult, tFlux, tGradient, tCellVolume, -1.0);
 
         // add capacitance terms
         
         // compute temperature at gausspoints
         //
-        interpolateFromNodal(cellOrdinal, basisFunctions, aState, tTemperature);
-        interpolateFromNodal(cellOrdinal, basisFunctions, aPrevState, tPrevTemperature);
+        tInterpolateFromNodal(tCellOrdinal, tBasisFunctions, aStateDot, tTemperatureRate);
+        tInterpolateFromNodal(tCellOrdinal, tBasisFunctions, aState,    tTemperature    );
 
-        // compute the specific heat content (i.e., specific heat times temperature)
+        // compute the time rate of internal thermal energy
         //
-        thermalContent(cellOrdinal, tThermalContent, tTemperature);
-        thermalContent(cellOrdinal, tPrevThermalContent, tPrevTemperature);
+        tThermalContent(tCellOrdinal, tThermalEnergyRate, tTemperatureRate, tTemperature);
 
         // apply weighting
         //
-        applyMassWeighting(cellOrdinal, tThermalContent, aControl);
-        applyMassWeighting(cellOrdinal, tPrevThermalContent, aControl);
+        tApplyMassWeighting(tCellOrdinal, tThermalEnergyRate, aControl);
 
         // project to nodes
         //
-        projectThermalContent(cellOrdinal, cellVolume, basisFunctions, tThermalContent, aResult);
-        projectThermalContent(cellOrdinal, cellVolume, basisFunctions, tPrevThermalContent, aResult, -1.0);
+        tProjectThermalEnergyRate(tCellOrdinal, tCellVolume, tBasisFunctions, tThermalEnergyRate, aResult);
 
       },"flux divergence");
 
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -aTimeStep/2.0 );
-          mBoundaryLoads->get( &mMesh, mMeshSets, aPrevState, aControl, aConfig, aResult, -aTimeStep/2.0 );
-      }
+    }
+    /**************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                             & aSpatialModel,
+        const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    /**************************************************************************/
+    {
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult);
+        }
     }
 };
 // class HeatEquationResidual
@@ -218,15 +215,15 @@ class HeatEquationResidual :
 } // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC_INC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 1)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC_INC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 2)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC_INC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 3)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 3)
 #endif
 
 #endif

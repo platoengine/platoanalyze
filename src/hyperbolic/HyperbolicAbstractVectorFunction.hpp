@@ -18,24 +18,26 @@ class AbstractVectorFunction
 /******************************************************************************/
 {
 protected:
-    Omega_h::Mesh& mMesh;
+    const Plato::SpatialDomain & mSpatialDomain;
+
     Plato::DataMap& mDataMap;
-    Omega_h::MeshSets& mMeshSets;
     std::vector<std::string> mDofNames;
+    std::vector<std::string> mDofDotNames;
 
 public:
     /******************************************************************************/
     explicit 
     AbstractVectorFunction(
-        Omega_h::Mesh& aMesh, 
-        Omega_h::MeshSets& aMeshSets,
-        Plato::DataMap& aDataMap,
-        std::vector<std::string> aStateNames) :
+        const Plato::SpatialDomain     & aSpatialDomain,
+              Plato::DataMap           & aDataMap,
+              std::vector<std::string>   aStateNames,
+              std::vector<std::string>   aStateDotNames
+    ) :
     /******************************************************************************/
-            mMesh(aMesh),
-            mDataMap(aDataMap),
-            mMeshSets(aMeshSets),
-            mDofNames(aStateNames)
+        mSpatialDomain (aSpatialDomain),
+        mDataMap       (aDataMap),
+        mDofNames      (aStateNames),
+        mDofDotNames   (aStateDotNames)
     {
     }
     /******************************************************************************/
@@ -47,17 +49,17 @@ public:
     /****************************************************************************//**
     * \brief Return reference to Omega_h mesh data base 
     ********************************************************************************/
-    decltype(mMesh) getMesh() const
+    decltype(mSpatialDomain.Mesh) getMesh() const
     {
-        return (mMesh);
+        return (mSpatialDomain.Mesh);
     }
 
     /****************************************************************************//**
     * \brief Return reference to Omega_h mesh sets 
     ********************************************************************************/
-    decltype(mMeshSets) getMeshSets() const
+    decltype(mSpatialDomain.MeshSets) getMeshSets() const
     {
-        return (mMeshSets);
+        return (mSpatialDomain.MeshSets);
     }
 
     /****************************************************************************//**
@@ -68,16 +70,40 @@ public:
         return (mDofNames);
     }
 
+    /****************************************************************************//**
+    * \brief Return reference to state dot index map
+    ********************************************************************************/
+    decltype(mDofDotNames) getDofDotNames() const
+    {
+        return (mDofDotNames);
+    }
+
 
     /******************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT< typename EvaluationType::DisplacementScalarType > & aDisplacement,
-             const Plato::ScalarMultiVectorT< typename EvaluationType::VelocityScalarType     > & aVelocity,
-             const Plato::ScalarMultiVectorT< typename EvaluationType::AccelerationScalarType > & aAcceleration,
-             const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType      > & aControl,
-             const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType       > & aConfig,
-             Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> & aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+    evaluate(
+        const Plato::ScalarMultiVectorT< typename EvaluationType::StateScalarType       > & aState,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::StateDotScalarType    > & aStateDot,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::StateDotDotScalarType > & aStateDotDot,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType     > & aControl,
+        const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType      > & aConfig,
+              Plato::ScalarMultiVectorT< typename EvaluationType::ResultScalarType      > & aResult,
+              Plato::Scalar aTimeStep = 0.0, 
+              Plato::Scalar aCurrentTime = 0.0) const = 0;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    virtual void
+    evaluate_boundary(
+        const Plato::SpatialModel                                                         & aSpatialModel,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::StateScalarType       > & aState,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::StateDotScalarType    > & aStateDot,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::StateDotDotScalarType > & aStateDotDot,
+        const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType     > & aControl,
+        const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType      > & aConfig,
+              Plato::ScalarMultiVectorT< typename EvaluationType::ResultScalarType      > & aResult,
+              Plato::Scalar aTimeStep = 0.0, 
+              Plato::Scalar aCurrentTime = 0.0) const = 0;
     /******************************************************************************/
 };
 

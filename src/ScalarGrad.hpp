@@ -32,8 +32,8 @@ public:
     template<typename ScalarType>
     DEVICE_TYPE inline void
     operator()(Plato::OrdinalType aCellOrdinal,
-               Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace> aOutput,
-               Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace> aScalarField,
+               Kokkos::View<ScalarType**, Plato::Layout, Plato::MemSpace> aOutput,
+               Kokkos::View<ScalarType**, Plato::Layout, Plato::MemSpace> aScalarField,
                Omega_h::Vector<SpaceDim>* aConfigGrad) const
     {
         // compute scalar gradient

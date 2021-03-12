@@ -8,7 +8,6 @@ IF (DEFINED Trilinos_PREFIX)
 ENDIF()
 
 IF (DEFINED SuperLU_PREFIX)
-  message("superlu prefix defined\n")
   SET(CMAKE_PREFIX_PATH ${SuperLU_PREFIX} ${CMAKE_PREFIX_PATH})
 ENDIF()
 
@@ -102,7 +101,6 @@ ENDIF()
 # old omega_h's vtkdiff only compared one timestep.
 # at the time of transition, we will keep comparing just one time step
 # this flag is needed to do that.
-SET(VTKDIFF "${VTKDIFF} -onestep")
 
 # We need to do this better, but for now lets see how well it works to find the right mpirun
 # This needs to be the one on the front end for Cuda and MIC machines - it runs the utilities.
@@ -142,8 +140,14 @@ else()
   message("-- Building without FPE checking.")
 endif()
 
+option(PLATOANALYZE_LONG_LONG_ORDINALTYPE "Flag to change Plato::OrdinalType to 'long long'" OFF)
+if(PLATOANALYZE_LONG_LONG_ORDINALTYPE)
+  add_definitions(-DPLATOANALYZE_LONG_LONG_ORDINALTYPE)
+  message("-- Building with 'long long' ordinal type.")
+endif()
+
 add_executable(
-    analyze 
+    analyze
     src/alg/Run.cpp
     src/alg/Analyze.cpp
   )
@@ -178,6 +182,10 @@ IF (DEFINED AMGX_PREFIX)
   IF (NOT AMGX_LIB)
     MESSAGE(FATAL_ERROR "Couldn't find AMGX library!")
   ENDIF()
+  IF(PLATOANALYZE_LONG_LONG_ORDINALTYPE)
+    message(FATAL_ERROR "Can't build with AMGX when building with 'long long' ordinal type. \n
+    Please set -DPLATOANALYZE_LONG_LONG_ORDINALTYPE=OFF or unset AMGX_PREFIX")
+  ENDIF()
   SET(AMGX_INCLUDE_DIRS "${AMGX_INCLUDE_DIR}")
   SET(AMGX_LIBRARIES "${AMGX_LIB}")
   SET(AMGX_FOUND TRUE) # a bit of a hack; would be better to check that it actually exists!
@@ -210,6 +218,33 @@ if (PLATOANALYZE_3D)
   add_definitions(-DPLATOANALYZE_3D)
   message("-- Plato: 3d physics added")
 endif()
+
+option(ELLIPTIC "Compile with Elliptic physics" ON)
+option(PARABOLIC "Compile with Parabolic physics" ON)
+option(HYPERBOLIC "Compile with Hyperbolic physics" ON)
+option(STABILIZED "Compile with Stabilized VMS physics" ON)
+option(PLASTICITY "Compile with Plasticity physics" ON)
+if(ELLIPTIC)
+  message("-- Plato: Elliptic physics added")
+  ADD_DEFINITIONS(-DPLATO_ELLIPTIC)
+endif()
+if(PARABOLIC)
+  message("-- Plato: Parabolic physics added")
+  ADD_DEFINITIONS(-DPLATO_PARABOLIC)
+endif()
+if(HYPERBOLIC)
+  message("-- Plato: Hyperbolic physics added")
+  ADD_DEFINITIONS(-DPLATO_HYPERBOLIC)
+endif()
+if(STABILIZED)
+  message("-- Plato: Stabilized physics added")
+  ADD_DEFINITIONS(-DPLATO_STABILIZED)
+endif()
+if(PLASTICITY)
+  message("-- Plato: Plasticity physics added")
+  ADD_DEFINITIONS(-DPLATO_PLASTICITY)
+endif()
+
 
 
 ###### PLATO ANALYZE APP + PLATO ENGINE EXECUTABLE ######
@@ -271,13 +306,11 @@ if (PLATOANALYZE_ENABLE_MPMD)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
   endif()
 
+  string(REPLACE "-std=c++11" "-std=c++14" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+
   option(PLATOANALYZE_ENABLE_MESHMAP "Enable Plato MeshMap" OFF)
   if (PLATOANALYZE_ENABLE_MESHMAP)
     add_definitions(-DPLATO_MESHMAP)
-    message("-- Building MeshMap requires c++14.  Modifying compile flags.")
-    message("-- Before: ${CMAKE_CXX_FLAGS}")
-    string(REPLACE "-std=c++11" "-std=c++14" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-    message("-- After: ${CMAKE_CXX_FLAGS}")
     find_package(ArborX REQUIRED)
     target_link_libraries(Analyze_App ArborX::ArborX)
   endif()
@@ -344,7 +377,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
       ROCKET_MPMD
       src/PlatoRocketApp.cpp
       src/PlatoRocketAppMPMD.cpp
-    )  
+    )
     if( CMAKE_INSTALL_PREFIX )
       install( TARGETS ROCKET_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
     endif()

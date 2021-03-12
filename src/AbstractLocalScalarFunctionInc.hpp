@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
-
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -26,30 +24,29 @@ namespace Plato
 template<typename EvaluationType>
 class AbstractLocalScalarFunctionInc
 {
-// Protected member data
-protected:
-    Omega_h::Mesh &mMesh;            /*!< mesh database */
-    Plato::DataMap &mDataMap;        /*!< output database */
-    Omega_h::MeshSets &mMeshSets;    /*!< sideset database */
-    const std::string mFunctionName; /*!< my scalar function name */
 
-// public access functions
+protected:
+    const Plato::SpatialDomain & mSpatialDomain;
+          Plato::DataMap       & mDataMap;       /*!< output database */
+    const std::string            mFunctionName;  /*!< my scalar function name */
+
+
 public:
     /***************************************************************************//**
      * \brief Constructor
-     * \param [in] aMesh     mesh metadata
-     * \param [in] aMeshSets mesh side-sets metadata
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap  output data map
      * \param [in] aName     scalar function name, e.g. type
     *******************************************************************************/
-    explicit AbstractLocalScalarFunctionInc(Omega_h::Mesh &aMesh,
-                                            Omega_h::MeshSets &aMeshSets,
-                                            Plato::DataMap &aDataMap,
-                                            const std::string & aName) :
-        mMesh(aMesh),
-        mDataMap(aDataMap),
-        mMeshSets(aMeshSets),
-        mFunctionName(aName)
+    explicit
+    AbstractLocalScalarFunctionInc(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap,
+        const std::string          & aName
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mDataMap       (aDataMap),
+        mFunctionName  (aName)
     { return; }
 
     /***************************************************************************//**
@@ -61,18 +58,18 @@ public:
      * \brief Return reference to Omega_h mesh data base
      * \return mesh metadata
     *******************************************************************************/
-    decltype(mMesh) getMesh() const
+    decltype(mSpatialDomain.Mesh) getMesh() const
     {
-        return (mMesh);
+        return (mSpatialDomain.Mesh);
     }
 
     /***************************************************************************//**
      * \brief Return reference to Omega_h mesh sets
      * \return mesh side sets metadata
     *******************************************************************************/
-    decltype(mMeshSets) getMeshSets() const
+    decltype(mSpatialDomain.MeshSets) getMeshSets() const
     {
-        return (mMeshSets);
+        return (mSpatialDomain.MeshSets);
     }
 
     /******************************************************************************//**
@@ -99,14 +96,15 @@ public:
      *
     *******************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> &aCurrentGlobalState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> &aPreviousGlobalState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::LocalStateScalarType> &aCurrentLocalState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::PrevLocalStateScalarType> &aPreviousLocalState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> &aControls,
-             const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> &aConfig,
-             const Plato::ScalarVectorT<typename EvaluationType::ResultScalarType> &aResult,
-             Plato::Scalar aTimeStep = 0.0) = 0;
+    evaluate(
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>          & aCurrentGlobalState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::PrevStateScalarType>      & aPreviousGlobalState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::LocalStateScalarType>     & aCurrentLocalState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::PrevLocalStateScalarType> & aPreviousLocalState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>        & aControls,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>         & aConfig,
+        const Plato::ScalarVectorT      <typename EvaluationType::ResultScalarType>         & aResult,
+              Plato::Scalar aTimeStep = 0.0) = 0;
 
     /******************************************************************************//**
      * \brief Update physics-based data within a frequency of optimization iterations

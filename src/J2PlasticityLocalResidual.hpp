@@ -25,7 +25,7 @@ namespace Plato
 * \brief J2 Plasticity Local Residual class
 ******************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class J2PlasticityLocalResidual : 
+class J2PlasticityLocalResidual :
   public Plato::AbstractLocalVectorFunctionInc<EvaluationType>
 {
 private:
@@ -36,7 +36,7 @@ private:
     static constexpr auto mNumStressTerms      = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain terms */
     static constexpr auto mNumLocalDofsPerCell = SimplexPhysicsType::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom */
 
-    using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mMesh;    /*!< mesh database */
+    using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mSpatialDomain;    /*!< Plato Analyze spatial domain */
     using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
 
     using GlobalStateT     = typename EvaluationType::StateScalarType;           /*!< global state variables automatic differentiation type */
@@ -47,10 +47,13 @@ private:
     using ConfigT          = typename EvaluationType::ConfigScalarType;          /*!< config variables automatic differentiation type */
     using ResultT          = typename EvaluationType::ResultScalarType;          /*!< result variables automatic differentiation type */
 
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
+
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
 
     Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
     Plato::Scalar mReferenceTemperature;           /*!< reference temperature */
+    Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
     Plato::Scalar mHardeningModulusIsotropic;      /*!< isotropic hardening modulus */
     Plato::Scalar mHardeningModulusKinematic;      /*!< kinematic hardening modulus */
@@ -66,7 +69,7 @@ private:
     Plato::Scalar mAdditiveContinuationPlasticProperties;    /*!< continuation parameter: multiplier on SIMP penalty for plastic properties */
     Plato::Scalar mUpperBoundOnPlasticPropertiesPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for plastic properties */
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear tet cubature rule */
+    std::shared_ptr<CubatureType> mCubatureRule; /*!< linear tet cubature rule */
 
     const Plato::Scalar mSqrt3Over2 = std::sqrt(3.0/2.0);
 
@@ -122,20 +125,24 @@ private:
     ******************************************************************************/
     void initialize(Teuchos::ParameterList& aInputParams)
     {
-      this->initializeIsotropicElasticMaterial(aInputParams);
-      this->initializeJ2Plasticity(aInputParams);
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        Teuchos::ParameterList tMaterialParamLists = aInputParams.sublist("Material Models");
+        Teuchos::ParameterList tMaterialParamList  = tMaterialParamLists.sublist(tMaterialName);
+        this->initializeIsotropicElasticMaterial(tMaterialParamList);
+        this->initializeJ2Plasticity(tMaterialParamList);
     }
 
     /**************************************************************************//**
     * \brief Initialize isotropic material parameters
     * \param [in] aInputParams Teuchos parameter list
     ******************************************************************************/
-    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aInputParams)
+    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aMaterialParams)
     {
-        auto tMaterialParamList = aInputParams.get<Teuchos::ParameterList>("Material Model");
-        if( tMaterialParamList.isSublist("Isotropic Linear Elastic") )
+
+        mTemperatureScaling = aMaterialParams.get<Plato::Scalar>("Temperature Scaling", 1.0);
+        if( aMaterialParams.isSublist("Isotropic Linear Elastic") )
         {
-          auto tElasticSubList = tMaterialParamList.sublist("Isotropic Linear Elastic");
+          auto tElasticSubList = aMaterialParams.sublist("Isotropic Linear Elastic");
           mThermalExpansionCoefficient = 0.0;
           mReferenceTemperature        = 0.0;
 
@@ -144,9 +151,9 @@ private:
           mElasticShearModulus = tElasticModulus /
                   (static_cast<Plato::Scalar>(2.0) * (static_cast<Plato::Scalar>(1.0) + tPoissonsRatio));
         }
-        else if( tMaterialParamList.isSublist("Isotropic Linear Thermoelastic") )
+        else if( aMaterialParams.isSublist("Isotropic Linear Thermoelastic") )
         {
-          auto tThermoelasticSubList = tMaterialParamList.sublist("Isotropic Linear Thermoelastic");
+          auto tThermoelasticSubList = aMaterialParams.sublist("Isotropic Linear Thermoelastic");
 
           mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
           mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
@@ -158,7 +165,10 @@ private:
         }
         else
         {
-          THROWERR("'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of 'Material Model' does not exist.")
+          auto tMaterialName = mSpatialDomain.getMaterialName();
+          std::stringstream ss;
+          ss << "'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of '" << tMaterialName << "' does not exist.";
+          THROWERR(ss.str());
         }
     }
 
@@ -247,17 +257,17 @@ private:
 public:
     /**************************************************************************//**
     * \brief Constructor
-    * \param [in] aMesh mesh data base
-    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aSpatialDomain Plato Analyze spatial domain
     * \param [in] aDataMap problem-specific data map
     * \param [in] aProblemParams Teuchos parameter list
     ******************************************************************************/
-    J2PlasticityLocalResidual(Omega_h::Mesh& aMesh,
-                              Omega_h::MeshSets& aMeshSets,
-                              Plato::DataMap& aDataMap,
-                              Teuchos::ParameterList& aProblemParams) :
-            AbstractLocalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, getLocalStateDofNames() ),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    J2PlasticityLocalResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams
+    ) :
+        AbstractLocalVectorFunctionInc<EvaluationType>(aSpatialDomain, aDataMap, getLocalStateDofNames() ),
+        mCubatureRule(std::make_shared<CubatureType>())
     {
         this->initialize(aProblemParams);
     }
@@ -278,32 +288,34 @@ public:
     * \param [out] aResult evaluated local residuals
     ******************************************************************************/
     virtual void
-    evaluate( const Plato::ScalarMultiVectorT< GlobalStateT >     & aGlobalState,
-              const Plato::ScalarMultiVectorT< PrevGlobalStateT > & aPrevGlobalState,
-              const Plato::ScalarMultiVectorT< LocalStateT >      & aLocalState,
-              const Plato::ScalarMultiVectorT< PrevLocalStateT >  & aPrevLocalState,
-              const Plato::ScalarMultiVectorT< ControlT >         & aControl,
-              const Plato::ScalarArray3DT    < ConfigT >          & aConfig,
-              const Plato::ScalarMultiVectorT< ResultT >          & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT< GlobalStateT >     & aGlobalState,
+        const Plato::ScalarMultiVectorT< PrevGlobalStateT > & aPrevGlobalState,
+        const Plato::ScalarMultiVectorT< LocalStateT >      & aLocalState,
+        const Plato::ScalarMultiVectorT< PrevLocalStateT >  & aPrevLocalState,
+        const Plato::ScalarMultiVectorT< ControlT >         & aControl,
+        const Plato::ScalarArray3DT    < ConfigT >          & aConfig,
+        const Plato::ScalarMultiVectorT< ResultT >          & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using TotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
       using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
       using StressT        = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
 
       // Functors
-      Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+      Plato::ComputeGradientWorkset<mSpaceDim>  tComputeGradient;
       Plato::Strain<mSpaceDim, mNumDofsPerNode> tComputeTotalStrain;
       Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
 
       // J2 Utility Functions Object
-      Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
+      Plato::J2PlasticityUtilities<mSpaceDim>   tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
       Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
-            tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
+            tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, mTemperatureScaling);
 
       // Many views
       Plato::ScalarVectorT<ConfigT>             tCellVolume("cell volume unused", tNumCells);
@@ -335,9 +347,9 @@ public:
 
         // compute elastic strain
         tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tGradient);
-        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState, 
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
                                                     tBasisFunctions, tTotalStrain, tElasticStrain);
-      
+
         // apply penalization to elastic shear modulus
         ControlT tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
         ControlT tElasticParamsPenalty  = tElasticPropertiesSIMP(tDensity);
@@ -349,7 +361,7 @@ public:
         // compute eta = (deviatoric_stress - backstress) ... and its norm ... the normalized version is the yield surface normal
         tJ2PlasticityUtils.computeDeviatoricStressMinusBackstressNormalized(aCellOrdinal, tDeviatoricStress, aLocalState,
                                                                             tYieldSurfaceNormal, tDevStressMinusBackstressNorm);
-        
+
         // apply penalization to plasticity material parameters
         ControlT tPlasticParamsPenalty               = tPlasticPropertiesSIMP(tDensity);
         ControlT tPenalizedHardeningModulusIsotropic = tPlasticParamsPenalty * tHardeningModulusIsotropic;
@@ -357,7 +369,7 @@ public:
         ControlT tPenalizedInitialYieldStress        = tPlasticParamsPenalty * tInitialYieldStress;
 
         // compute yield stress
-        ResultT tYieldStress = tPenalizedInitialYieldStress + 
+        ResultT tYieldStress = tPenalizedInitialYieldStress +
                                tPenalizedHardeningModulusIsotropic * aLocalState(aCellOrdinal, 0); // SHOULD THIS BE PREV? I think no.
 
         // ### ELASTIC STEP ###
@@ -406,15 +418,17 @@ public:
     * \param [in]  aConfig configuration parameters
     ******************************************************************************/
     virtual void
-    updateLocalState( const Plato::ScalarMultiVector & aGlobalState,
-                      const Plato::ScalarMultiVector & aPrevGlobalState,
-                      const Plato::ScalarMultiVector & aLocalState,
-                      const Plato::ScalarMultiVector & aPrevLocalState,
-                      const Plato::ScalarMultiVector & aControl,
-                      const Plato::ScalarArray3D     & aConfig,
-                            Plato::Scalar              aTimeStep = 0.0) const
+    updateLocalState(
+        const Plato::ScalarMultiVector & aGlobalState,
+        const Plato::ScalarMultiVector & aPrevGlobalState,
+        const Plato::ScalarMultiVector & aLocalState,
+        const Plato::ScalarMultiVector & aPrevLocalState,
+        const Plato::ScalarMultiVector & aControl,
+        const Plato::ScalarArray3D     & aConfig,
+              Plato::Scalar              aTimeStep = 0.0
+    ) const
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
@@ -426,7 +440,7 @@ public:
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
       Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
-            tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
+            tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, mTemperatureScaling);
 
       // Many views
       Plato::ScalarVector      tCellVolume("cell volume unused",tNumCells);
@@ -466,9 +480,9 @@ public:
 
         // compute elastic strain
         tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tGradient);
-        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState, 
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
                                                     tBasisFunctions, tTotalStrain, tElasticStrain);
-      
+
         // apply penalization to elastic shear modulus
         Plato::Scalar tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
         Plato::Scalar tElasticParamsPenalty  = tElasticPropertiesSIMP(tDensity);
@@ -488,13 +502,13 @@ public:
         Plato::Scalar tPenalizedInitialYieldStress        = tPlasticParamsPenalty * tInitialYieldStress;
 
         // compute yield stress
-        Plato::Scalar tYieldStress = tPenalizedInitialYieldStress + 
+        Plato::Scalar tYieldStress = tPenalizedInitialYieldStress +
                                      tPenalizedHardeningModulusIsotropic * aLocalState(aCellOrdinal, 0);
 
         // compute the yield function at the trial state
         Plato::Scalar tTrialStateYieldFunction = tSqrt3Over2 * tDevStressMinusBackstressNorm(aCellOrdinal) - tYieldStress;
 
-        if (tTrialStateYieldFunction > 0.0) // plastic step
+        if (tTrialStateYieldFunction > static_cast<Plato::Scalar>(1.0e-10)) // plastic step
         {
           // Plastic Multiplier Increment (for J2 w/ linear isotropic/kinematic hardening -> analytical return mapping)
           aLocalState(aCellOrdinal, 1) = tTrialStateYieldFunction / (static_cast<Plato::Scalar>(3.0) * tPenalizedShearModulus +

@@ -9,12 +9,13 @@
 #include "SimplexThermal.hpp"
 #include "ApplyWeighting.hpp"
 #include "SimplexFadTypes.hpp"
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 #include "ImplicitFunctors.hpp"
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "ExpInstMacros.hpp"
 
@@ -37,7 +38,7 @@ class FluxPNorm :
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
@@ -45,57 +46,53 @@ class FluxPNorm :
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
-    Omega_h::Matrix< SpaceDim, SpaceDim> mCellConductivity;
-    
-    Plato::Scalar mQuadratureWeight;
-
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim,SpaceDim,IndicatorFunctionType> mApplyWeighting;
+
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mMaterialModel;
 
     Plato::OrdinalType mExponent;
 
   public:
     /**************************************************************************/
-    FluxPNorm(Omega_h::Mesh& aMesh, 
-              Omega_h::MeshSets& aMeshSets,
-              Plato::DataMap& aDataMap, 
-              Teuchos::ParameterList& aProblemParams, 
-              Teuchos::ParameterList& aPenaltyParams,
-              std::string aFunctionName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction)
+    FluxPNorm(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aProblemParams, 
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string              aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction(aPenaltyParams),
+        mApplyWeighting(mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>())
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<SpaceDim> mmfactory(aProblemParams);
-      auto materialModel = mmfactory.create();
-      mCellConductivity = materialModel->getConductivityMatrix();
+      Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(aProblemParams);
+      mMaterialModel = mmfactory.create(mSpatialDomain.getMaterialName());
 
-      mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (int d=2; d<=SpaceDim; d++)
-      { 
-        mQuadratureWeight /= Plato::Scalar(d);
-      }
-
-      auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
+      auto params = aProblemParams.sublist("Criteria").get<Teuchos::ParameterList>(aFunctionName);
 
       mExponent = params.get<Plato::Scalar>("Exponent");
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto numCells = mSpatialDomain.numCells();
 
       Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::ScalarGrad<SpaceDim>                    scalarGrad;
-      Plato::ThermalFlux<SpaceDim>                   thermalFlux(mCellConductivity);
-      Plato::VectorPNorm<SpaceDim>                   vectorPNorm;
+      Plato::ScalarGrad<SpaceDim>             scalarGrad;
+      Plato::ThermalFlux<SpaceDim>            thermalFlux(mMaterialModel);
+      Plato::VectorPNorm<SpaceDim>            vectorPNorm;
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>,StateScalarType, ConfigScalarType>;
@@ -103,22 +100,22 @@ class FluxPNorm :
       Plato::ScalarVectorT<ConfigScalarType>
         cellVolume("cell weight",numCells);
 
-      Kokkos::View<GradScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<GradScalarType**, Plato::Layout, Plato::MemSpace>
         tgrad("temperature gradient",numCells,SpaceDim);
 
-      Kokkos::View<ConfigScalarType***, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ConfigScalarType***, Plato::Layout, Plato::MemSpace>
         gradient("gradient",numCells,mNumNodesPerCell,SpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tflux("thermal flux",numCells,SpaceDim);
 
-      auto quadratureWeight = mQuadratureWeight;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
       auto& applyWeighting  = mApplyWeighting;
       auto exponent         = mExponent;
       Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
       {
         computeGradient(aCellOrdinal, gradient, aConfig, cellVolume);
-        cellVolume(aCellOrdinal) *= quadratureWeight;
+        cellVolume(aCellOrdinal) *= tQuadratureWeight;
 
         // compute temperature gradient
         //

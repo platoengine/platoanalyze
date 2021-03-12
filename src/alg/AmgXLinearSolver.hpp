@@ -26,6 +26,8 @@ class AmgXLinearSolver : public AbstractSolver
 
     int mDofsPerNode;
 
+    bool mDivergenceIsFatal;
+
     Plato::ScalarVector mSolution;
 
     static std::string loadConfigString(std::string aConfigFile);

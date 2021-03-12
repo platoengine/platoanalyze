@@ -10,6 +10,8 @@
 #include <Omega_h_array.hpp>
 
 #include "PlatoStaticsTypes.hpp"
+#include "Plato_Solve.hpp"
+#include <typeinfo>
 
 namespace Plato
 {
@@ -22,12 +24,12 @@ namespace Plato
 inline void print_standard_vector_1D
 (const std::vector<Plato::Scalar> & aInput, std::string aName = "Data")
 {
-    printf("PRINT %s\n", aName.c_str());
-    Plato::OrdinalType tSize = aInput.size();
-    for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
+    std::cout << "PRINT " << aName << std::endl;
+    int tSize = aInput.size();
+    for(int tIndex = 0; tIndex < tSize; tIndex++)
     {
-        auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
-        printf("X(%d) = %e\n", tEntry, aInput[tIndex]);
+        auto tEntry = tIndex + 1;
+        std::cout << "X(" << tEntry << ") = " << aInput[tIndex] << std::endl;
     }
 }
 // print_array_1D_device
@@ -45,7 +47,7 @@ DEVICE_TYPE inline void print_array_1D_device
     for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
     {
         auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
-        printf("%s: X(%d) = %e\n", aName, tEntry, aInput(tIndex));
+        std::cout << aName << ": X(" << tEntry << ") = " << aInput(tIndex) << std::endl;
     }
 }
 // print_array_1D_device
@@ -64,7 +66,7 @@ DEVICE_TYPE inline void print_array_2D_device
     for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
     {
         auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
-        printf("%s: X(%d,%d) = %e\n", aName, aLeadOrdinal, tEntry, aInput(aLeadOrdinal, tIndex));
+        std::cout << aName << ": X(" << aLeadOrdinal << "," << tEntry  << ") = " << aInput(aLeadOrdinal,tIndex) << std::endl;
     }
 }
 // print_array_2D_device
@@ -87,7 +89,8 @@ DEVICE_TYPE inline void print_array_3D_device
         {
             auto tEntryI = tIndexI + static_cast<Plato::OrdinalType>(1);
             auto tEntryJ = tIndexJ + static_cast<Plato::OrdinalType>(1);
-            printf("%s: X(%d,%d,%d) = %e\n", aName, aLeadOrdinal, tEntryI, tEntryJ, aInput(aLeadOrdinal, tIndexI, tIndexJ));
+            std::cout << aName << ": X(" << aLeadOrdinal << "," << tEntryI << "," << tEntryJ << ") = "
+                                    << aInput(aLeadOrdinal, tIndexI, tIndexJ) << std::endl;
         }
     }
 }
@@ -100,16 +103,81 @@ DEVICE_TYPE inline void print_array_3D_device
 **********************************************************************************/
 inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, std::string aName = "")
 {
-    printf("PRINT %s\n", aName.c_str());
+    std::cout << "PRINT " << aName << std::endl;
 
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+        printf("X[%lld] = %lld\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
+#else
         printf("X[%d] = %d\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
+#endif
     }, "print array ordinals 1D");
-    printf("\n");
+    std::cout << std::endl;
 }
 // function print
+
+
+/******************************************************************************//**
+ * \brief Print input sparse matrix to file for debugging
+ * \param [in] aInMatrix Pointer to Crs Matrix
+ * \param [in] aFilename  file name (default = "matrix.txt")
+**********************************************************************************/
+inline void print_sparse_matrix_to_file( Teuchos::RCP<Plato::CrsMatrixType> aInMatrix, std::string aFilename = "matrix.txt")
+{
+    FILE * tOutputFile;
+    tOutputFile = fopen(aFilename.c_str(), "w");
+    auto tNumRowsPerBlock = aInMatrix->numRowsPerBlock();
+    auto tNumColsPerBlock = aInMatrix->numColsPerBlock();
+    auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
+
+    auto tRowMap = Kokkos::create_mirror(aInMatrix->rowMap());
+    Kokkos::deep_copy(tRowMap, aInMatrix->rowMap());
+
+    auto tColMap = Kokkos::create_mirror(aInMatrix->columnIndices());
+    Kokkos::deep_copy(tColMap, aInMatrix->columnIndices());
+
+    auto tValues = Kokkos::create_mirror(aInMatrix->entries());
+    Kokkos::deep_copy(tValues, aInMatrix->entries());
+
+    auto tNumRows = tRowMap.extent(0)-1;
+    for(Plato::OrdinalType iRowIndex=0; iRowIndex<tNumRows; iRowIndex++)
+    {
+        auto tFrom = tRowMap(iRowIndex);
+        auto tTo   = tRowMap(iRowIndex+1);
+        for(auto iColMapEntryIndex=tFrom; iColMapEntryIndex<tTo; iColMapEntryIndex++)
+        {
+            auto tBlockColIndex = tColMap(iColMapEntryIndex);
+            for(Plato::OrdinalType iLocalRowIndex=0; iLocalRowIndex<tNumRowsPerBlock; iLocalRowIndex++)
+            {
+                auto tRowIndex = iRowIndex * tNumRowsPerBlock + iLocalRowIndex;
+                for(Plato::OrdinalType iLocalColIndex=0; iLocalColIndex<tNumColsPerBlock; iLocalColIndex++)
+                {
+                    auto tColIndex = tBlockColIndex * tNumColsPerBlock + iLocalColIndex;
+                    auto tSparseIndex = iColMapEntryIndex * tBlockSize + iLocalRowIndex * tNumColsPerBlock + iLocalColIndex;
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+                    fprintf(tOutputFile, "%lld %lld %16.8e\n", tRowIndex, tColIndex, tValues[tSparseIndex]);
+#else
+                    fprintf(tOutputFile, "%d %d %16.8e\n", tRowIndex, tColIndex, tValues[tSparseIndex]);
+#endif
+                }
+            }
+        }
+    }
+    fclose(tOutputFile);
+}
+
+/******************************************************************************//**
+ * \brief Print the template type to the console
+ * \param [in] aLabelString string to print along with the type 
+**********************************************************************************/
+template<typename TypeToPrint>
+inline void print_type_to_console(std::string aLabelString = "Type:")
+{
+    TypeToPrint tTemp;
+    std::cout << aLabelString << " " << typeid(tTemp).name() << std::endl;
+}
 
 /******************************************************************************//**
  * \brief Print input 1D container to terminal - host function
@@ -119,14 +187,18 @@ inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, st
 template<typename ArrayT>
 inline void print(const ArrayT & aInput, std::string aName = "")
 {
-    printf("PRINT %s\n", aName.c_str());
+    std::cout << "PRINT " << aName << std::endl;
 
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+        printf("X[%lld] = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
+#else
         printf("X[%d] = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
+#endif
     }, "print 1D array");
-    printf("\n");
+    std::cout << std::endl;
 }
 // function print
 
@@ -139,7 +211,7 @@ inline void print(const ArrayT & aInput, std::string aName = "")
 template<typename ArrayT>
 inline void print_array_2D(const ArrayT & aInput, const std::string & aName)
 {
-    printf("PRINT %s\n", aName.c_str());
+    std::cout << "PRINT " << aName << std::endl;
 
     const Plato::OrdinalType tNumRows = aInput.extent(0);
     const Plato::OrdinalType tNumCols = aInput.extent(1);
@@ -147,10 +219,15 @@ inline void print_array_2D(const ArrayT & aInput, const std::string & aName)
     {
         for(Plato::OrdinalType tCol = 0; tCol < tNumCols; tCol++)
         {
+        
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+            printf("X(%lld,%lld) = %e\n", aRow + static_cast<Plato::OrdinalType>(1), tCol + static_cast<Plato::OrdinalType>(1), aInput(aRow, tCol));
+#else
             printf("X(%d,%d) = %e\n", aRow + static_cast<Plato::OrdinalType>(1), tCol + static_cast<Plato::OrdinalType>(1), aInput(aRow, tCol));
+#endif
         }
     }, "print 2D array");
-    printf("\n");
+    std::cout << std::endl;
 }
 // function print_array_2D
 
@@ -160,16 +237,20 @@ inline void print_array_2D_Fad(Plato::OrdinalType aNumCells,
                                const ArrayT & aInput, 
                                std::string aName = "")
 {
-    printf("PRINT %s\n", aName.c_str());
+    std::cout << "PRINT " << aName << std::endl;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
     {
         for(Plato::OrdinalType tDof = 0; tDof < aNumDofsPerCell; tDof++)
         {
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+            printf("X(%lld,%lld) = %e\n", aCell + static_cast<Plato::OrdinalType>(1), tDof + static_cast<Plato::OrdinalType>(1), aInput(aCell).dx(tDof));
+#else
             printf("X(%d,%d) = %e\n", aCell + static_cast<Plato::OrdinalType>(1), tDof + static_cast<Plato::OrdinalType>(1), aInput(aCell).dx(tDof));
+#endif
         }
     }, "print 2D array Fad");
-    printf("\n");
+    std::cout << std::endl;
 }
 
 /******************************************************************************//**
@@ -181,7 +262,7 @@ inline void print_array_2D_Fad(Plato::OrdinalType aNumCells,
 template<typename ArrayT>
 inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
 {
-    printf("PRINT %s\n", aName.c_str());
+    std::cout << "PRINT " << aName << std::endl;
 
     const Plato::OrdinalType tNumRows = aInput.extent(1);
     const Plato::OrdinalType tNumCols = aInput.extent(2);
@@ -192,12 +273,17 @@ inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
         {
             for(Plato::OrdinalType tCol = 0; tCol < tNumCols; tCol++)
             {
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+                printf("X(%lld,%lld,%lld) = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), tRow + static_cast<Plato::OrdinalType>(1), 
+                                               tCol + static_cast<Plato::OrdinalType>(1), aInput(aIndex,tRow, tCol));
+#else
                 printf("X(%d,%d,%d) = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), tRow + static_cast<Plato::OrdinalType>(1), 
                                                tCol + static_cast<Plato::OrdinalType>(1), aInput(aIndex,tRow, tCol));
+#endif
             }
         }
     }, "print 3D array");
-    printf("\n");
+    std::cout << std::endl;
 }
 // function print
 

@@ -1,9 +1,7 @@
 #ifndef PARABOLIC_ABSTRACT_SCALAR_FUNCTION
 #define PARABOLIC_ABSTRACT_SCALAR_FUNCTION
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
-
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -21,28 +19,25 @@ template<typename EvaluationType>
 class AbstractScalarFunction
 {
 protected:
-    Omega_h::Mesh& mMesh; /*!< volume mesh database */
-    Plato::DataMap& mDataMap; /*!< PLATO Analyze database */
-    Omega_h::MeshSets& mMeshSets; /*!< surface mesh database */
-
-    const std::string mFunctionName; /*!< name of scalar function */
+    const Plato::SpatialDomain & mSpatialDomain; /*!< Plato spatial model */
+          Plato::DataMap       & mDataMap;       /*!< Plato Analyze database */
+    const std::string            mFunctionName;  /*!< name of scalar function */
 
 public:
     /******************************************************************************//**
      * @brief Constructor
-     * @param [in] aMesh volume mesh database
-     * @param [in] aMeshSets surface mesh database
-     * @param [in] aDataMap PLATO Analyze database
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
+     * @param [in] aDataMap Plato Analyze database
      * @param [in] aName name of scalar function
     **********************************************************************************/
-    AbstractScalarFunction(Omega_h::Mesh& aMesh,
-                              Omega_h::MeshSets& aMeshSets,
-                              Plato::DataMap& aDataMap,
-                              std::string aName) :
-            mMesh(aMesh),
-            mDataMap(aDataMap),
-            mMeshSets(aMeshSets),
-            mFunctionName(aName)
+    AbstractScalarFunction(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap,
+        const std::string          & aName
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mDataMap       (aDataMap),
+        mFunctionName  (aName)
     {
     }
 
@@ -56,7 +51,7 @@ public:
     /******************************************************************************//**
      * @brief Evaluate time-dependent scalar function
      * @param [in] aState 2D array with current state variables (C,DOF)
-     * @param [in] aPrevState 2D array with previous state variables (C,DOF)
+     * @param [in] aStateDot 2D array with state time rate variables (C,DOF)
      * @param [in] aControl 2D array with control variables (C,N)
      * @param [in] aConfig 3D array with control variables (C,N,D)
      * @param [in] aResult 1D array with control variables (C)
@@ -65,12 +60,13 @@ public:
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>     & aState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> & aPrevState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>   & aControl,
-             const Plato::ScalarArray3DT    <typename EvaluationType::ConfigScalarType>    & aConfig,
-                   Plato::ScalarVectorT     <typename EvaluationType::ResultScalarType>    & aResult,
-                   Plato::Scalar aTimeStep = 0.0) const = 0;
+    evaluate(
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>    & aState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateDotScalarType> & aStateDot,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>  & aControl,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>   & aConfig,
+              Plato::ScalarVectorT      <typename EvaluationType::ResultScalarType>   & aResult,
+              Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * @brief Post-evaluate time-dependent scalar function after evaluate call

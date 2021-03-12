@@ -34,14 +34,14 @@ struct FunctionFactory
     /******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractVectorFunctionVMS<EvaluationType>>
-    createVectorFunctionVMS(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap,
-                         Teuchos::ParameterList& aParamList,
-                         std::string aStrVectorFunctionType)
+    createVectorFunction(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aParamList,
+        const std::string            & aStrVectorFunctionType
+    )
     /******************************************************************************/
     {
-
         if(aStrVectorFunctionType == "Elliptic")
         {
             auto tPenaltyParams = aParamList.sublist(aStrVectorFunctionType).sublist("Penalty Function");
@@ -49,25 +49,25 @@ struct FunctionFactory
             if(tPenaltyType == "SIMP")
             {
                 return std::make_shared<Plato::StabilizedThermoelastostaticResidual<EvaluationType, Plato::MSIMP>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             if(tPenaltyType == "RAMP")
             {
                 return std::make_shared<Plato::StabilizedThermoelastostaticResidual<EvaluationType, Plato::RAMP>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             if(tPenaltyType == "Heaviside")
             {
                 return std::make_shared<Plato::StabilizedThermoelastostaticResidual<EvaluationType, Plato::Heaviside>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             if(tPenaltyType == "NoPenalty")
             {
                 return std::make_shared<Plato::StabilizedThermoelastostaticResidual<EvaluationType, Plato::NoPenalty>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             {
@@ -84,11 +84,10 @@ struct FunctionFactory
     template <typename EvaluationType>
     std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<EvaluationType>>
     createVectorFunctionParabolic(
-        Omega_h::Mesh& aMesh,
-        Omega_h::MeshSets& aMeshSets, 
-        Plato::DataMap& aDataMap,
-        Teuchos::ParameterList& aParamList,
-        std::string strVectorFunctionType
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aParamList,
+        const std::string            & strVectorFunctionType
     )
     /******************************************************************************/
     {
@@ -99,12 +98,13 @@ struct FunctionFactory
     /******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
-    createScalarFunction(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap, 
-                         Teuchos::ParameterList & aParamList, 
-                         std::string aStrScalarFunctionType,
-                         std::string aStrScalarFunctionName)
+    createScalarFunction(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aParamList, 
+        const std::string            & aStrScalarFunctionType,
+        const std::string            & aStrScalarFunctionName
+    )
     /******************************************************************************/
     {
         {
@@ -115,12 +115,11 @@ struct FunctionFactory
     template <typename EvaluationType>
     std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>>
     createScalarFunctionParabolic(
-        Omega_h::Mesh& aMesh,
-        Omega_h::MeshSets& aMeshSets,
-        Plato::DataMap& aDataMap,
-        Teuchos::ParameterList& aParamList,
-        std::string strScalarFunctionType,
-        std::string aStrScalarFunctionName
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aParamList,
+        const std::string            & strScalarFunctionType,
+        const std::string            & aStrScalarFunctionName
     )
     /******************************************************************************/
     {

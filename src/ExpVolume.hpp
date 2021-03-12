@@ -34,37 +34,45 @@ private:
     using ConfigScalarType = typename EvaluationType::ConfigScalarType;
     using ResultScalarType = typename EvaluationType::ResultScalarType;
 
-private:
+    using FunctionBaseType = Plato::Elliptic::AbstractScalarFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
+
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
+
     PenaltyFuncType mPenaltyFunction;
     ProjectionFuncType mProjectionFunction;
     Plato::ApplyProjection<ProjectionFuncType> mApplyProjection;
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
 
 public:
     /**************************************************************************/
-    explicit ExpVolume(Omega_h::Mesh& aMesh,
-                       Omega_h::MeshSets& aMeshSets,
-                       Plato::DataMap& aDataMap, 
-                       Teuchos::ParameterList & aPenaltyParams) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Experimental Volume"),
-            mProjectionFunction(),
-            mPenaltyFunction(aPenaltyParams),
-            mApplyProjection(mProjectionFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    explicit
+    ExpVolume(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, "Experimental Volume"),
+        mProjectionFunction(),
+        mPenaltyFunction(aPenaltyParams),
+        mApplyProjection(mProjectionFunction),
+        mCubatureRule(std::make_shared<CubatureType>())
     /**************************************************************************/
     {
     }
 
     /**************************************************************************/
-    explicit ExpVolume(Omega_h::Mesh& aMesh,
-                       Omega_h::MeshSets& aMeshSets, 
-                       Plato::DataMap& aDataMap) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Experimental Volume"),
-            mProjectionFunction(),
-            mPenaltyFunction(3.0, 0.0),
-            mApplyProjection(mProjectionFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    explicit
+    ExpVolume(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, "Experimental Volume"),
+        mProjectionFunction(),
+        mPenaltyFunction(3.0, 0.0),
+        mApplyProjection(mProjectionFunction),
+        mCubatureRule(std::make_shared<CubatureType>())
     /**************************************************************************/
     {
     }

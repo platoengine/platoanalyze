@@ -1,9 +1,6 @@
-#ifndef ABSTRACT_SCALAR_FUNCTION
-#define ABSTRACT_SCALAR_FUNCTION
+#pragma once
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
-
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -21,29 +18,26 @@ template<typename EvaluationType>
 class AbstractScalarFunction
 {
 protected:
-    Omega_h::Mesh& mMesh; /*!< mesh database */
-    Plato::DataMap& mDataMap; /*!< PLATO Engine and PLATO Analyze data map - enables inputs from PLATO Engine */
-    Omega_h::MeshSets& mMeshSets; /*!< mesh side sets database */
-
-    const std::string mFunctionName; /*!< my abstract scalar function name */
+    const Plato::SpatialDomain & mSpatialDomain; /*!< Plato spatial model */
+          Plato::DataMap       & mDataMap;       /*!< Plato Analyze data map */
+    const std::string            mFunctionName;  /*!< my abstract scalar function name */
 
  
 public:
     /******************************************************************************//**
      * \brief Abstract scalar function constructor
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets mesh side sets database
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap PLATO Engine and PLATO Analyze data map
      * \param [in] aName my abstract scalar function name
     **********************************************************************************/
-    AbstractScalarFunction(Omega_h::Mesh& aMesh,
-                           Omega_h::MeshSets& aMeshSets,
-                           Plato::DataMap& aDataMap,
-                           const std::string & aName) :
-            mMesh(aMesh),
-            mDataMap(aDataMap),
-            mMeshSets(aMeshSets),
-            mFunctionName(aName)
+    AbstractScalarFunction(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap,
+        const std::string          & aName
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mDataMap       (aDataMap),
+        mFunctionName  (aName)
     {
     }
 
@@ -61,11 +55,12 @@ public:
      * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> & aState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> & aControl,
-             const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> & aConfig,
-             Plato::ScalarVectorT<typename EvaluationType::ResultScalarType> & aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+    evaluate(
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <typename EvaluationType::ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * \brief Update physics-based data in between optimization iterations
@@ -73,9 +68,11 @@ public:
      * \param [in] aControl 2D container of control variables
      * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
-    virtual void updateProblem(const Plato::ScalarMultiVector & aState,
-                               const Plato::ScalarMultiVector & aControl,
-                               const Plato::ScalarArray3D & aConfig)
+    virtual void
+    updateProblem(
+        const Plato::ScalarMultiVector & aState,
+        const Plato::ScalarMultiVector & aControl,
+        const Plato::ScalarArray3D     & aConfig)
     { return; }
 
     /******************************************************************************//**
@@ -104,5 +101,3 @@ public:
 } // namespace Elliptic
 
 } // namespace Plato
-
-#endif

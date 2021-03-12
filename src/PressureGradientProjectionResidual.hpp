@@ -30,19 +30,22 @@ private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
 
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMesh; /*!< mesh metadata */
+    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mSpatialDomain; /*!< mesh metadata */
     using Plato::AbstractVectorFunctionVMS<EvaluationType>::mDataMap; /*!< output data map */
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMeshSets; /*!< side-sets metadata */
 
-    using StateScalarType = typename EvaluationType::StateScalarType; /*!< State Automatic Differentiation (AD) type */
+    using StateScalarType     = typename EvaluationType::StateScalarType;     /*!< State Automatic Differentiation (AD) type */
     using NodeStateScalarType = typename EvaluationType::NodeStateScalarType; /*!< Node State AD type */
-    using ControlScalarType = typename EvaluationType::ControlScalarType; /*!< Control AD type */
-    using ConfigScalarType = typename EvaluationType::ConfigScalarType; /*!< Configuration AD type */
-    using ResultScalarType = typename EvaluationType::ResultScalarType; /*!< Result AD type */
+    using ControlScalarType   = typename EvaluationType::ControlScalarType;   /*!< Control AD type */
+    using ConfigScalarType    = typename EvaluationType::ConfigScalarType;    /*!< Configuration AD type */
+    using ResultScalarType    = typename EvaluationType::ResultScalarType;    /*!< Result AD type */
+
+
+    using FunctionBaseType = Plato::AbstractVectorFunctionVMS<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
 
     IndicatorFunctionType mIndicatorFunction; /*!< material penalty function */
     Plato::ApplyWeighting<mSpaceDim, mSpaceDim, IndicatorFunctionType> mApplyVectorWeighting; /*!< apply penalty to vector function */
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule; /*!< cubature integration rule interface */
+    std::shared_ptr<CubatureType> mCubatureRule; /*!< cubature integration rule interface */
 
     Plato::Scalar mPressureScaling; /*!< Pressure scaling term */
 
@@ -53,29 +56,33 @@ private:
     *******************************************************************************/
     void initialize(Teuchos::ParameterList &aProblemParams)
     {
-        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mPressureScaling = 1.0;
+        if (aProblemParams.isSublist("Material Models"))
+        {
+            Teuchos::ParameterList& tMaterialsInputs = aProblemParams.sublist("Material Models");
+            mPressureScaling =      tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+            Teuchos::ParameterList& tMaterialInputs = tMaterialsInputs.sublist(mSpatialDomain.getMaterialName());
+        }
     }
 
 public:
     /******************************************************************************//**
      * \brief Constructor
-     * \param [in] aMesh mesh metadata
-     * \param [in] aMeshSets side-sets metadata
      * \param [in] aDataMap output data map
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
     **********************************************************************************/
-    PressureGradientProjectionResidual(Omega_h::Mesh& aMesh,
-                                       Omega_h::MeshSets& aMeshSets,
-                                       Plato::DataMap& aDataMap,
-                                       Teuchos::ParameterList& aProblemParams,
-                                       Teuchos::ParameterList& aPenaltyParams) :
-            Plato::AbstractVectorFunctionVMS<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyVectorWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>()),
-            mPressureScaling(1.0)
+    PressureGradientProjectionResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        FunctionBaseType      (aSpatialDomain, aDataMap),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyVectorWeighting (mIndicatorFunction),
+        mCubatureRule         (std::make_shared<CubatureType>()),
+        mPressureScaling      (1.0)
     {
         this->initialize(aProblemParams);
     }
@@ -89,14 +96,17 @@ public:
      * \param [in/out] aResultWS result, e.g. residual workset
      * \param [in] aTimeStep time step
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aNodalPGradWS,
-                  const Plato::ScalarMultiVectorT<NodeStateScalarType> & aPressureWS,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControlWS,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfigWS,
-                  Plato::ScalarMultiVectorT<ResultScalarType> & aResultWS,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>     & aNodalPGradWS,
+        const Plato::ScalarMultiVectorT <NodeStateScalarType> & aPressureWS,
+        const Plato::ScalarMultiVectorT <ControlScalarType>   & aControlWS,
+        const Plato::ScalarArray3DT     <ConfigScalarType>    & aConfigWS,
+              Plato::ScalarMultiVectorT <ResultScalarType>    & aResultWS,
+              Plato::Scalar                                     aTimeStep = 0.0
+    ) const
     {
-        auto tNumCells = mMesh.nelems();
+        auto tNumCells = mSpatialDomain.numCells();
 
         Plato::ComputeGradientWorkset < mSpaceDim > tComputeGradient;
         Plato::PressureGradient<mSpaceDim> tComputePressureGradient(mPressureScaling);

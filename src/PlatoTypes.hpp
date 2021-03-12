@@ -13,14 +13,15 @@ namespace Plato
 {
 
 using Scalar = double;
-using OrdinalType = int;
-using ExecSpace = Kokkos::DefaultExecutionSpace;
-#ifdef KOKKOS_ENABLE_CUDA_UVM
-  using MemSpace = typename Kokkos::CudaSpace;
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+  using OrdinalType = long long int;
 #else
-  using MemSpace = typename ExecSpace::memory_space;
+  using OrdinalType = int;
 #endif
-using Layout = Kokkos::LayoutRight;
+using ExecSpace = Kokkos::DefaultExecutionSpace;
+using MemSpace = typename ExecSpace::memory_space;
+// using Layout = typename ExecSpace::array_layout;
+using Layout = typename Kokkos::LayoutRight;
 
 } // namespace Plato
 

@@ -11,26 +11,27 @@ namespace Parabolic
 {
     /******************************************************************************//**
      * @brief Create method
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams parameter input
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
+     * @param [in] aProblemParams parameter input
      * @param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     template <typename PhysicsT>
     std::shared_ptr<Plato::Parabolic::ScalarFunctionBase> 
-    ScalarFunctionBaseFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName)
+    ScalarFunctionBaseFactory<PhysicsT>::create(
+        Plato::SpatialModel    & aSpatialModel,
+        Plato::DataMap         & aDataMap,
+        Teuchos::ParameterList & aProblemParams,
+        std::string            & aFunctionName
+    )
     {
-        auto tProblemFunction = aInputParams.sublist(aFunctionName);
+        auto tProblemFunction = aProblemParams.sublist("Criteria").sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
 
         if(tFunctionType == "Scalar Function")
         {
-            return std::make_shared<Plato::Parabolic::PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<Plato::Parabolic::PhysicsScalarFunction<PhysicsT>>
+                (aSpatialModel, aDataMap, aProblemParams, aFunctionName);
         }
         else
         {
@@ -39,7 +40,6 @@ namespace Parabolic
             THROWERR(tErrorString)
         }
     }
-
 } // namespace Parabolic
 
 } // namespace Plato

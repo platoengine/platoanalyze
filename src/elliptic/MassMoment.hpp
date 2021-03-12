@@ -35,7 +35,7 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     static constexpr Plato::OrdinalType mNumVoigtTerms = Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
     
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh object */
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain; /*!< domain object */
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< data map object */
 
     using StateScalarType   = typename EvaluationType::StateScalarType;  /*!< state variables automatic differentiation type */
@@ -50,18 +50,18 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
   public:
     /******************************************************************************//**
      * @brief Primary constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
+     * @param [in] aSpatialDomain Plato Analyze spatial domain 
+     * @param [in] aDataMap Plato Analyze data map
      * @param [in] aInputParams input parameters database
      **********************************************************************************/
-    MassMoment(Omega_h::Mesh& aMesh, 
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap& aDataMap, 
-           Teuchos::ParameterList& aInputParams) :
-           Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "MassMoment"),
-           mCellMaterialDensity(1.0),
-           mCalculationType("")
+    MassMoment(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aInputParams
+    ) :
+       Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, "MassMoment"),
+       mCellMaterialDensity(1.0),
+       mCalculationType("")
     /**************************************************************************/
     {
       auto tMaterialModelInputs = aInputParams.get<Teuchos::ParameterList>("Material Model");
@@ -70,20 +70,16 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
 
     /******************************************************************************//**
      * @brief Unit testing constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
      * @param [in] aDataMap PLATO Engine and Analyze data map
      **********************************************************************************/
-    MassMoment(Omega_h::Mesh& aMesh, 
-               Omega_h::MeshSets& aMeshSets,
-               Plato::DataMap& aDataMap) :
-               Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "MassMoment"),
-               mCellMaterialDensity(1.0),
-               mCalculationType("")
+    MassMoment(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap& aDataMap
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, "MassMoment"),
+        mCellMaterialDensity(1.0),
+        mCalculationType(""){}
     /**************************************************************************/
-    {
-
-    }
 
     /******************************************************************************//**
      * @brief set material density
@@ -113,11 +109,14 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
      * @param [out] aResult 1D container of cell criterion values
      * @param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const 
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const 
     /**************************************************************************/
     {
       if (mCalculationType == "Mass")
@@ -152,13 +151,16 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
      * @param [out] aResult 1D container of cell criterion values
      * @param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void computeStructuralMass(const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                               const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                               Plato::ScalarVectorT<ResultScalarType> & aResult,
-                               Plato::Scalar aTimeStep = 0.0) const
+    void
+    computeStructuralMass(
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeCellVolume<mSpaceDim> tComputeCellVolume;
 
@@ -189,16 +191,19 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
      * @param [out] aResult 1D container of cell criterion values
      * @param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void computeFirstMoment(const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                            const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                            Plato::ScalarVectorT<ResultScalarType> & aResult,
-                            Plato::OrdinalType aComponent,
-                            Plato::Scalar aTimeStep = 0.0) const 
+    void
+    computeFirstMoment(
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::OrdinalType  aComponent,
+              Plato::Scalar       aTimeStep = 0.0
+    ) const 
     /**************************************************************************/
     {
       assert(aComponent < mSpaceDim);
 
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeCellVolume<mSpaceDim> tComputeCellVolume;
 
@@ -238,18 +243,21 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
      * @param [out] aResult 1D container of cell criterion values
      * @param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void computeSecondMoment(const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                             const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                             Plato::ScalarVectorT<ResultScalarType> & aResult,
-                             Plato::OrdinalType aComponent1,
-                             Plato::OrdinalType aComponent2,
-                             Plato::Scalar aTimeStep = 0.0) const 
+    void
+    computeSecondMoment(
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::OrdinalType aComponent1,
+              Plato::OrdinalType aComponent2,
+              Plato::Scalar      aTimeStep = 0.0
+    ) const 
     /**************************************************************************/
     {
       assert(aComponent1 < mSpaceDim);
       assert(aComponent2 < mSpaceDim);
 
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeCellVolume<mSpaceDim> tComputeCellVolume;
 
@@ -287,12 +295,15 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
      * @param [in] aConfig 3D container of configuration/coordinates
      * @param [out] aMappedPoints points mapped to physical domain
     **********************************************************************************/
-    void mapQuadraturePoint(const Plato::ScalarVector & aRefPoint,
-                            const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                            Plato::ScalarMultiVectorT<ConfigScalarType> & aMappedPoints) const
+    void
+    mapQuadraturePoint(
+        const Plato::ScalarVector                          & aRefPoint,
+        const Plato::ScalarArray3DT     <ConfigScalarType> & aConfig,
+              Plato::ScalarMultiVectorT <ConfigScalarType> & aMappedPoints
+    ) const
     /******************************************************************************/
     {
-      Plato::OrdinalType tNumCells  = mMesh.nelems();
+      Plato::OrdinalType tNumCells  = mSpatialDomain.numCells();
 
       Kokkos::deep_copy(aMappedPoints, static_cast<ConfigScalarType>(0.0));
 

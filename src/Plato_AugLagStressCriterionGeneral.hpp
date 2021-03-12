@@ -42,7 +42,7 @@ private:
     static constexpr Plato::OrdinalType mNumVoigtTerms = Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain; /*!< mesh database */
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
 
     using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
@@ -55,6 +55,8 @@ private:
     Plato::Scalar mAugLagPenalty; /*!< augmented Lagrangian penalty */
     Plato::Scalar mMinErsatzValue; /*!< minimum ersatz material value in SIMP model */
     Plato::Scalar mCellMaterialDensity; /*!< material density */
+    Plato::Scalar mMassCriterionWeight; /*!< weight for mass term, i.e. /f$ \alpha_{\mbox{mass}} * f_{\mbox{mass}} /f$ */
+    Plato::Scalar mStressCriterionWeight; /*!< weight for constraint term, i.e. /f$ \alpha_{\mbox{constraint}} * f_{\mbox{constraint}} /f$ */
     Plato::Scalar mAugLagPenaltyUpperBound; /*!< upper bound on augmented Lagrangian penalty */
     Plato::Scalar mMassNormalizationMultiplier; /*!< normalization multipliers for mass criterion */
     Plato::Scalar mInitialLagrangeMultipliersValue; /*!< initial value for Lagrange multipliers */
@@ -71,10 +73,11 @@ private:
     void initialize(Teuchos::ParameterList & aInputParams)
     {
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aInputParams);
-        auto tMaterialModel = tMaterialModelFactory.create();
+        auto tMaterialModel = tMaterialModelFactory.create(mSpatialDomain.getMaterialName());
         mCellStiffMatrix = tMaterialModel->getStiffnessMatrix();
 
-        auto tMaterialModelInputs = aInputParams.get<Teuchos::ParameterList>("Material Model");
+        Teuchos::ParameterList tMaterialModelsInputs = aInputParams.sublist("Material Models");
+        Teuchos::ParameterList tMaterialModelInputs  = tMaterialModelsInputs.sublist(mSpatialDomain.getMaterialName());
         mCellMaterialDensity = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
 
         this->readInputs(aInputParams);
@@ -88,12 +91,14 @@ private:
     **********************************************************************************/
     void readInputs(Teuchos::ParameterList & aInputParams)
     {
-        Teuchos::ParameterList & tParams = aInputParams.get<Teuchos::ParameterList>(this->getName());
+        Teuchos::ParameterList & tParams = aInputParams.sublist("Criteria").get<Teuchos::ParameterList>(this->getName());
         mPenalty = tParams.get<Plato::Scalar>("SIMP penalty", 3.0);
         mStressLimit = tParams.get<Plato::Scalar>("Stress Limit", 1.0);
         mAugLagPenalty = tParams.get<Plato::Scalar>("Initial Penalty", 0.25);
         mMinErsatzValue = tParams.get<Plato::Scalar>("Min. Ersatz Material", 1e-9);
+        mMassCriterionWeight = tParams.get<Plato::Scalar>("Mass Criterion Weight", 1.0);
         mAugLagPenaltyUpperBound = tParams.get<Plato::Scalar>("Penalty Upper Bound", 500.0);
+        mStressCriterionWeight = tParams.get<Plato::Scalar>("Stress Criterion Weight", 1.0);
         mMassNormalizationMultiplier = tParams.get<Plato::Scalar>("Mass Normalization Multiplier", 1.0);
         mInitialLagrangeMultipliersValue = tParams.get<Plato::Scalar>("Initial Lagrange Multiplier", 0.01);
         mAugLagPenaltyExpansionMultiplier = tParams.get<Plato::Scalar>("Penalty Expansion Multiplier", 1.5);
@@ -111,27 +116,29 @@ private:
 public:
     /******************************************************************************//**
      * @brief Primary constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap PLATO Engine and Analyze data map
      * @param [in] aInputParams input parameters database
      **********************************************************************************/
-    AugLagStressCriterionGeneral(Omega_h::Mesh & aMesh,
-                                 Omega_h::MeshSets & aMeshSets,
-                                 Plato::DataMap & aDataMap,
-                                 Teuchos::ParameterList & aInputParams,
-                                 const std::string & aFuncName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFuncName),
-            mPenalty(3),
-            mStressLimit(1),
-            mAugLagPenalty(0.1),
-            mMinErsatzValue(0.0),
-            mCellMaterialDensity(1.0),
-            mAugLagPenaltyUpperBound(100),
-            mMassNormalizationMultiplier(1.0),
-            mInitialLagrangeMultipliersValue(0.01),
-            mAugLagPenaltyExpansionMultiplier(1.05),
-            mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems())
+    AugLagStressCriterionGeneral(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aFuncName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFuncName),
+        mPenalty(3),
+        mStressLimit(1),
+        mAugLagPenalty(0.1),
+        mMinErsatzValue(0.0),
+        mCellMaterialDensity(1.0),
+        mMassCriterionWeight(1.0),
+        mStressCriterionWeight(1.0),
+        mAugLagPenaltyUpperBound(100),
+        mMassNormalizationMultiplier(1.0),
+        mInitialLagrangeMultipliersValue(0.01),
+        mAugLagPenaltyExpansionMultiplier(1.05),
+        mLagrangeMultipliers("Lagrange Multipliers", aSpatialDomain.Mesh.nelems())
     {
         this->initialize(aInputParams);
         this->computeStructuralMass();
@@ -139,22 +146,26 @@ public:
 
     /******************************************************************************//**
      * @brief Constructor tailored for unit testing
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap PLATO Engine and Analyze data map
      **********************************************************************************/
-    AugLagStressCriterionGeneral(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets, Plato::DataMap & aDataMap) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Stress Constraint"),
-            mPenalty(3),
-            mStressLimit(1),
-            mAugLagPenalty(0.1),
-            mMinErsatzValue(0.0),
-            mCellMaterialDensity(1.0),
-            mAugLagPenaltyUpperBound(100),
-            mMassNormalizationMultiplier(1.0),
-            mInitialLagrangeMultipliersValue(0.01),
-            mAugLagPenaltyExpansionMultiplier(1.05),
-            mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems())
+    AugLagStressCriterionGeneral(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, "Stress Constraint"),
+        mPenalty(3),
+        mStressLimit(1),
+        mAugLagPenalty(0.1),
+        mMinErsatzValue(0.0),
+        mCellMaterialDensity(1.0),
+        mMassCriterionWeight(1.0),
+        mStressCriterionWeight(1.0),
+        mAugLagPenaltyUpperBound(100),
+        mMassNormalizationMultiplier(1.0),
+        mInitialLagrangeMultipliersValue(0.01),
+        mAugLagPenaltyExpansionMultiplier(1.05),
+        mLagrangeMultipliers("Lagrange Multipliers", aSpatialDomain.Mesh.nelems())
     {
         Plato::blas1::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
     }
@@ -261,12 +272,17 @@ public:
      * @param [out] aResult 1D container of cell criterion values
      * @param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
-                  const Plato::ScalarMultiVectorT<ControlT> & aControlWS,
-                  const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                  Plato::ScalarVectorT<ResultT> & aResultWS,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateT>   & aStateWS,
+        const Plato::ScalarMultiVectorT <ControlT> & aControlWS,
+        const Plato::ScalarArray3DT     <ConfigT>  & aConfigWS,
+              Plato::ScalarVectorT      <ResultT>  & aResultWS,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     {
+        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
+
         using StrainT = typename Plato::fad_type_t<Plato::SimplexMechanics<mSpaceDim>, StateT, ConfigT>;
 
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
@@ -276,7 +292,6 @@ public:
         Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
 
         // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
-        const Plato::OrdinalType tNumCells = mMesh.nelems();
         Plato::ScalarVectorT<ResultT> tVonMises("von mises", tNumCells);
         Plato::ScalarVectorT<ConfigT> tVolume("cell volume", tNumCells);
         Plato::ScalarVectorT<ResultT> tObjective("objective", tNumCells);
@@ -298,6 +313,8 @@ public:
         auto tAugLagPenalty = mAugLagPenalty;
         auto tMaterialDensity = mCellMaterialDensity;
         auto tLagrangeMultipliers = mLagrangeMultipliers;
+        auto tMassCriterionWeight = mMassCriterionWeight;
+        auto tStressCriterionWeight = mStressCriterionWeight;
         auto tMassNormalizationMultiplier = mMassNormalizationMultiplier;
 
         // ****** COMPUTE AUGMENTED LAGRANGIAN FUNCTION ******
@@ -337,10 +354,11 @@ public:
                     tMaterialDensity * tVolume(aCellOrdinal) ) / tMassNormalizationMultiplier;
 
             // Compute augmented Lagrangian function
-            aResultWS(aCellOrdinal) = tObjective(aCellOrdinal) + tConstraint(aCellOrdinal);
+            aResultWS(aCellOrdinal) = (tMassCriterionWeight * tObjective(aCellOrdinal))
+                    + (tStressCriterionWeight * tConstraint(aCellOrdinal));
         },"Compute Augmented Lagrangian Function");
 
-        Plato::toMap(mDataMap, tOutputVonMises, "Vonmises");
+       Plato::toMap(mDataMap, tOutputVonMises, "Vonmises", mSpatialDomain);
     }
 
     /******************************************************************************//**
@@ -349,10 +367,14 @@ public:
      * @param [in] aControl 2D container of control variables
      * @param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
-    void updateLagrangeMultipliers(const Plato::ScalarMultiVector & aStateWS,
-                                   const Plato::ScalarMultiVector & aControlWS,
-                                   const Plato::ScalarArray3D & aConfigWS)
+    void updateLagrangeMultipliers(
+        const Plato::ScalarMultiVector & aStateWS,
+        const Plato::ScalarMultiVector & aControlWS,
+        const Plato::ScalarArray3D & aConfigWS
+    )
     {
+        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
+
         // Create Cauchy stress functors
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
@@ -361,7 +383,6 @@ public:
         Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
 
         // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
-        const Plato::OrdinalType tNumCells = mMesh.nelems();
         Plato::ScalarVector tVonMises("von mises", tNumCells);
         Plato::ScalarVector tVolume("cell volume", tNumCells);
         Plato::ScalarVector tTrueConstraint("true constraint", tNumCells);
@@ -418,8 +439,9 @@ public:
     **********************************************************************************/
     void computeStructuralMass()
     {
-        auto tNumCells = mMesh.nelems();
-        Plato::NodeCoordinate<mSpaceDim> tCoordinates(&mMesh);
+        auto tNumCells = mSpatialDomain.numCells();
+
+        Plato::NodeCoordinate<mSpaceDim> tCoordinates(&(mSpatialDomain.Mesh));
         Plato::ScalarArray3D tConfig("configuration", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(tNumCells, tCoordinates, tConfig);
         Plato::ComputeCellVolume<mSpaceDim> tComputeCellVolume;

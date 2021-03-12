@@ -24,18 +24,20 @@
 #include <iostream>
 #include <fstream>
 #include <type_traits>
-
 #include <Sacado.hpp>
-#include <alg/CrsLinearProblem.hpp>
-#include <alg/ParallelComm.hpp>
 
-#include <Simp.hpp>
-#include <ScalarProduct.hpp>
-#include <SimplexFadTypes.hpp>
-#include <SimplexMechanics.hpp>
-#include <WorksetBase.hpp>
-#include <elliptic/VectorFunction.hpp>
-#include <elliptic/PhysicsScalarFunction.hpp>
+#include "alg/CrsLinearProblem.hpp"
+#include "alg/ParallelComm.hpp"
+
+#include "Simp.hpp"
+#include "ScalarProduct.hpp"
+#include "SimplexFadTypes.hpp"
+#include "SimplexMechanics.hpp"
+#include "WorksetBase.hpp"
+#include "elliptic/VectorFunction.hpp"
+#include "elliptic/PhysicsScalarFunction.hpp"
+#include "elliptic/SolutionFunction.hpp"
+#include "geometric/GeometryScalarFunction.hpp"
 #include "ApplyConstraints.hpp"
 #include "elliptic/Problem.hpp"
 #include "Mechanics.hpp"
@@ -43,24 +45,56 @@
 
 #include <fenv.h>
 
+using ordType = typename Plato::ScalarMultiVector::size_type;
+
 
 TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
 { 
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <ParameterList name='Spatial Model'>                                      \n"
+    "    <ParameterList name='Domains'>                                          \n"
+    "      <ParameterList name='Design Volume'>                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Material Models'>                                    \n"
+    "    <ParameterList name='Unobtainium'>                                      \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                       \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>        \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>      \n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
-  int numCells = mesh->nelems();
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
+  auto tOnlyDomain = tSpatialModel.Domains.front();
+
+  int numCells = tMesh->nelems();
   int nodesPerCell  = Plato::SimplexMechanics<spaceDim>::mNumNodesPerCell;
   int numVoigtTerms = Plato::SimplexMechanics<spaceDim>::mNumVoigtTerms;
   int dofsPerCell   = Plato::SimplexMechanics<spaceDim>::mNumDofsPerCell;
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  std::vector<Plato::Scalar> u_host( spaceDim*tMesh->nverts() );
   Plato::Scalar disp = 0.0, dval = 0.0001;
   for( auto& val : u_host ) val = (disp += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
@@ -68,7 +102,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
   auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
 
 
-  Plato::WorksetBase<Plato::SimplexMechanics<spaceDim>> worksetBase(*mesh);
+  Plato::WorksetBase<Plato::SimplexMechanics<spaceDim>> worksetBase(*tMesh);
 
   Plato::ScalarArray3DT<Plato::Scalar>
     gradient("gradient",numCells,nodesPerCell,spaceDim);
@@ -93,23 +127,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
   Plato::ComputeGradientWorkset<spaceDim> computeGradient;
   Plato::Strain<spaceDim> voigtStrain;
 
-  // create input
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
-
-  Plato::ElasticModelFactory<spaceDim> mmfactory(*params);
-  auto materialModel = mmfactory.create();
+  Plato::ElasticModelFactory<spaceDim> mmfactory(*tParamList);
+  auto materialModel = mmfactory.create(tOnlyDomain.getMaterialName());
   auto tCellStiffness = materialModel->getStiffnessMatrix();
 
   Plato::LinearStress<spaceDim>      voigtStress(tCellStiffness);
@@ -259,11 +279,11 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -271,7 +291,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  std::vector<Plato::Scalar> u_host( spaceDim*tMesh->nverts() );
   Plato::Scalar disp = 0.0, dval = 0.0001;
   for( auto& val : u_host ) val = (disp += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
@@ -282,38 +302,53 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
 
   // create input
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='Elliptic'>                                             \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
+    "<ParameterList name='Plato Problem'>                                             \n"
+    "  <ParameterList name='Spatial Model'>                                           \n"
+    "    <ParameterList name='Domains'>                                               \n"
+    "      <ParameterList name='Design Volume'>                                       \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>             \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>     \n"
+    "      </ParameterList>                                                           \n"
+    "    </ParameterList>                                                             \n"
+    "  </ParameterList>                                                               \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>              \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                      \n"
+    "  <ParameterList name='Elliptic'>                                                \n"
+    "    <ParameterList name='Penalty Function'>                                      \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                     \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>                \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                        \n"
+    "    </ParameterList>                                                             \n"
+    "  </ParameterList>                                                               \n"
+    "  <ParameterList name='Material Models'>                                         \n"
+    "    <ParameterList name='Unobtainium'>                                           \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                            \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>             \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>           \n"
+    "      </ParameterList>                                                           \n"
+    "    </ParameterList>                                                             \n"
+    "  </ParameterList>                                                               \n"
+    "  <ParameterList name='Criteria'>                                                \n"
+    "    <ParameterList name='Internal Elastic Energy'>                               \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>             \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    </ParameterList>                                                             \n"
+    "  </ParameterList>                                                               \n"
+    "</ParameterList>                                                                 \n"
   );
 
   // create constraint evaluator
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
   Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
-    esVectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    esVectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
 
   // compute and test constraint value
@@ -398,7 +433,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test gradient wrt control, z
   //
   auto gradient_z = esVectorFunction.gradient_z(u,z);
   
@@ -423,7 +458,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   }
 
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test gradient wrt node position, x
   //
   auto gradient_x = esVectorFunction.gradient_x(u,z);
   
@@ -463,16 +498,54 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -480,59 +553,42 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  ordType tNumDofs = spaceDim*tMesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.0001;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
-
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
   // create objective
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Internal Elastic Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(u,z);
+  auto value = eeScalarFunction.value(Plato::Solution(U),z);
 
   Plato::Scalar value_gold = 46.125;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(u,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -576,9 +632,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(u,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U),z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -599,9 +655,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(u,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U),z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -641,6 +697,270 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   }
 }
 
+/******************************************************************************/
+/*!
+  \brief Compute value and gradients (wrt state, control, and configuration) of
+         Solution criterion in 3D
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D )
+{
+  // create test mesh
+  //
+  constexpr int meshWidth=4;
+  constexpr int spaceDim=2;
+  auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1.0, 1.0, meshWidth, meshWidth);
+
+
+  // create mesh based density from host data
+  //
+  Plato::OrdinalType tNumVerts = tMesh->nverts();
+  Plato::ScalarVector z("density", tNumVerts);
+  Kokkos::deep_copy(z, 1.0);
+
+
+  // create displacement field, u = x
+  //
+  auto tCoords = tMesh->coords();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumVerts*spaceDim);
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, tNumVerts), LAMBDA_EXPRESSION(int aNodeOrdinal)
+  {
+    U(0, aNodeOrdinal*spaceDim + 0) = tCoords[aNodeOrdinal*spaceDim + 0];
+    U(0, aNodeOrdinal*spaceDim + 1) = tCoords[aNodeOrdinal*spaceDim + 1];
+  }, "set disp");
+
+
+  // setup the problem
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>         \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Fancy Material'/> \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                     \n"
+    "    <ParameterList name='Fancy Material'>                                     \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Criteria'>                                           \n"
+    "    <ParameterList name='Displacement'>                                     \n"
+    "      <Parameter name='Type' type='string' value='Solution'/>               \n"
+    "      <Parameter name='Normal' type='Array(double)' value='{1.0,1.0}'/>     \n"
+    "      <Parameter name='Domain' type='string' value='y-'/>                   \n"
+    "      <Parameter name='Magnitude' type='bool' value='false'/>               \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+  );
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
+  // create objective
+  //
+  Plato::DataMap tDataMap;
+  std::string tMyFunction("Displacement");
+  Plato::Elliptic::SolutionFunction<::Plato::Mechanics<spaceDim>>
+    scalarFunction(tSpatialModel, tDataMap, *tParamList, tMyFunction);
+
+
+  // compute and test objective value
+  //
+  auto value = scalarFunction.value(Plato::Solution(U),z);
+
+  Plato::Scalar value_gold = 0.5;
+  TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
+
+  // compute and test objective gradient wrt state, u
+  //
+  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+
+  auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
+  Kokkos::deep_copy( grad_u_Host, grad_u );
+
+  TEST_FLOATING_EQUALITY(grad_u_Host(2),   1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(3),   1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(44),  1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(45),  1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(46),  1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(47),  1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(48),  1.0 / 5, 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(49),  1.0 / 5, 1e-15);
+
+
+  // compute and test objective gradient wrt control, z
+  //
+  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U),z);
+
+  auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
+  Kokkos::deep_copy( grad_z_Host, grad_z );
+
+  for(int iNode=0; iNode<int(grad_z_Host.size()); iNode++){
+    TEST_ASSERT(grad_z_Host[iNode] == 0.0);
+  }
+
+  // compute and test objective gradient wrt node position, x
+  //
+  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U),z);
+
+  auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
+  Kokkos::deep_copy(grad_x_Host, grad_x);
+
+  for(int iNode=0; iNode<int(grad_x_Host.size()); iNode++){
+    TEST_ASSERT(grad_x_Host[iNode] == 0.0);
+  }
+}
+/******************************************************************************/
+/*!
+  \brief Compute value and gradients (wrt state, control, and configuration) of
+         Solution magnitude criterion in 3D
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D_Mag )
+{
+  // create test mesh
+  //
+  constexpr int meshWidth=4;
+  constexpr int spaceDim=2;
+  auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1.0, 1.0, meshWidth, meshWidth);
+
+
+  // create mesh based density from host data
+  //
+  Plato::OrdinalType tNumVerts = tMesh->nverts();
+  Plato::ScalarVector z("density", tNumVerts);
+  Kokkos::deep_copy(z, 1.0);
+
+
+  // create displacement field, u = x
+  //
+  auto tCoords = tMesh->coords();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumVerts*spaceDim);
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, tNumVerts), LAMBDA_EXPRESSION(int aNodeOrdinal)
+  {
+    U(0, aNodeOrdinal*spaceDim + 0) = tCoords[aNodeOrdinal*spaceDim + 0];
+    U(0, aNodeOrdinal*spaceDim + 1) = tCoords[aNodeOrdinal*spaceDim + 1];
+  }, "set disp");
+
+
+  // setup the problem
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>         \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Fancy Material'/> \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Fancy Material'>                                     \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Displacement'>                                       \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Solution'/> \n"
+    "      <Parameter name='Normal' type='Array(double)' value='{1.0,1.0}'/>       \n"
+    "      <Parameter name='Domain' type='string' value='y-'/>                     \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+  );
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+
+  // add named face
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
+
+
+  // create objective
+  //
+  Plato::DataMap tDataMap;
+  std::string tMyFunction("Displacement");
+  Plato::Elliptic::SolutionFunction<::Plato::Mechanics<spaceDim>>
+    scalarFunction(tSpatialModel, tDataMap, *tParamList, tMyFunction);
+
+
+  // compute and test objective value
+  //
+  auto value = scalarFunction.value(Plato::Solution(U),z);
+
+  Plato::Scalar value_gold = 0.5;
+  TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
+
+  // compute and test objective gradient wrt state, u
+  //
+  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+
+  auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
+  Kokkos::deep_copy( grad_u_Host, grad_u );
+
+  TEST_FLOATING_EQUALITY(grad_u_Host(2),   1.0 * (1.0*0.25) / (0.25 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(3),   1.0 * (1.0*0.25) / (0.25 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(44),  1.0 * (1.0*0.50) / (0.50 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(45),  1.0 * (1.0*0.50) / (0.50 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(46),  1.0 * (1.0*0.75) / (0.75 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(47),  1.0 * (1.0*0.75) / (0.75 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(48),  1.0 * (1.0*1.00) / (1.00 * 5), 1e-15);
+  TEST_FLOATING_EQUALITY(grad_u_Host(49),  1.0 * (1.0*1.00) / (1.00 * 5), 1e-15);
+
+
+  // compute and test objective gradient wrt control, z
+  //
+  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U),z);
+
+  auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
+  Kokkos::deep_copy( grad_z_Host, grad_z );
+
+  for(int iNode=0; iNode<int(grad_z_Host.size()); iNode++){
+    TEST_ASSERT(grad_z_Host[iNode] == 0.0);
+  }
+
+  // compute and test objective gradient wrt node position, x
+  //
+  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U),z);
+
+  auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
+  Kokkos::deep_copy(grad_x_Host, grad_x);
+
+  for(int iNode=0; iNode<int(grad_x_Host.size()); iNode++){
+    TEST_ASSERT(grad_x_Host[iNode] == 0.0);
+  }
+}
 
 
 /******************************************************************************/
@@ -651,16 +971,54 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Globalized Stress'>                                  \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm'/>  \n"
+    "      <Parameter name='Exponent' type='double' value='12.0'/>                 \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -668,60 +1026,42 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  ordType tNumDofs = spaceDim*tMesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.0001;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
-
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Stress P-Norm'/>        \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
-    "  <ParameterList name='My Stress P-Norm'>                                     \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm'/>  \n"
-    "    <Parameter name='Exponent' type='double' value='12.0'/>                   \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
   // create objective
   //
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Globalized Stress");
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(u,z);
+  auto value = eeScalarFunction.value(Plato::Solution(U), z);
 
   Plato::Scalar value_gold = 14525.25169157000;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(u,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -747,9 +1087,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(u,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -770,9 +1110,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(u,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -804,13 +1144,53 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                         \n"
+    "  <ParameterList name='Spatial Model'>                                                       \n"
+    "    <ParameterList name='Domains'>                                                           \n"
+    "      <ParameterList name='Design Volume'>                                                   \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                         \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>                 \n"
+    "      </ParameterList>                                                                       \n"
+    "    </ParameterList>                                                                         \n"
+    "  </ParameterList>                                                                           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                 \n"
+    "  <ParameterList name='Criteria'>                                                              \n"
+    "    <ParameterList name='Effective Energy'>                                                    \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>                           \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>          \n"
+    "      <Parameter name='Assumed Strain' type='Array(double)' value='{1.0,0.0,0.0,0.0,0.0,0.0}'/>\n"
+    "      <ParameterList name='Penalty Function'>                                                  \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>                            \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
+    "      </ParameterList>                                                                         \n"
+    "    </ParameterList>                                                                           \n"
+    "  </ParameterList>                                                                             \n"
+    "  <ParameterList name='Cell Problem Forcing'>                                                \n"
+    "    <Parameter name='Column Index' type='int' value='0'/>                                    \n"
+    "  </ParameterList>                                                                           \n"
+    "  <ParameterList name='Material Models'>                                                     \n"
+    "    <ParameterList name='Unobtainium'>                                                       \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                                        \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>                         \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                       \n"
+    "      </ParameterList>                                                                       \n"
+    "    </ParameterList>                                                                         \n"
+    "  </ParameterList>                                                                           \n"
+    "</ParameterList>                                                                             \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
-  auto numVerts = mesh->nverts();
+  auto numVerts = tMesh->nverts();
 
   // create mesh based density from host data
   //
@@ -821,36 +1201,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
 
 
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                         \n"
-    "  <Parameter name='Objective' type='string' value='My Effective Energy'/>                       \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                 \n"
-    "  <ParameterList name='My Effective Energy'>                                                    \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>  \n"
-    "    <Parameter name='Assumed Strain' type='Array(double)' value='{1.0,0.0,0.0,0.0,0.0,0.0}'/>\n"
-    "    <ParameterList name='Penalty Function'>                                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Cell Problem Forcing'>                                                \n"
-    "    <Parameter name='Column Index' type='int' value='0'/>                                    \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Material Model'>                                                      \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                                          \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>                           \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                         \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "</ParameterList>                                                                             \n"
-  );
-
-  Plato::ScalarVectorT<Plato::Scalar> solution("solution",spaceDim*numVerts);
+  Plato::ScalarMultiVector solution("solution", /*numSteps=*/1, spaceDim*numVerts);
 
   // create mesh based displacement
   //
@@ -887,30 +1238,33 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   // push gold data from host to device
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     tHostView(solution_gold.data(), solution_gold.size());
-  auto tDeviceView = Kokkos::create_mirror_view(solution);
-  Kokkos::deep_copy(tDeviceView, tHostView);
-  Kokkos::deep_copy(solution, tDeviceView);
+  auto step0 = Kokkos::subview(solution, 0, Kokkos::ALL());
+  Kokkos::deep_copy(step0, tHostView);
 
-
-  // create objective
+  // create criterion
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Effective Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(solution,z);
+  auto value = eeScalarFunction.value(Plato::Solution(solution), z);
 
   Plato::Scalar value_gold = 1346153.84615384578;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(solution,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -954,9 +1308,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(solution,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -976,9 +1330,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(solution,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1032,13 +1386,53 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                         \n"
+    "  <ParameterList name='Spatial Model'>                                                       \n"
+    "    <ParameterList name='Domains'>                                                           \n"
+    "      <ParameterList name='Design Volume'>                                                   \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                         \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>                 \n"
+    "      </ParameterList>                                                                       \n"
+    "    </ParameterList>                                                                         \n"
+    "  </ParameterList>                                                                           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                 \n"
+    "  <ParameterList name='Criteria'>                                                              \n"
+    "    <ParameterList name='Effective Energy'>                                                    \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>                           \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>          \n"
+    "      <Parameter name='Assumed Strain' type='Array(double)' value='{0.0,0.0,0.0,1.0,0.0,0.0}'/>\n"
+    "      <ParameterList name='Penalty Function'>                                                  \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>                            \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
+    "      </ParameterList>                                                                         \n"
+    "    </ParameterList>                                                                           \n"
+    "  </ParameterList>                                                                             \n"
+    "  <ParameterList name='Cell Problem Forcing'>                                                \n"
+    "    <Parameter name='Column Index' type='int' value='3'/>                                    \n"
+    "  </ParameterList>                                                                           \n"
+    "  <ParameterList name='Material Models'>                                                     \n"
+    "    <ParameterList name='Unobtainium'>                                                       \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                                        \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>                         \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                       \n"
+    "      </ParameterList>                                                                       \n"
+    "    </ParameterList>                                                                         \n"
+    "  </ParameterList>                                                                           \n"
+    "</ParameterList>                                                                             \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
-  auto numVerts = mesh->nverts();
+  auto numVerts = tMesh->nverts();
 
   // create mesh based density from host data
   //
@@ -1049,36 +1443,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
 
 
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                         \n"
-    "  <Parameter name='Objective' type='string' value='My Effective Energy'/>                       \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                 \n"
-    "  <ParameterList name='My Effective Energy'>                                                    \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>  \n"
-    "    <Parameter name='Assumed Strain' type='Array(double)' value='{0.0,0.0,0.0,1.0,0.0,0.0}'/>\n"
-    "    <ParameterList name='Penalty Function'>                                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Cell Problem Forcing'>                                                \n"
-    "    <Parameter name='Column Index' type='int' value='3'/>                                    \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Material Model'>                                                      \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                                          \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>                           \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                         \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "</ParameterList>                                                                             \n"
-  );
-
-  Plato::ScalarVectorT<Plato::Scalar> solution("solution",spaceDim*numVerts);
+  Plato::ScalarMultiVector solution("solution", /*numSteps=*/1, spaceDim*numVerts);
 
   // create mesh based displacement
   //
@@ -1096,30 +1461,33 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   // push gold data from host to device
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     tHostView(solution_gold.data(), solution_gold.size());
-  auto tDeviceView = Kokkos::create_mirror_view(solution);
-  Kokkos::deep_copy(tDeviceView, tHostView);
-  Kokkos::deep_copy(solution, tDeviceView);
+  auto step0 = Kokkos::subview(solution, 0, Kokkos::ALL());
+  Kokkos::deep_copy(step0, tHostView);
 
-
-  // create objective
+  // create criterion
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Effective Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(solution,z);
+  auto value = eeScalarFunction.value(Plato::Solution(solution), z);
 
   Plato::Scalar value_gold = 384615.384615384275;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(solution,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1150,9 +1518,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(solution,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1173,9 +1541,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(solution,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1225,15 +1593,53 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
 { 
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
+    "  <ParameterList name='Elliptic'>                                             \n"
+    "    <ParameterList name='Penalty Function'>                                   \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Thermal Conduction'>                               \n"
+    "        <Parameter name='Thermal Conductivity' type='double' value='100.0'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -1241,7 +1647,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> t_host( mesh->nverts() );
+  std::vector<Plato::Scalar> t_host( tMesh->nverts() );
   Plato::Scalar disp = 0.0, dval = 0.1;
   for( auto& val : t_host ) val = (disp += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
@@ -1250,39 +1656,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
 
 
 
-  // create input
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Thermostatics'/>      \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='Thermostatics'>                                        \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Thermal'>                           \n"
-    "      <Parameter name='Conductivity Coefficient' type='double' value='100.'/> \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
-
   // create constraint evaluator
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
   Plato::Elliptic::VectorFunction<::Plato::Thermal<spaceDim>>
-    tsVectorFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("PDE Constraint"));
+    tsVectorFunction(tSpatialModel, dataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
 
   // compute and test constraint value
@@ -1341,7 +1724,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test gradient wrt control, z
   //
   auto gradient = tsVectorFunction.gradient_z(u,z);
   
@@ -1368,7 +1751,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
     TEST_FLOATING_EQUALITY(grad_entriesHost(i), gold_grad_entries[i], 1.0e-14);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test gradient wrt node position, x
   //
   auto gradient_x = tsVectorFunction.gradient_x(u,z);
   
@@ -1401,16 +1784,52 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 { 
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Thermal Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Thermal Conduction'>                               \n"
+    "        <Parameter name='Thermal Conductivity' type='double' value='100.0'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -1418,58 +1837,42 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> u_host( mesh->nverts() );
+  ordType tNumDofs = tMesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.1;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
-
-  // create input
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Thermostatics'/>      \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='My Internal Thermal Energy'>                              \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Thermal'>                           \n"
-    "      <Parameter name='Conductivity Coefficient' type='double' value='100.'/> \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
   // create objective
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Internal Thermal Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(u,z);
+  auto value = eeScalarFunction.value(Plato::Solution(U), z);
 
   Plato::Scalar value_gold = 611.666666666666;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(u,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1495,9 +1898,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(u,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1518,9 +1921,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(u,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1552,16 +1955,53 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Flux P-Norm'>                                        \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Flux P-Norm'/>  \n"
+    "      <Parameter name='Exponent' type='double' value='12.0'/>                 \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Thermal Conduction'>                               \n"
+    "        <Parameter name='Thermal Conductivity' type='double' value='100.0'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -1569,59 +2009,43 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> u_host( mesh->nverts() );
+  ordType tNumDofs = tMesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.1;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
 
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Thermostatics'/>      \n"
-    "  <Parameter name='Objective' type='string' value='My Flux P-Norm'/>             \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
-    "  <ParameterList name='My Flux P-Norm'>                                          \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Flux P-Norm'/>  \n"
-    "    <Parameter name='Exponent' type='double' value='12.0'/>                   \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Thermal'>                           \n"
-    "      <Parameter name='Conductivity Coefficient' type='double' value='100.'/> \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
   // create objective
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Flux P-Norm");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = scalarFunction.value(u,z);
+  auto value = scalarFunction.value(Plato::Solution(U), z);
 
   Plato::Scalar value_gold = 444.0866631427854;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(u,z);
+  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1647,9 +2071,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(u,z);
+  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1670,9 +2094,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(u,z);
+  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1726,16 +2150,50 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Volume'>                                             \n"
+    "      <Parameter name='Linear' type='bool' value='true'/>                     \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Volume'/>   \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -1743,78 +2201,42 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  ordType tNumDofs = spaceDim*tMesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.0001;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
-
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
-    "  <Parameter name='Linear Constraint' type='string' value='My Volume'/>          \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='My Volume'>                                               \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Volume'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
   // create objective
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
-  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    volScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Linear Constraint"));
+  std::string tMyFunction("Volume");
+  Plato::Geometric::GeometryScalarFunction<::Plato::Geometrical<spaceDim>>
+    volScalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
-  auto value = volScalarFunction.value(u,z);
+  auto value = volScalarFunction.value(z);
 
   Plato::Scalar value_gold = 1.0;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt control, z
   //
-  auto grad_u = volScalarFunction.gradient_u(u,z);
-
-  auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
-  Kokkos::deep_copy( grad_u_Host, grad_u );
-
-  // this ScalarFunction is the volume in the reference configation which is 
-  // independent of the solution, u, so gradient_u is zero.
-  std::vector<Plato::Scalar> grad_u_gold( grad_u.size(), 0.0);
-
-  for(int iNode=0; iNode<int(grad_u_gold.size()); iNode++){
-    if(grad_u_gold[iNode] == 0.0){
-      TEST_ASSERT(fabs(grad_u_Host[iNode]) < 1e-12);
-    } else {
-      TEST_FLOATING_EQUALITY(grad_u_Host[iNode], grad_u_gold[iNode], 1e-13);
-    }
-  }
-
-
-  // compute and test objective gradient wrt control, z
-  //
-  auto grad_z = volScalarFunction.gradient_z(u,z);
+  auto grad_z = volScalarFunction.gradient_z(z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1835,9 +2257,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = volScalarFunction.gradient_x(u,z);
+  auto grad_x = volScalarFunction.gradient_x(z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1878,37 +2300,48 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
   }
 }
 
+
 // Reference Strain Test
 TEUCHOS_UNIT_TEST( DerivativeTests, referenceStrain3D )
 { 
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n" 
+    "        <Parameter  name='e11' type='double' value='-0.01'/>                  \n"
+    "        <Parameter  name='e22' type='double' value='-0.01'/>                  \n"
+    "        <Parameter  name='e33' type='double' value=' 0.02'/>                  \n"      
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
+  );
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
-  int numCells = mesh->nelems();
+  int numCells = tMesh->nelems();
   int numVoigtTerms = Plato::SimplexMechanics<spaceDim>::mNumVoigtTerms;
   
   Plato::ScalarMultiVectorT<Plato::Scalar>
     stress("stress",numCells,numVoigtTerms);
 
-  // create input
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                          \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n" 
-    "      <Parameter  name='e11' type='double' value='-0.01'/>                    \n"
-    "      <Parameter  name='e22' type='double' value='-0.01'/>                    \n"
-    "      <Parameter  name='e33' type='double' value=' 0.02'/>                    \n"      
-    "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "</ParameterList>                                                              \n"
-  );
 
   Plato::ScalarMultiVector elasticStrain("strain", numCells, numVoigtTerms);
   auto tHostStrain = Kokkos::create_mirror(elasticStrain);
@@ -1927,8 +2360,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, referenceStrain3D )
   tHostStrain(3,5) = 0.0072; tHostStrain(4,5) = 0.0072; tHostStrain(5,5) = 0.0072;
   Kokkos::deep_copy(elasticStrain , tHostStrain );
 
-  Plato::ElasticModelFactory<spaceDim> mmfactory(*params);
-  auto materialModel = mmfactory.create();
+  Plato::ElasticModelFactory<spaceDim> mmfactory(*tParamList);
+  auto materialModel = mmfactory.create("Unobtainium");
 
   Plato::LinearStress<spaceDim>      voigtStress(materialModel);
 
@@ -1965,20 +2398,22 @@ TEUCHOS_UNIT_TEST( DerivativeTests, referenceStrain3D )
 
 }
 
+
 TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentialConditions )
 {
-    // SETUP INPUT PARAMETERS
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
-    Teuchos::RCP<Omega_h::Mesh> tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-    Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
-
     Teuchos::RCP<Teuchos::ParameterList> tElasticityParams =
     Teuchos::getParametersFromXmlString(
       "<ParameterList name='Plato Problem'>                                          \n"
+      "  <ParameterList name='Spatial Model'>                                        \n"
+      "    <ParameterList name='Domains'>                                            \n"
+      "      <ParameterList name='Design Volume'>                                    \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+      "      </ParameterList>                                                        \n"
+      "    </ParameterList>                                                          \n"
+      "  </ParameterList>                                                            \n"
       "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-      "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                   \n"
+      "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
       "  <ParameterList name='Elliptic'>                                             \n"
       "    <ParameterList name='Penalty Function'>                                   \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
@@ -1986,14 +2421,25 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>          \n"
       "    </ParameterList>                                                          \n"
       "  </ParameterList>                                                            \n"
-      "  <ParameterList name='Material Model'>                                       \n"
-      "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-      "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-      "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
+      "  <ParameterList name='Material Models'>                                      \n"
+      "    <ParameterList name='Unobtainium'>                                        \n"
+      "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+      "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+      "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n"
+      "      </ParameterList>                                                        \n"
       "    </ParameterList>                                                          \n"
       "  </ParameterList>                                                            \n"
       "</ParameterList>                                                              \n"
     );
+
+    // SETUP INPUT PARAMETERS
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 3;
+    Teuchos::RCP<Omega_h::Mesh> tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
     MPI_Comm myComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
@@ -2045,7 +2491,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
 
     // TEST RESULTS    
     const Plato::OrdinalType tTimeStep = 0;
-    auto tSolution = Kokkos::subview(tElasticitySolution, tTimeStep, Kokkos::ALL());
+    auto tSolution = Kokkos::subview(tElasticitySolution.State, tTimeStep, Kokkos::ALL());
     auto tHostSolution = Kokkos::create_mirror_view(tSolution);
     Kokkos::deep_copy(tHostSolution, tSolution);
 

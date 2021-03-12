@@ -18,7 +18,7 @@ namespace Plato {
 
 class Basis {
  private:
-  using Layout = Kokkos::LayoutRight;
+  using Layout = Plato::Layout;
   using CoordScalar = Scalar;
   typedef Kokkos::View<Scalar**, Layout, MemSpace>  ValuesView;      // (F,P)
   typedef Kokkos::View<Scalar***, Layout, MemSpace> GradientView;    // (F,P,D)

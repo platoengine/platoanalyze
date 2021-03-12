@@ -33,6 +33,53 @@ T getSubParam(
     }
 }
 
+/**************************************************************************//**
+ * \brief Get a parameter if it exists, otherwise return the default.
+ * \tparam T Type of the requested parameter.
+ * \param [in] aInputParams The containing ParameterList
+ * \param [in] aParamName The name of the desired parameter
+ * \param [in] aDefaultValue The default value
+ * \return The requested parameter value if it exists, otherwise the default
+ *****************************************************************************/
+
+template < typename T >
+T getParam(
+    Teuchos::ParameterList& aInputParams,
+    const std::string aParamName,
+    T aDefaultValue )
+{
+    if (aInputParams.isType<T>(aParamName))
+    {
+        return aInputParams.get<T>(aParamName);
+    }
+    else { return aDefaultValue; }
+}
+
+/**************************************************************************//**
+ * \brief Get a parameter if it exists, otherwise throw an exception
+ * \tparam T Type of the requested parameter.
+ * \param [in] aInputParams The containing ParameterList
+ * \param [in] aParamName The name of the desired parameter
+ * \return The requested parameter value if it exists, otherwise throw
+ *****************************************************************************/
+
+template < typename T >
+T getParam(
+    const Teuchos::ParameterList& aInputParams,
+    const std::string aParamName )
+{
+    if (aInputParams.isType<T>(aParamName))
+    {
+        return aInputParams.get<T>(aParamName);
+    }
+    else
+    {
+        std::stringstream sstream;
+        sstream << "Missing required parameter " << aParamName << std::endl;
+        THROWERR(sstream.str());
+    }
+}
+
 } // namespace ParseTools
 
 } // namespace Plato
