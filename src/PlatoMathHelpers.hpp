@@ -206,24 +206,26 @@ getDataAsNonBlock( const Teuchos::RCP<Plato::CrsMatrixType>       & aMatrix,
 
     if (aRowStride == 1)
     {
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows+1), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
             auto tBlockRowIndex = tMatrixRowIndex / tNumRowsPerBlock;
             auto tLocalRowIndex = tMatrixRowIndex % tNumRowsPerBlock;
             auto tFrom = tRowMap(tBlockRowIndex);
             auto tTo   = tRowMap(tBlockRowIndex+1);
             auto tBlockRowSize = tTo - tFrom;
             aMatrixRowMap(tMatrixRowIndex) = tFrom * tBlockSize + tLocalRowIndex * tBlockRowSize * tNumColsPerBlock;
+            aMatrixRowMap(tMatrixRowIndex+1) = tFrom * tBlockSize + (tLocalRowIndex+1) * tBlockRowSize * tNumColsPerBlock;
         });
     }
     else 
     {
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows+1), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
             auto tBlockRowIndex = tMatrixRowIndex / aRowStride;
             auto tLocalRowIndex = tMatrixRowIndex % aRowStride;
             auto tFrom = tRowMap(tBlockRowIndex);
             auto tTo   = tRowMap(tBlockRowIndex+1);
             auto tBlockRowSize = tTo - tFrom;
             aMatrixRowMap(tMatrixRowIndex) = tFrom * aRowStride * tNumColsPerBlock + tLocalRowIndex * tBlockRowSize * tNumColsPerBlock;
+            aMatrixRowMap(tMatrixRowIndex+1) = tFrom * aRowStride * tNumColsPerBlock + (tLocalRowIndex+1) * tBlockRowSize * tNumColsPerBlock;
         });
     }
 

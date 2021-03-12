@@ -81,9 +81,9 @@ public :
     const decltype(mTransformMatrix)          getTransformMatrix()           const { return mTransformMatrix; }
     const decltype(mTransformMatrixTranspose) getTransformMatrixTranspose()  const { return mTransformMatrixTranspose; }
     const decltype(mRhs)                      getRhsVector()                 const { return mRhs; }
-    const Plato::OrdinalType                  getNumTotalNodes()             const { return mNumNodes; }
-    const Plato::OrdinalType                  getNumCondensedNodes()         const { return mNumNodes - mNumChildNodes; }
-    const Plato::OrdinalType                  getNumDofsPerNode()            const { return mNumDofsPerNode; }
+    Plato::OrdinalType                        getNumTotalNodes()             const { return mNumNodes; }
+    Plato::OrdinalType                        getNumCondensedNodes()         const { return mNumNodes - mNumChildNodes; }
+    Plato::OrdinalType                        getNumDofsPerNode()            const { return mNumDofsPerNode; }
 };
 
 } // namespace Plato

@@ -104,12 +104,12 @@ public:
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aProblemParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Increment Tolerance", 0.0)),
       mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Residual Tolerance",  0.0)),
-      mResidual("MyResidual", mPDE->size()),
-      mStates("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
-      mJacobian(Teuchos::null),
-      mIsSelfAdjoint (aProblemParams.get<bool>("Self-Adjoint", false))
-      mMPCs(nullptr)
-      mSaveState     (aProblemParams.sublist("Elliptic").isType<Teuchos::Array<std::string>>("Plottable")),
+      mResidual      ("MyResidual", mPDE->size()),
+      mStates        ("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
+      mJacobian      (Teuchos::null),
+      mIsSelfAdjoint (aProblemParams.get<bool>("Self-Adjoint", false)),
+      mMPCs          (nullptr),
+      mSaveState     (aProblemParams.sublist("Elliptic").isType<Teuchos::Array<std::string>>("Plottable"))
     {
         this->initialize(aProblemParams);
 
@@ -709,11 +709,11 @@ private:
             }
         }
 
-        if(aInputParams.isSublist("Multipoint Constraints") == true)
+        if(aProblemParams.isSublist("Multipoint Constraints") == true)
         {
             Plato::OrdinalType tNumDofsPerNode = mPDE->numDofsPerNode();
-            auto & tMyParams = aInputParams.sublist("Multipoint Constraints", false);
-            mMPCs = std::make_shared<Plato::MultipointConstraints>(aMesh, aMeshSets, tNumDofsPerNode, tMyParams);
+            auto & tMyParams = aProblemParams.sublist("Multipoint Constraints", false);
+            mMPCs = std::make_shared<Plato::MultipointConstraints>(mSpatialModel.Mesh, mSpatialModel.MeshSets, tNumDofsPerNode, tMyParams);
             mMPCs->setupTransform();
         }
     }
