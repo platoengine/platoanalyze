@@ -9739,7 +9739,7 @@ public:
 
             if(this->checkStoppingCriteria(tPrimal))
             {
-                this->updatePreviousStates(tPrimal);
+                //this->updatePreviousStates(tPrimal);
                 break;
             }
             this->updatePreviousStates(tPrimal);
