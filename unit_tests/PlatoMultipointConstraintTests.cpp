@@ -150,6 +150,14 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                    \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
     "  <ParameterList name='Elliptic'>                                       \n"
@@ -158,11 +166,13 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
     "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
     "    </ParameterList>                                                    \n"
     "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                      \n"
     "  <ParameterList  name='Natural Boundary Conditions'>                   \n"
     "    <ParameterList  name='Traction Vector Boundary Condition'>          \n"
@@ -206,31 +216,6 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
-  std::cout << '\n' << "Number of Nodes: " << tNumNodes;
-  std::cout << '\n' << "Number of DOFs: " << tNumNodes*tNumDofsPerNode;
-
-  // Test output of node IDs
-
-  std::cout << '\n' << "Edge 3 (x0) Nodes:" << std::endl;
-  auto tNodesX0= PlatoUtestHelpers::get_2D_boundary_nodes_x0(*tMesh);
-  PlatoUtestHelpers::print_ordinals(tNodesX0);
-  PlatoUtestHelpers::print_2d_coords(*tMesh,tNodesX0);
-
-  std::cout << '\n' <<"Edge 5 (x1) Nodes:" << std::endl;
-  auto tNodesX1= PlatoUtestHelpers::get_2D_boundary_nodes_x1(*tMesh);
-  PlatoUtestHelpers::print_ordinals(tNodesX1);
-  PlatoUtestHelpers::print_2d_coords(*tMesh,tNodesX1);
-
-  std::cout << '\n' << "Edge 1 (y0) Nodes:" << std::endl;
-  auto tNodesY0= PlatoUtestHelpers::get_2D_boundary_nodes_y0(*tMesh);
-  PlatoUtestHelpers::print_ordinals(tNodesY0);
-  PlatoUtestHelpers::print_2d_coords(*tMesh,tNodesY0);
-
-  std::cout << '\n' << "Edge 7 (y1) Nodes:" << std::endl;
-  auto tNodesY1= PlatoUtestHelpers::get_2D_boundary_nodes_y1(*tMesh);
-  PlatoUtestHelpers::print_ordinals(tNodesY1);
-  PlatoUtestHelpers::print_2d_coords(*tMesh,tNodesY1);
-
   // create mesh based density
   //
   Plato::ScalarVector control("density", tNumDofs);
@@ -244,7 +229,9 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   // assign edges for load and boundary conditions
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
   Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(tMesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
   tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
 
@@ -261,21 +248,17 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   
   // parse essential BCs
   //
-  Plato::LocalOrdinalVector bcDofs;
-  Plato::ScalarVector bcValues;
+  Plato::LocalOrdinalVector mBcDofs;
+  Plato::ScalarVector mBcValues;
   Plato::EssentialBCs<SimplexPhysics>
       tEssentialBoundaryConditions(params->sublist("Essential Boundary Conditions",false), tMeshSets);
-  tEssentialBoundaryConditions.get(bcDofs, bcValues);
-
-  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
+  tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
 
   // create vector function
   //
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
-
-  int tNumCells = vectorFunction.numCells();
-  std::cout << '\n' << "Number of Elements: " << tNumCells << std::endl;
 
   // compute residual
   //
@@ -312,7 +295,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
 
   // apply essential BCs
   //
-  Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, bcDofs, bcValues);
+  Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
   // solve linear system
   //
@@ -382,53 +365,61 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
   Kokkos::deep_copy(state, 0.0);
   
   // Test output of node IDs
-  auto tNodesAll = PlatoUtestHelpers::get_boundary_nodes(*tMesh);
-  PlatoUtestHelpers::print_ordinals(tNodesAll);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tNodesAll);
+  /* auto tNodesAll = PlatoUtestHelpers::get_boundary_nodes(*tMesh); */
+  /* PlatoUtestHelpers::print_ordinals(tNodesAll); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tNodesAll); */
 
-  auto tMeshObject = *tMesh;
+  /* auto tMeshObject = *tMesh; */
 
-  std::cout << '\n' << "Face 12 (x0) Nodes:" << std::endl;
-  auto tX0Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 12 /* class id */);
-  auto tX0Ordinals = Omega_h::collect_marked(tX0Marks);
-  PlatoUtestHelpers::print_ordinals(tX0Ordinals);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tX0Ordinals);
+  /* std::cout << '\n' << "Face 12 (x0) Nodes:" << std::endl; */
+  /* auto tX0Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 12 /1* class id *1/); */
+  /* auto tX0Ordinals = Omega_h::collect_marked(tX0Marks); */
+  /* PlatoUtestHelpers::print_ordinals(tX0Ordinals); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tX0Ordinals); */
 
-  std::cout << '\n' << "Face 14 (x1) Nodes:" << std::endl;
-  auto tX1Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 14 /* class id */);
-  auto tX1Ordinals = Omega_h::collect_marked(tX1Marks);
-  PlatoUtestHelpers::print_ordinals(tX1Ordinals);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tX1Ordinals);
+  /* std::cout << '\n' << "Face 14 (x1) Nodes:" << std::endl; */
+  /* auto tX1Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 14 /1* class id *1/); */
+  /* auto tX1Ordinals = Omega_h::collect_marked(tX1Marks); */
+  /* PlatoUtestHelpers::print_ordinals(tX1Ordinals); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tX1Ordinals); */
 
-  std::cout << '\n' << "Face 10 (y0) Nodes:" << std::endl;
-  auto tY0Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 10 /* class id */);
-  auto tY0Ordinals = Omega_h::collect_marked(tY0Marks);
-  PlatoUtestHelpers::print_ordinals(tY0Ordinals);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tY0Ordinals);
+  /* std::cout << '\n' << "Face 10 (y0) Nodes:" << std::endl; */
+  /* auto tY0Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 10 /1* class id *1/); */
+  /* auto tY0Ordinals = Omega_h::collect_marked(tY0Marks); */
+  /* PlatoUtestHelpers::print_ordinals(tY0Ordinals); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tY0Ordinals); */
 
-  std::cout << '\n' << "Face 16 (y1) Nodes:" << std::endl;
-  auto tY1Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 16 /* class id */);
-  auto tY1Ordinals = Omega_h::collect_marked(tY1Marks);
-  PlatoUtestHelpers::print_ordinals(tY1Ordinals);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tY1Ordinals);
+  /* std::cout << '\n' << "Face 16 (y1) Nodes:" << std::endl; */
+  /* auto tY1Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 16 /1* class id *1/); */
+  /* auto tY1Ordinals = Omega_h::collect_marked(tY1Marks); */
+  /* PlatoUtestHelpers::print_ordinals(tY1Ordinals); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tY1Ordinals); */
 
-  std::cout << '\n' << "Face 4 (z0) Nodes:" << std::endl;
-  auto tZ0Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 4 /* class id */);
-  auto tZ0Ordinals = Omega_h::collect_marked(tZ0Marks);
-  PlatoUtestHelpers::print_ordinals(tZ0Ordinals);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tZ0Ordinals);
+  /* std::cout << '\n' << "Face 4 (z0) Nodes:" << std::endl; */
+  /* auto tZ0Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 4 /1* class id *1/); */
+  /* auto tZ0Ordinals = Omega_h::collect_marked(tZ0Marks); */
+  /* PlatoUtestHelpers::print_ordinals(tZ0Ordinals); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tZ0Ordinals); */
 
-  std::cout << '\n' << "Face 22 (z1) Nodes:" << std::endl;
-  auto tZ1Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 22 /* class id */);
-  auto tZ1Ordinals = Omega_h::collect_marked(tZ1Marks);
-  PlatoUtestHelpers::print_ordinals(tZ1Ordinals);
-  PlatoUtestHelpers::print_3d_coords(*tMesh,tZ1Ordinals);
+  /* std::cout << '\n' << "Face 22 (z1) Nodes:" << std::endl; */
+  /* auto tZ1Marks = Omega_h::mark_class_closure(&tMeshObject, Omega_h::VERT, Omega_h::FACE, 22 /1* class id *1/); */
+  /* auto tZ1Ordinals = Omega_h::collect_marked(tZ1Marks); */
+  /* PlatoUtestHelpers::print_ordinals(tZ1Ordinals); */
+  /* PlatoUtestHelpers::print_3d_coords(*tMesh,tZ1Ordinals); */
 
   // specify parameter input
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                    \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
     "  <ParameterList name='Elliptic'>                                       \n"
@@ -437,11 +428,13 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
     "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
     "    </ParameterList>                                                    \n"
     "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                      \n"
     "  <ParameterList  name='Natural Boundary Conditions'>                   \n"
     "    <ParameterList  name='Traction Vector Boundary Condition'>          \n"
@@ -481,7 +474,9 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
   // assign edges for load and boundary conditions
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
   Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(tMesh.get(), Omega_h::EDGE, Omega_h::FACE, 14 /* class id */);
   tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
 
@@ -495,21 +490,17 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
   
   // parse essential BCs
   //
-  Plato::LocalOrdinalVector bcDofs;
-  Plato::ScalarVector bcValues;
+  Plato::LocalOrdinalVector mBcDofs;
+  Plato::ScalarVector mBcValues;
   Plato::EssentialBCs<SimplexPhysics>
       tEssentialBoundaryConditions(params->sublist("Essential Boundary Conditions",false), tMeshSets);
-  tEssentialBoundaryConditions.get(bcDofs, bcValues);
-
-  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
+  tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
 
   // create vector function
   //
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
-
-  int tNumCells = vectorFunction.numCells();
-  std::cout << '\n' << "Number of Elements: " << tNumCells << std::endl;
 
   // compute residual
   //
@@ -546,7 +537,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
 
   // apply essential BCs
   //
-  Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, bcDofs, bcValues);
+  Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
   // solve linear system
   //
