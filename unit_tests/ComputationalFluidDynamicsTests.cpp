@@ -11020,6 +11020,139 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     TEST_FLOATING_EQUALITY(0.0896025, tCriterionValue, tTol);
 }
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrinkmanTerm)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Scenario' type='string' value='Density TO'/>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1e4'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Outlet Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    //auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(15,1,150,20);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    //tProblem.output("cfd_test_problem");
+
+    // test solution
+    auto tTags = tSolution.tags();
+    std::vector<std::string> tGoldTags = { "velocity", "pressure" };
+    TEST_ASSERT(tTags.size() == tGoldTags.size());
+    TEST_EQUALITY(tGoldTags.size(), tTags.size());
+    for(auto& tTag : tTags)
+    {
+        auto tItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
+        TEST_ASSERT(tItr != tGoldTags.end());
+        TEST_EQUALITY(*tItr, tTag);
+    }
+
+    auto tTol = 1e-2;
+    auto tPressure = tSolution.get("pressure");
+    auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
+    Plato::Scalar tMaxPress = 0;
+    Plato::blas1::max(tPressSubView, tMaxPress);
+    TEST_FLOATING_EQUALITY(0.163373, tMaxPress, tTol);
+    Plato::Scalar tMinPress = 0;
+    Plato::blas1::min(tPressSubView, tMinPress);
+    TEST_FLOATING_EQUALITY(0.0, tMinPress, tTol);
+    //Plato::print(tPressSubView, "steady state pressure");
+
+    auto tVelocity = tSolution.get("velocity");
+    auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
+    Plato::Scalar tMaxVel = 0;
+    Plato::blas1::max(tVelSubView, tMaxVel);
+    TEST_FLOATING_EQUALITY(1.09563, tMaxVel, tTol);
+    Plato::Scalar tMinVel = 0;
+    Plato::blas1::min(tVelSubView, tMinVel);
+    TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
+    //Plato::print(tVelSubView, "steady state velocity");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
 {
     // set xml file inputs
