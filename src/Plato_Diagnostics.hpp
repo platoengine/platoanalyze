@@ -32,7 +32,9 @@ inline Plato::Scalar
 test_criterion_grad_wrt_control(
     PlatoProblem  & aProblem,
     Omega_h::Mesh & aMesh,
-    std::string     aCriterionName
+    std::string     aCriterionName,
+    Plato::OrdinalType aSuperscriptLowerBound = 1,
+    Plato::OrdinalType aSuperscriptUpperBound = 6
 )
 {
     // Allocate Data
@@ -54,12 +56,9 @@ test_criterion_grad_wrt_control(
     tOutput << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
         << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
 
-    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
-    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
-    auto tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
-
     std::vector<Plato::Scalar> tFiniteDiffApproxError;
-    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    auto tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
+    for(Plato::OrdinalType tIndex = aSuperscriptLowerBound; tIndex <= aSuperscriptUpperBound; tIndex++)
     {
         auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
 

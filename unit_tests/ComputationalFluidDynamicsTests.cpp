@@ -4536,18 +4536,20 @@ public:
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
-            // 1. add brinkman force contribution to residual, R -= \Delta{t}\gamma M u^n
-            auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
+            // 1. add brinkman force contribution to residual, R += \Delta{t}\gamma M u^n
+            //auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
+            auto tMultiplier = static_cast<Plato::Scalar>(1.0) * tCriticalTimeStep(0);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tImpermeability, tBrinkmanConvexityParam, tControlWS);
             Plato::Fluids::calculate_brinkman_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, aResultWS);
+                (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, tBrinkman);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, aResultWS, tMultiplier);
 
-            // 2. add stabilizing brinkman force to residual, R -= (\frac{\Delta{t}^2}{2}\gamma) M u_n
-            tMultiplier = tStabilization * static_cast<Plato::Scalar>(-0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            // 2. add stabilizing brinkman force to residual, R += (\frac{\Delta{t}^2}{2}\gamma) M u_n
+            //tMultiplier = tStabilization * static_cast<Plato::Scalar>(-0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tBrinkman, aResultWS, tMultiplier);
         }, "brinkman force evaluator");
@@ -9636,6 +9638,7 @@ private:
     Plato::ScalarMultiVector mTemperature;
 
     Plato::ScalarVector mCriticalTimeStep;
+    std::vector<Plato::Scalar> mCriticalTimeStepHistory;
 
     Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
@@ -9719,6 +9722,40 @@ public:
         tWriter.write(tCurrentTimeStep, tTime, tTags);
     }
 
+    void output(const Plato::Primal& aPrimal, std::string aFilePath = "solution_history")
+    {
+        auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &mSpatialModel.Mesh, mNumSpatialDims);
+
+        constexpr auto tStride = 0;
+        const auto tNumNodes = mSpatialModel.Mesh.nverts();
+        const Plato::OrdinalType tCurrentTimeStep = aPrimal.scalar("current time step");
+
+	std::string tTag = tCurrentTimeStep != static_cast<Plato::OrdinalType>(0) ? "current pressure" : "previous pressure";
+        auto tPressureView = aPrimal.vector(tTag);
+        Omega_h::Write<Omega_h::Real> tPressure(tPressureView.size(), "Pressure");
+        Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressureView, tPressure);
+        mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
+
+	tTag = tCurrentTimeStep != static_cast<Plato::OrdinalType>(0) ? "current velocity" : "previous velocity";
+        auto tVelocityView = aPrimal.vector(tTag);
+        Omega_h::Write<Omega_h::Real> tVelocity(tVelocityView.size(), "Velocity");
+        Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelocityView, tVelocity);
+        mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
+
+	if(mCalculateHeatTransfer)
+        {
+	    tTag = tCurrentTimeStep != static_cast<Plato::OrdinalType>(0) ? "current temperature" : "previous temperature";
+            auto tTemperatureView = aPrimal.vector(tTag);
+            Omega_h::Write<Omega_h::Real> tTemperature(tTemperatureView.size(), "Temperature");
+            Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTemperatureView, tTemperature);
+            mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
+        }
+
+        auto tTags = Omega_h::vtk::get_all_vtk_tags(&mSpatialModel.Mesh, mNumSpatialDims);
+        const Plato::Scalar tCurrentTime = aPrimal.scalar("current time");
+        tWriter.write(tCurrentTimeStep, tCurrentTime, tTags);
+    }
+
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
@@ -9745,14 +9782,14 @@ public:
                 this->updateTemperature(aControl, tPrimal);
             }
 
-	    if(tIteration == mOutputFrequency)
+	    auto tModulo = (tIteration + static_cast<Plato::OrdinalType>(1) ) % mOutputFrequency;
+	    if(tModulo == static_cast<Plato::OrdinalType>(0))
             {
-                this->output();
+                this->output(tPrimal);
             }
 
             if(this->checkStoppingCriteria(tPrimal))
             {
-                //this->updatePreviousStates(tPrimal);
                 break;
             }
             this->updatePreviousStates(tPrimal);
@@ -9872,33 +9909,35 @@ private:
     }
 
     void setInitialConditions
-    (Plato::Primal & aVariables)
+    (Plato::Primal & aPrimal)
     {
-        const auto tTime = 0.0;
-        const auto tPrevStep = 0;
+        const Plato::Scalar tTime = 0.0;
+        const Plato::OrdinalType tTimeStep = 0;
+	aPrimal.scalar("current time", tTime);
+	aPrimal.scalar("current time step", tTimeStep);
 
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
         mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
-        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
+        auto tPreviouVel = Kokkos::subview(mVelocity, tTimeStep, Kokkos::ALL());
         Plato::cbs::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
-        aVariables.vector("previous velocity", tPreviouVel);
+        aPrimal.vector("previous velocity", tPreviouVel);
 
         Plato::ScalarVector tPressBcValues;
         Plato::LocalOrdinalVector tPressBcDofs;
         mPressureEssentialBCs.get(tPressBcDofs, tPressBcValues, tTime);
-        auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
+        auto tPreviousPress = Kokkos::subview(mPressure, tTimeStep, Kokkos::ALL());
         Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
-        aVariables.vector("previous pressure", tPreviousPress);
+        aPrimal.vector("previous pressure", tPreviousPress);
 
         if(mCalculateHeatTransfer)
         {
             Plato::ScalarVector tTempBcValues;
             Plato::LocalOrdinalVector tTempBcDofs;
             mTemperatureEssentialBCs.get(tTempBcDofs, tTempBcValues, tTime);
-            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
+            auto tPreviousTemp  = Kokkos::subview(mTemperature, tTimeStep, Kokkos::ALL());
             Plato::cbs::enforce_boundary_condition(tTempBcDofs, tTempBcValues, tPreviousTemp);
-            aVariables.vector("previous temperature", tPreviousTemp);
+            aPrimal.vector("previous temperature", tPreviousTemp);
         }
     }
 
@@ -9995,6 +10034,7 @@ private:
             auto tConvergence = aInputs.sublist("Convergence");
             mSteadyStateTolerance = tConvergence.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
             mMaxSteadyStateIterations = tConvergence.get<Plato::OrdinalType>("Maximum Iterations", 2000);
+            mOutputFrequency = tConvergence.get<Plato::OrdinalType>("Output Frequency", mMaxSteadyStateIterations + 1);
         }
     }
 
@@ -10019,6 +10059,12 @@ private:
                 THROWERR("Heat transfer calculation requested but temperature 'Vector Function' is not allocated.")
             }
         }
+
+	Plato::blas2::fill(0.0, mPressure);
+	Plato::blas2::fill(0.0, mVelocity);
+	Plato::blas2::fill(0.0, mPredictor);
+	Plato::blas2::fill(0.0, mTemperature);
+	Plato::blas1::fill(0.0, mCriticalTimeStep);
     }
 
     void allocateMemberStates(Teuchos::ParameterList & aInputs)
@@ -10533,6 +10579,7 @@ private:
 
             this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
+            //if(tNormResidual <= mPressureTolerance || tIteration >= mMaxPressureIterations)
             {
                 break;
             }
@@ -10812,11 +10859,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
             "    <ParameterList  name='Momentum Conservation'>"
-            "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
+            "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
             "    </ParameterList>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "      <Parameter  name='Impermeability Number'  type='double'  value='1e5'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
@@ -10875,13 +10922,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='2000'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-10'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,3,3);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -10891,17 +10939,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
     Plato::Comm::Machine tMachine(tMyComm);
 
-    // create and run incompressible cfd problem
+    // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    const auto tNumVerts = tMesh->nverts();
-    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tProblem.solution(tControls);
-    //tProblem.output("cfd_test_problem");
-
-    // call outlet criterion
-    Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure");
+    Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 3, 6);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
@@ -11034,7 +11075,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
             "    </ParameterList>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "      <Parameter  name='Impermeability Number'  type='double'  value='1e4'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
@@ -11087,7 +11128,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.1'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -11100,7 +11141,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
 
     // build mesh, spatial domain, and spatial model
     //auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(15,1,150,20);
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10,1,100,10);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -11115,9 +11156,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
     const auto tNumVerts = tMesh->nverts();
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::blas1::fill(1.0, tControls);
+    Plato::blas1::fill(0.1, tControls);
     auto tSolution = tProblem.solution(tControls);
-    //tProblem.output("cfd_test_problem");
+    tProblem.output("cfd_test_problem");
 
     // test solution
     auto tTags = tSolution.tags();
