@@ -9759,6 +9759,7 @@ public:
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
+        this->clear();
         this->checkProblemSetup();
 
         Plato::Primal tPrimal;
@@ -10038,6 +10039,19 @@ private:
         }
     }
 
+    void clear()
+    {
+        mCriticalTimeStepHistory.clear();
+        Plato::blas2::fill(0.0, mPressure);
+        Plato::blas2::fill(0.0, mVelocity);
+        Plato::blas2::fill(0.0, mPredictor);
+        Plato::blas2::fill(0.0, mTemperature);
+        if(mCriticalTimeStep.size() != static_cast<Plato::OrdinalType>(0))
+        {
+            Plato::blas1::fill(0.0, mCriticalTimeStep);
+        }        
+    }
+
     void checkProblemSetup()
     {
         if(mPressureEssentialBCs.empty())
@@ -10059,15 +10073,6 @@ private:
                 THROWERR("Heat transfer calculation requested but temperature 'Vector Function' is not allocated.")
             }
         }
-
-	Plato::blas2::fill(0.0, mPressure);
-	Plato::blas2::fill(0.0, mVelocity);
-	Plato::blas2::fill(0.0, mPredictor);
-	Plato::blas2::fill(0.0, mTemperature);
-	if(mCriticalTimeStep.size() != static_cast<Plato::OrdinalType>(0))
-	{
-	    Plato::blas1::fill(0.0, mCriticalTimeStep);
-	}
     }
 
     void allocateMemberStates(Teuchos::ParameterList & aInputs)
@@ -10215,11 +10220,13 @@ private:
             auto tMinCriticalTimeStep = std::min(tCriticalConvectiveTimeStep, tCriticalThermalTimeStep);
             tHostCriticalTimeStep(0) = tMinCriticalTimeStep;
             Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
+            mCriticalTimeStepHistory.push_back(tMinCriticalTimeStep);
         }
         else
         {
             tHostCriticalTimeStep(0) = tCriticalConvectiveTimeStep;
             Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
+            mCriticalTimeStepHistory.push_back(tCriticalConvectiveTimeStep);
         }
         return tCriticalTimeStep;
     }
