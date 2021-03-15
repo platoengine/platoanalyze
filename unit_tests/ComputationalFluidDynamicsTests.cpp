@@ -10064,7 +10064,10 @@ private:
 	Plato::blas2::fill(0.0, mVelocity);
 	Plato::blas2::fill(0.0, mPredictor);
 	Plato::blas2::fill(0.0, mTemperature);
-	Plato::blas1::fill(0.0, mCriticalTimeStep);
+	if(mCriticalTimeStep.size() != static_cast<Plato::OrdinalType>(0))
+	{
+	    Plato::blas1::fill(0.0, mCriticalTimeStep);
+	}
     }
 
     void allocateMemberStates(Teuchos::ParameterList & aInputs)
