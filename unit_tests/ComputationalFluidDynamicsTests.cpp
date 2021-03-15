@@ -9630,6 +9630,7 @@ private:
     Plato::OrdinalType mMaxPredictorIterations = 5; /*!< maximum number of predictor solver iterations */
     Plato::OrdinalType mMaxCorrectorIterations = 5; /*!< maximum number of corrector solver iterations */
     Plato::OrdinalType mMaxTemperatureIterations = 5; /*!< maximum number of temperature solver iterations */
+    Plato::OrdinalType mNumForwardSolveTimeSteps = 0; /*!< number of time steps taken to reach steady state */
     Plato::OrdinalType mMaxSteadyStateIterations = 2000; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
@@ -9637,7 +9638,6 @@ private:
     Plato::ScalarMultiVector mPredictor;
     Plato::ScalarMultiVector mTemperature;
 
-    Plato::ScalarVector mCriticalTimeStep;
     std::vector<Plato::Scalar> mCriticalTimeStepHistory;
 
     Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
@@ -9768,7 +9768,8 @@ public:
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
-            tPrimal.scalar("iteration", tIteration+1);
+            mNumForwardSolveTimeSteps = tIteration + 1;
+            tPrimal.scalar("iteration", mNumForwardSolveTimeSteps);
 
             this->setPrimalStates(tPrimal);
             this->calculateCriticalTimeStep(tPrimal);
@@ -9839,6 +9840,8 @@ public:
         return (this->criterionGradient(aControl, aName));
     }
 
+    /*
+     * WORKING FOR ONLY ONE TIME STEP
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
@@ -9866,15 +9869,61 @@ public:
         auto tTotalDerivative = this->calculateGradientControl(aName, aControl, tPrimal, tDual);
         return tTotalDerivative;
     }
+    */
 
-    Plato::ScalarVector criterionGradientX
+    Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
         {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not defined in critria map.");
+        }
+
+        Plato::Dual tDual;
+        Plato::Primal tCurrentPrimalState;
+        Plato::Primal tPreviousPrimalState;
+        auto tNumVertices = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", tNumVertices);
+
+        auto tLastStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
+        for(auto tTimeStepIndex = tLastStepIndex; tTimeStepIndex >= static_cast<Plato::OrdinalType>(0); tTimeStepIndex--)
+        {
+            tCurrentPrimalState.scalar("time step index", tTimeStepIndex);
+            tPreviousPrimalState.scalar("time step index", tTimeStepIndex + 1);
+
+            // todo: set critical time step
+            auto tCurrentCriticalTimeStep = mCriticalTimeStepHistory[tTimeStepIndex];
+
+            this->setDualVariables(tDual);
+            this->setPrimalStates(tCurrentPrimalState);
+            this->setPrimalStates(tPreviousPrimalState);
+
+            if(mCalculateHeatTransfer)
+            {
+                this->updateTemperatureAdjoint(aName, aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
+            }
+            this->updateCorrectorAdjoint(aName, aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
+            this->updatePressureAdjoint(aName, aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
+            this->updatePredictorAdjoint(aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
+
+            this->calculateGradientControl(aName, aControl, tCurrentPrimalState, tDual, tTotalDerivative);
+        }
+        return tTotalDerivative;
+    }
+
+    Plato::ScalarVector criterionGradientX
+    (const Plato::ScalarVector & aControl,
+     const std::string         & aName)
+    {
+        auto tNumVertices = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", tNumVertices);
+        /*
+        auto tItr = mCriteria.find(aName);
+        if (tItr == mCriteria.end())
+        {
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not defined in critria map.");
         }
 
         Plato::Dual tDual;
@@ -9893,6 +9942,7 @@ public:
         this->updatePredictorAdjoint(aControl, tPrimal, tDual);
         auto tTotalDerivative = this->calculateGradientConfig(aName, aControl, tPrimal, tDual);
 
+        */
         return tTotalDerivative;
     }
 
@@ -10041,15 +10091,12 @@ private:
 
     void clear()
     {
+        mNumForwardSolveTimeSteps = 0;
         mCriticalTimeStepHistory.clear();
         Plato::blas2::fill(0.0, mPressure);
         Plato::blas2::fill(0.0, mVelocity);
         Plato::blas2::fill(0.0, mPredictor);
         Plato::blas2::fill(0.0, mTemperature);
-        if(mCriticalTimeStep.size() != static_cast<Plato::OrdinalType>(0))
-        {
-            Plato::blas1::fill(0.0, mCriticalTimeStep);
-        }        
     }
 
     void checkProblemSetup()
@@ -10251,13 +10298,13 @@ private:
         if(tIteration > 1)
         {
             auto tPreviousVelocity = aVariables.vector("previous velocity");
-            mCriticalTimeStep = this->criticalTimeStep(aVariables, tPreviousVelocity);
-            aVariables.vector("critical time step", mCriticalTimeStep);
+            auto tCriticalTimeStep = this->criticalTimeStep(aVariables, tPreviousVelocity);
+            aVariables.vector("critical time step", tCriticalTimeStep);
         }
         else
         {
-            mCriticalTimeStep = this->initialCriticalTimeStep(aVariables);
-            aVariables.vector("critical time step", mCriticalTimeStep);
+            auto tCriticalTimeStep = this->initialCriticalTimeStep(aVariables);
+            aVariables.vector("critical time step", tCriticalTimeStep);
         }
     }
 
@@ -10679,20 +10726,21 @@ private:
 
     void updatePredictorAdjoint
     (const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aPrimal,
+     const Plato::Primal       & aCurrentPrimalState,
+     const Plato::Primal       & aPreviousPrimalState,
            Plato::Dual         & aDual)
     {
         auto tCurrentPredictorAdjoint = aDual.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
 
-        // calculate right-hand-side vector
+        // add PDE contribution from current state to right hand side adjoint vector
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tJacCorrectorResWrtPredictor = mCorrectorResidual.gradientPredictor(aControl, aPrimal);
+        auto tJacCorrectorResWrtPredictor = mCorrectorResidual.gradientPredictor(aControl, aCurrentPrimalState);
         Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
         Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtPredictor, tCurrentVelocityAdjoint, tRHS);
 
         auto tCurrentPressureAdjoint = aDual.vector("current pressure adjoint");
-        auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aPrimal);
+        auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aCurrentPrimalState);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPredictor, tCurrentPressureAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
@@ -10700,25 +10748,49 @@ private:
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aPrimal);
+        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurrentPrimalState);
         tSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
     void updatePressureAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aPrimal,
+     const Plato::Primal       & aCurrentPrimalState,
+     const Plato::Primal       & aPreviousPrimalState,
            Plato::Dual         & aDual)
     {
+        // initialize data
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
         auto tCurrentPressAdjoint = aDual.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
 
-        // calculate right-hand-side vector
-        auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aPrimal);
-        auto tJacResVelWrtCurPress = mCorrectorResidual.gradientCurrentPress(aControl, aPrimal);
+        // add objective function contribution to right hand side adjoint vector
+        auto tNumVertices = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
+        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        {
+            auto tPartialObjWrtCurrentPressure = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentPrimalState);
+            Plato::blas1::update(1.0, tPartialObjWrtCurrentPressure, 0.0, tRightHandSide);
+        }
+
+        // add PDE contribution from current state to right hand side adjoint vector
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        Plato::MatrixTimesVectorPlusVector(tJacResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
-        Plato::blas1::scale(-1.0, tRHS);
+        auto tJacCorrectorResWrtCurPress = mCorrectorResidual.gradientCurrentPress(aControl, aCurrentPrimalState);
+        Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtCurPress, tCurrentVelocityAdjoint, tRightHandSide);
+
+        // add PDE contribution from previous state to right hand side adjoint vector
+        if(tCurrentTimeStepIndex != tLastTimeStepIndex)
+        {
+            auto tPreviousPressureAdjoint = aDual.vector("previous pressure adjoint");
+            auto tJacPressResWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacPressResWrtPrevPress, tPreviousPressureAdjoint, tRightHandSide);
+
+            auto tPreviousVelocityAdjoint = aDual.vector("previous velocity adjoint");
+            auto tJacCorrectorResWrtPrevVel = mCorrectorResidual.gradientPreviousPress(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtPrevVel, tPreviousVelocityAdjoint, tRightHandSide);
+        }
+        Plato::blas1::scale(-1.0, tRightHandSide);
 
 	// prepare constraints dofs
         Plato::ScalarVector tBcValues;
@@ -10729,88 +10801,143 @@ private:
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
-        auto tJacPressResWrtCurPress = mPressureResidual.gradientCurrentPress(aControl, aPrimal);
-        Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacPressResWrtCurPress, tRHS);
-        tSolver->solve(*tJacPressResWrtCurPress, tCurrentPressAdjoint, tRHS);
+        auto tJacPressResWrtCurPress = mPressureResidual.gradientCurrentPress(aControl, aCurrentPrimalState);
+        Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacPressResWrtCurPress, tRightHandSide);
+        tSolver->solve(*tJacPressResWrtCurPress, tCurrentPressAdjoint, tRightHandSide);
     }
 
     void updateTemperatureAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aPrimal,
+     const Plato::Primal       & aCurrentPrimalState,
+     const Plato::Primal       & aPreviousPrimalState,
            Plato::Dual         & aDual)
     {
+        // initialize data
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
         auto tCurrentTempAdjoint = aDual.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
 
-        // calculate right-hand-side vector
-        auto tGradObjWrtCurrentTemp = mCriteria[aName]->gradientCurrentTemp(aControl, aPrimal);
-        Plato::blas1::scale(-1.0, tGradObjWrtCurrentTemp);
+        // add objective function contribution to right hand side adjoint vector
+        auto tNumVertices = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
+        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        {
+            auto tPartialObjWrtCurrentTemperature = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentPrimalState);
+            Plato::blas1::update(1.0, tPartialObjWrtCurrentTemperature, 0.0, tRightHandSide);
+        }
+
+        // add PDE contribution from previous state to right hand side adjoint vector
+        if(tCurrentTimeStepIndex != tLastTimeStepIndex)
+        {
+            auto tPreviousPredAdjoint = aDual.vector("previous predictor adjoint");
+            auto tGradResPredWrtPreviousTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPreviousTemp, tPreviousPredAdjoint, tRightHandSide);
+
+            auto tPreviousTempAdjoint = aDual.vector("previous temperature adjoint");
+            auto tJacTempResWrtPreviousTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacTempResWrtPreviousTemp, tPreviousTempAdjoint, tRightHandSide);
+        }
+        Plato::blas1::scale(-1.0, tRightHandSide);
 
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
-        auto tJacobianCurrentTemp = mTemperatureResidual->gradientCurrentTemp(aControl, aPrimal);
-        tSolver->solve(*tJacobianCurrentTemp, tCurrentTempAdjoint, tGradObjWrtCurrentTemp);
+        auto tJacobianCurrentTemp = mTemperatureResidual->gradientCurrentTemp(aControl, aCurrentPrimalState);
+        tSolver->solve(*tJacobianCurrentTemp, tCurrentTempAdjoint, tRightHandSide);
     }
 
     void updateCorrectorAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aPrimal,
+     const Plato::Primal       & aCurrentPrimalState,
+     const Plato::Primal       & aPreviousPrimalState,
            Plato::Dual         & aDual)
     {
+        // initialize data
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
 
-        // calculate right hand side vector
-        auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aPrimal);
+        // add objective function contribution to right hand side adjoint vector
+        auto tNumVertices = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
+        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        {
+            auto tPartialObjFuncWrtCurrentVel = mCriteria[aName]->gradientCurrentVel(aControl, aCurrentPrimalState);
+            Plato::blas1::update(1.0, tPartialObjFuncWrtCurrentVel, 0.0, tRightHandSide);
+        }
+
+        // add PDE contribution from current state to right hand side adjoint vector
         if(mCalculateHeatTransfer)
         {
             auto tCurrentTempAdjoint = aDual.vector("current temperature adjoint");
-            auto tJacTempResWrtCurVel = mTemperatureResidual->gradientCurrentVel(aControl, aPrimal);
-            Plato::MatrixTimesVectorPlusVector(tJacTempResWrtCurVel, tCurrentTempAdjoint, tRHS);
+            auto tJacTempResWrtCurVel = mTemperatureResidual->gradientCurrentVel(aControl, aCurrentPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacTempResWrtCurVel, tCurrentTempAdjoint, tRightHandSide);
         }
-        Plato::blas1::scale(-1.0, tRHS);
+
+        // add PDE contribution from previous state to right hand side adjoint vector
+        if(tCurrentTimeStepIndex != tLastTimeStepIndex)
+        {
+            auto tPreviousPredictorAdjoint = aDual.vector("previous predictor adjoint");
+            auto tJacPredResWrtPrevVel = mPredictorResidual.gradientPreviousVel(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacPredResWrtPrevVel, tPreviousPredictorAdjoint, tRightHandSide);
+
+            auto tPreviousPressureAdjoint = aDual.vector("previous pressure adjoint");
+            auto tJacPressResWrtPrevVel = mPressureResidual.gradientPreviousVel(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacPressResWrtPrevVel, tPreviousPressureAdjoint, tRightHandSide);
+
+            auto tPreviousVelocityAdjoint = aDual.vector("previous velocity adjoint");
+            auto tJacCorrectorResWrtPrevVel = mCorrectorResidual.gradientPreviousVel(aControl, aPreviousPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtPrevVel, tPreviousVelocityAdjoint, tRightHandSide);
+        }
+        Plato::blas1::scale(-1.0, tRightHandSide);
 
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        auto tJacCorrectorResWrtCurVel = mCorrectorResidual.gradientCurrentVel(aControl, aPrimal);
-        tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRHS);
+        auto tJacCorrectorResWrtCurVel = mCorrectorResidual.gradientCurrentVel(aControl, aCurrentPrimalState);
+        tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRightHandSide);
     }
 
-    Plato::ScalarVector
-    calculateGradientControl
+    void  calculateGradientControl
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aPrimal,
-     const Plato::Dual         & aDual)
+     const Plato::Primal       & aCurrentPrimalState,
+     const Plato::Dual         & aDual,
+           Plato::ScalarVector & aTotalDerivative)
     {
-        auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aPrimal);
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
+        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        {
+            auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentPrimalState);
+            Plato::blas1::update(1.0, tGradCriterionWrtControl, 1.0, aTotalDerivative);
+        }
 
         auto tCurrentPredictorAdjoint = aDual.vector("current predictor adjoint");
-        auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtControl, tCurrentPredictorAdjoint, tGradCriterionWrtControl);
+        auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aCurrentPrimalState);
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtControl, tCurrentPredictorAdjoint, aTotalDerivative);
 
         auto tCurrentPressureAdjoint = aDual.vector("current pressure adjoint");
-        auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
+        auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurrentPrimalState);
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, aTotalDerivative);
 
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tGradResVelWrtControl = mCorrectorResidual.gradientControl(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, tGradCriterionWrtControl);
+        auto tGradResVelWrtControl = mCorrectorResidual.gradientControl(aControl, aCurrentPrimalState);
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, aTotalDerivative);
 
 	if(mCalculateHeatTransfer)
 	{
             auto tCurrentTemperatureAdjoint = aDual.vector("current temperature adjoint");
-            auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aPrimal);
-            Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
+            auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aCurrentPrimalState);
+            Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, aTotalDerivative);
 	}
 
-        return tGradCriterionWrtControl;
     }
 
     Plato::ScalarVector
