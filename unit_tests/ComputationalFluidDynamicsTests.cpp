@@ -9658,6 +9658,8 @@ private:
     Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
     Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
 
+    Omega_h::vtk::Writer mWriter;
+
 public:
     QuasiImplicit
     (Omega_h::Mesh          & aMesh,
@@ -9722,21 +9724,19 @@ public:
         tWriter.write(tCurrentTimeStep, tTime, tTags);
     }
 
-    void output(const Plato::Primal& aPrimal, std::string aFilePath = "solution_history")
+    void output(const Plato::Primal& aPrimal)
     {
-        auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &mSpatialModel.Mesh, mNumSpatialDims);
-
         constexpr auto tStride = 0;
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
-        const Plato::OrdinalType tCurrentTimeStep = aPrimal.scalar("current time step");
+        const Plato::OrdinalType tTimeStepIndex = aPrimal.scalar("time step index");
 
-	std::string tTag = tCurrentTimeStep != static_cast<Plato::OrdinalType>(0) ? "current pressure" : "previous pressure";
+	std::string tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current pressure" : "previous pressure";
         auto tPressureView = aPrimal.vector(tTag);
         Omega_h::Write<Omega_h::Real> tPressure(tPressureView.size(), "Pressure");
         Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressureView, tPressure);
         mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
 
-	tTag = tCurrentTimeStep != static_cast<Plato::OrdinalType>(0) ? "current velocity" : "previous velocity";
+	tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current velocity" : "previous velocity";
         auto tVelocityView = aPrimal.vector(tTag);
         Omega_h::Write<Omega_h::Real> tVelocity(tVelocityView.size(), "Velocity");
         Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelocityView, tVelocity);
@@ -9744,7 +9744,7 @@ public:
 
 	if(mCalculateHeatTransfer)
         {
-	    tTag = tCurrentTimeStep != static_cast<Plato::OrdinalType>(0) ? "current temperature" : "previous temperature";
+	    tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current temperature" : "previous temperature";
             auto tTemperatureView = aPrimal.vector(tTag);
             Omega_h::Write<Omega_h::Real> tTemperature(tTemperatureView.size(), "Temperature");
             Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTemperatureView, tTemperature);
@@ -9752,8 +9752,7 @@ public:
         }
 
         auto tTags = Omega_h::vtk::get_all_vtk_tags(&mSpatialModel.Mesh, mNumSpatialDims);
-        const Plato::Scalar tCurrentTime = aPrimal.scalar("current time");
-        tWriter.write(tCurrentTimeStep, tCurrentTime, tTags);
+        mWriter.write(tTimeStepIndex, tTimeStepIndex, tTags);
     }
 
     Plato::Solutions solution
@@ -9769,7 +9768,7 @@ public:
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
             mNumForwardSolveTimeSteps = tIteration + 1;
-            tPrimal.scalar("iteration", mNumForwardSolveTimeSteps);
+            tPrimal.scalar("time step index", mNumForwardSolveTimeSteps);
 
             this->setPrimalStates(tPrimal);
             this->calculateCriticalTimeStep(tPrimal);
@@ -9887,8 +9886,7 @@ public:
         auto tNumVertices = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tTotalDerivative("total derivative", tNumVertices);
 
-        auto tLastStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
-        for(auto tTimeStepIndex = tLastStepIndex; tTimeStepIndex >= static_cast<Plato::OrdinalType>(0); tTimeStepIndex--)
+        for(auto tTimeStepIndex = mNumForwardSolveTimeSteps; tTimeStepIndex >= static_cast<Plato::OrdinalType>(0); tTimeStepIndex--)
         {
             tCurrentPrimalState.scalar("time step index", tTimeStepIndex);
             tPreviousPrimalState.scalar("time step index", tTimeStepIndex + 1);
@@ -9964,8 +9962,8 @@ private:
     {
         const Plato::Scalar tTime = 0.0;
         const Plato::OrdinalType tTimeStep = 0;
-	aPrimal.scalar("current time", tTime);
-	aPrimal.scalar("current time step", tTimeStep);
+        mCriticalTimeStepHistory.push_back(0.0);
+	aPrimal.scalar("time step index", tTimeStep);
 
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
@@ -9990,6 +9988,8 @@ private:
             Plato::cbs::enforce_boundary_condition(tTempBcDofs, tTempBcValues, tPreviousTemp);
             aPrimal.vector("previous temperature", tPreviousTemp);
         }
+
+        this->output(aPrimal);
     }
 
     void printIteration
@@ -10003,10 +10003,10 @@ private:
                 auto tCriticalTimeStep = aVariables.vector("critical time step");
                 auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
                 Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
-                const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
+                const Plato::OrdinalType tTimeStepIndex = aVariables.scalar("time step index");
                 tMsg << "*************************************************************************************\n";
                 tMsg << "* Critical Time Step: " << tHostCriticalTimeStep(0) << "\n";
-                tMsg << "* CFD Quasi-Implicit Solver Iteration: " << tIteration << "\n";
+                tMsg << "* CFD Quasi-Implicit Solver Iteration: " << tTimeStepIndex << "\n";
                 tMsg << "*************************************************************************************\n";
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
@@ -10034,7 +10034,7 @@ private:
         this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
-
+        mWriter = Omega_h::vtk::Writer("solution_history", &mSpatialModel.Mesh, mNumSpatialDims);
     }
 
     void parseHeatTransferEquation
@@ -10198,13 +10198,6 @@ private:
     bool isFluidSolverDiverging
     (Plato::Primal & aVariables)
     {
-        const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
-        if(tIteration <= 1)
-        {
-            aVariables.scalar("divergence count", 0);
-            return false;
-        }
-
         auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
         if(!std::isfinite(tCurrentCriterion) || std::isnan(tCurrentCriterion))
         {
@@ -10217,7 +10210,7 @@ private:
     (Plato::Primal & aVariables)
     {
         bool tStop = false;
-        const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
+        const Plato::OrdinalType tTimeStepIndex = aVariables.scalar("time step index");
         const auto tCriterionValue = this->calculatePressureMisfitNorm(aVariables);
         aVariables.scalar("current steady state criterion", tCriterionValue);
         this->printSteadyStateCriterion(aVariables);
@@ -10227,7 +10220,7 @@ private:
         {
             tStop = true;
         }
-        else if (tIteration >= mMaxSteadyStateIterations)
+        else if (tTimeStepIndex >= mMaxSteadyStateIterations)
         {
             tStop = true;
         }
@@ -10294,7 +10287,7 @@ private:
 
     void calculateCriticalTimeStep(Plato::Primal & aVariables)
     {
-        auto tIteration = aVariables.scalar("iteration");
+        auto tIteration = aVariables.scalar("time step index");
         if(tIteration > 1)
         {
             auto tPreviousVelocity = aVariables.vector("previous velocity");
@@ -10761,14 +10754,13 @@ private:
     {
         // initialize data
         auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
-        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
         auto tCurrentPressAdjoint = aDual.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
 
         // add objective function contribution to right hand side adjoint vector
         auto tNumVertices = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
-        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tPartialObjWrtCurrentPressure = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentPrimalState);
             Plato::blas1::update(1.0, tPartialObjWrtCurrentPressure, 0.0, tRightHandSide);
@@ -10780,7 +10772,7 @@ private:
         Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtCurPress, tCurrentVelocityAdjoint, tRightHandSide);
 
         // add PDE contribution from previous state to right hand side adjoint vector
-        if(tCurrentTimeStepIndex != tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex != mNumForwardSolveTimeSteps)
         {
             auto tPreviousPressureAdjoint = aDual.vector("previous pressure adjoint");
             auto tJacPressResWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPreviousPrimalState);
@@ -10815,21 +10807,20 @@ private:
     {
         // initialize data
         auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
-        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
         auto tCurrentTempAdjoint = aDual.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
 
         // add objective function contribution to right hand side adjoint vector
         auto tNumVertices = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
-        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tPartialObjWrtCurrentTemperature = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentPrimalState);
             Plato::blas1::update(1.0, tPartialObjWrtCurrentTemperature, 0.0, tRightHandSide);
         }
 
         // add PDE contribution from previous state to right hand side adjoint vector
-        if(tCurrentTimeStepIndex != tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex != mNumForwardSolveTimeSteps)
         {
             auto tPreviousPredAdjoint = aDual.vector("previous predictor adjoint");
             auto tGradResPredWrtPreviousTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPreviousPrimalState);
@@ -10858,14 +10849,13 @@ private:
     {
         // initialize data
         auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
-        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
 
         // add objective function contribution to right hand side adjoint vector
         auto tNumVertices = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
-        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tPartialObjFuncWrtCurrentVel = mCriteria[aName]->gradientCurrentVel(aControl, aCurrentPrimalState);
             Plato::blas1::update(1.0, tPartialObjFuncWrtCurrentVel, 0.0, tRightHandSide);
@@ -10880,7 +10870,7 @@ private:
         }
 
         // add PDE contribution from previous state to right hand side adjoint vector
-        if(tCurrentTimeStepIndex != tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex != mNumForwardSolveTimeSteps)
         {
             auto tPreviousPredictorAdjoint = aDual.vector("previous predictor adjoint");
             auto tJacPredResWrtPrevVel = mPredictorResidual.gradientPreviousVel(aControl, aPreviousPrimalState);
@@ -10912,8 +10902,7 @@ private:
            Plato::ScalarVector & aTotalDerivative)
     {
         auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
-        auto tLastTimeStepIndex = mNumForwardSolveTimeSteps - static_cast<Plato::OrdinalType>(1);
-        if(tCurrentTimeStepIndex == tLastTimeStepIndex)
+        if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentPrimalState);
             Plato::blas1::update(1.0, tGradCriterionWrtControl, 1.0, aTotalDerivative);
