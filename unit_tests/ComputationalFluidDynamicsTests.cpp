@@ -4412,19 +4412,19 @@ public:
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
-            // 1. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
+            // 1. add previous buoyancy force to residual, i.e. R += (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
             auto tMultiplier = tBuoyancyDamping * tCriticalTimeStep(0);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
                 (aCellOrdinal, tBuoyancyConst, tNaturalConvectionNum, tPrevTempGP, tThermalBuoyancy);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, -tMultiplier);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, tMultiplier);
 
-            // 2. add stabilizing buoyancy force to residual. i.e. R -= \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
+            // 2. add stabilizing buoyancy force to residual. i.e. R += \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tBuoyancyDamping * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, -tMultiplier);
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, tMultiplier);
         }, "add contribution from thermal buoyancy forces to residual");
     }
 
@@ -11460,7 +11460,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number'   type='double'  value='1.7'/>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -11469,13 +11468,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
             "        <Parameter name='Material Model' type='string' value='Water'/>"
-            "      </ParameterList>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Water'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Thermal Conductivity'  type='double'  value='1'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -11536,7 +11528,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
+            "    <Parameter name='Safety Factor'      type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -11548,7 +11540,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20,20);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -11587,47 +11579,25 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
         TEST_EQUALITY(*tItr, tTag);
     }
 
-    auto tTol = 1e-4;
+    auto tTol = 1e-2;
     auto tPressure = tSolution.get("pressure");
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
-    auto tHostPressure = Kokkos::create_mirror(tPressSubView);
-    Kokkos::deep_copy(tHostPressure, tPressSubView);
-    std::vector<double> tGoldPressure = 
-    { 0.000000e+00, 3.731415e-03, 7.816292e-03, 7.587085e-03, 1.241365e-02, 1.063465e-02,
-      -5.198417e-04, -3.482819e-03, -5.190182e-04, -6.584415e-02, -4.304338e-02, -2.550113e-01,
-      -4.137012e-01, -2.028317e-01, -1.218144e-01, -6.249967e-02, -3.871247e-02, -2.076437e-02,
-      6.898296e-03, 2.266167e-02, 3.563244e-02, 1.129117e-01, 1.519040e-01, 3.731144e-01,
-      2.325776e-01, 4.197060e-02, 6.356792e-02, 2.115928e-02, 7.908880e-03, 3.050671e-03,
-      4.394201e-03, 7.350702e-03, 1.146635e-02, 6.443506e-03, 1.890785e-02, 1.827038e-02 };
-    for(auto& tGoldPress : tGoldPressure)
-    {
-        auto tDof = &tGoldPress - &tGoldPressure[0];
-        TEST_FLOATING_EQUALITY(tGoldPress, tHostPressure(tDof), tTol);
-    }    
+    Plato::Scalar tMaxPress = 0;
+    Plato::blas1::max(tPressSubView, tMaxPress);
+    TEST_FLOATING_EQUALITY(0.10276, tMaxPress, tTol);
+    Plato::Scalar tMinPress = 0;
+    Plato::blas1::min(tPressSubView, tMinPress);
+    TEST_FLOATING_EQUALITY(-0.577537, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
-    auto tHostVelocity = Kokkos::create_mirror(tVelSubView);
-    Kokkos::deep_copy(tHostVelocity, tVelSubView);
-    std::vector<double> tGoldVelocity = 
-        { 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 2.833694e-02, 3.161706e-02,
-          0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, -3.622390e-02, 7.679319e-03,
-          -2.513879e-01, -2.315935e-02, -9.600695e-02, 8.900196e-02, 0.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -2.127223e-01, 1.186893e-01, 0.000000e+00, 0.000000e+00,
-          1.000000e+00, 0.000000e+00, 1.000000e+00, -2.014148e-01, 2.209044e-01, 2.687383e-02,
-          1.000000e+00, -2.568389e-02, 2.108086e-01, 6.878037e-02, -2.008218e-01, 3.752568e-02,
-          -2.414176e-01, -1.413018e-01, 1.705768e-01, -4.762509e-02, 1.000000e+00, 1.943306e-02,
-          1.809571e-01, -2.627045e-02, 1.000000e+00, -1.559841e-02, 1.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -3.221432e-01, -8.796441e-02, 0.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -3.003773e-02, -1.087609e-02, -1.023158e-01, -9.410034e-02,
-          -1.142110e-01, -4.599828e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
-          7.111933e-02, -1.348906e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
-    for(auto& tGoldVel : tGoldVelocity)
-    {
-        auto tDof = &tGoldVel - &tGoldVelocity[0];
-        TEST_FLOATING_EQUALITY(tGoldVel, tHostVelocity(tDof), tTol); 
-    }
+    Plato::Scalar tMaxVel = 0;
+    Plato::blas1::max(tVelSubView, tMaxVel);
+    TEST_FLOATING_EQUALITY(1.0, tMaxVel, tTol);
+    Plato::Scalar tMinVel = 0;
+    Plato::blas1::min(tVelSubView, tMinVel);
+    TEST_FLOATING_EQUALITY(-0.33372, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 }
 
@@ -11641,7 +11611,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number'   type='double'  value='1.7'/>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='4e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -11650,13 +11619,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
             "        <Parameter name='Material Model' type='string' value='Water'/>"
-            "      </ParameterList>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Water'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Thermal Conductivity'  type='double'  value='1'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -11717,19 +11679,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'      type='double' value='0.9'/>"
+            "    <Parameter name='Safety Factor'      type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-7'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20,20);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -11755,60 +11717,27 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    //tProblem.output("cfd_test_problem");
+    tProblem.output("cfd_test_problem");
 
-    // test solution
-    auto tTags = tSolution.tags();
-    std::vector<std::string> tGoldTags = { "velocity", "pressure" };
-    TEST_EQUALITY(tGoldTags.size(), tTags.size());
-    for(auto& tTag : tTags)
-    {
-        auto tItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
-        TEST_ASSERT(tItr != tGoldTags.end());
-        TEST_EQUALITY(*tItr, tTag);
-    }
-
-    auto tTol = 1e-4;
+    auto tTol = 1e-2;
     auto tPressure = tSolution.get("pressure");
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
-    auto tHostPressure = Kokkos::create_mirror(tPressSubView);
-    Kokkos::deep_copy(tHostPressure, tPressSubView);
-    std::vector<double> tGoldPressure = 
-        { 0.000000e+00, 1.072931e-02, 1.312595e-02, 8.497650e-03, 1.626071e-02, 1.571180e-02,
-          1.226569e-02, 2.217873e-02, 3.655916e-02, -1.156675e-02, -8.006286e-03, -2.601345e-01,
-          -5.513425e-01, -3.071730e-01, -9.552018e-02, -1.242182e-01, -3.153474e-02, -1.812273e-02,
-          -1.578797e-03, 4.713658e-03, -6.986284e-03, 8.882305e-02, 1.277841e-01, 3.863289e-01,
-          1.952344e-01, 1.181027e-02, 2.533018e-02, 2.192144e-02, -2.588920e-03, 4.289334e-03,
-          4.061401e-03, 6.653193e-04, 6.831889e-03, 3.598375e-03, 2.037281e-02, 1.476802e-02 };
-    for(auto& tGoldPress : tGoldPressure)
-    {
-        auto tDof = &tGoldPress - &tGoldPressure[0];
-        TEST_FLOATING_EQUALITY(tGoldPress, tHostPressure(tDof), tTol);
-    }
+    Plato::Scalar tMaxPress = 0;
+    Plato::blas1::max(tPressSubView, tMaxPress);
+    TEST_FLOATING_EQUALITY(2.20016, tMaxPress, tTol);
+    Plato::Scalar tMinPress = 0;
+    Plato::blas1::min(tPressSubView, tMinPress);
+    TEST_FLOATING_EQUALITY(0.0, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
-    auto tHostVelocity = Kokkos::create_mirror(tVelSubView);
-    Kokkos::deep_copy(tHostVelocity, tVelSubView);
-    std::vector<double> tGoldVelocity = 
-        { 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 8.662285e-02, -4.020398e-03,
-          0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 1.099406e-01, 2.509727e-02,
-          -2.532188e-01, -3.125290e-02, -9.557318e-02, 2.094245e-02, 0.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -3.807676e-01, 1.177750e-01, 0.000000e+00, 0.000000e+00,
-          1.000000e+00, 0.000000e+00, 1.000000e+00, -4.856890e-01, 1.468180e-01, 5.108404e-02,
-          1.000000e+00, -2.508263e-01, 8.798423e-02, 7.705212e-02, -3.786300e-01, -8.369537e-02,
-          -3.872812e-01, -1.725049e-01, 8.478907e-02, -2.154752e-02, 1.000000e+00, -6.767520e-02,
-          3.886721e-02, -4.101624e-02, 1.000000e+00, -7.003546e-02, 1.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -4.480170e-01, -7.927017e-02, 0.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, 7.679686e-02, 3.779762e-02, -4.002098e-03, -8.364413e-03,
-          -6.939600e-02, -5.700533e-03, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
-          8.581847e-02, 1.703641e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
-    for(auto& tGoldVel : tGoldVelocity)
-    {
-        auto tDof = &tGoldVel - &tGoldVelocity[0];
-        TEST_FLOATING_EQUALITY(tGoldVel, tHostVelocity(tDof), tTol);
-    }
+    Plato::Scalar tMaxVel = 0;
+    Plato::blas1::max(tVelSubView, tMaxVel);
+    TEST_FLOATING_EQUALITY(1.0, tMaxVel, tTol);
+    Plato::Scalar tMinVel = 0;
+    Plato::blas1::min(tVelSubView, tMinVel);
+    TEST_FLOATING_EQUALITY(-0.633259, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 }
 
@@ -11961,26 +11890,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(426.298, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(5.34984, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-2.11287, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-424.281, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(4.90872, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(3.59025, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-3.43327, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-4.87989, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(11.8231, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(11.8214, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
 }
 
