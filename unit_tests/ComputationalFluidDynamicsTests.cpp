@@ -11303,7 +11303,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(0.163373, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(367.334, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
     TEST_FLOATING_EQUALITY(0.0, tMinPress, tTol);
@@ -11313,10 +11313,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(1.09563, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(1.0, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-0.0519869, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 }
 
