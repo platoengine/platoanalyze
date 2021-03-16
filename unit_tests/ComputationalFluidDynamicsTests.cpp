@@ -11940,8 +11940,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
 
     // test result
     auto tTol = 1e-4;
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
-    TEST_FLOATING_EQUALITY(5.3887059e2, tValue, tTol);
+    TEST_FLOATING_EQUALITY(4.21189, tValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitInfNorm)
@@ -11970,9 +11969,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitInfNorm)
     auto tValue = Plato::cbs::calculate_misfit_inf_norm<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
 
     // test result
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     auto tTol = 1e-4;
-    TEST_FLOATING_EQUALITY(500.0, tValue, tTol);
+    TEST_FLOATING_EQUALITY(3.2, tValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
@@ -12001,11 +11999,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
     auto tResidual = Plato::cbs::calculate_field_misfit<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
 
     // test results
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {500,175,85.185185185,50};
+    std::vector<Plato::Scalar> tGold = {0.5,1.4,2.3,3.2};
     for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostResidual(tNode), tTol); // @suppress("Invalid arguments")
@@ -12149,330 +12146,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSizes)
     //Plato::print(tElemCharSize, "element characteristic size");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePrescribed)
-{
-    // set xml file inputs
-    Teuchos::RCP<Teuchos::ParameterList> tInputs =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Characteristic Length' type='double' value='1.0'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Madeuptinum'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Thermal Conductivity'  type='double'  value='1'/>"
-            "        <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
-            "        <Parameter  name='Thermal Diffusivity Ratio'   type='double'  value='1.0'/>"
-            "      </ParameterList>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Energy Natural Boundary Conditions'>"
-            "    <ParameterList  name='Heat Flux'>"
-            "      <Parameter  name='Type'   type='string'  value='Uniform'/>"
-            "      <Parameter  name='Sides'  type='string'  value='x+'/>"
-            "      <Parameter  name='Value'  type='double'  value='-1.0'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
-
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::EnergyPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
-    tDomain.cellOrdinals("body");
-    tDomain.setMaterialName("Madeuptinum");
-    tDomain.setElementBlockName("block_1");
-    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
-    tSpatialModel.append(tDomain);
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
-    using ConfigT = EvaluationT::ConfigScalarType;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using ControlT = EvaluationT::ControlScalarType;
-    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
-        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
-    Plato::blas2::fill(1.0, tControl->mData);
-    tWorkSets.set("control", tControl);
-
-    using PrevTempT = EvaluationT::PreviousMassScalarType;
-    auto tPrevTemp = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevTempT> > >
-        ( Plato::ScalarMultiVectorT<PrevTempT>("previous pressure", tNumCells, PhysicsT::mNumEnergyDofsPerCell) );
-    auto tHostPrevTemp = Kokkos::create_mirror(tPrevTemp->mData);
-    tHostPrevTemp(0, 0) = 1; tHostPrevTemp(1, 0) = 4;
-    tHostPrevTemp(0, 1) = 2; tHostPrevTemp(1, 1) = 5;
-    tHostPrevTemp(0, 2) = 3; tHostPrevTemp(1, 2) = 6;
-    Kokkos::deep_copy(tPrevTemp->mData, tHostPrevTemp);
-    tWorkSets.set("previous temperature", tPrevTemp);
-
-    auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("time step", 1) );
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
-    tHostTimeStep(0) = 0.01;
-    Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
-    tWorkSets.set("critical time step", tTimeStep);
-
-    // evaluate temperature increment residual
-    Plato::DataMap tDataMap;
-    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumEnergyDofsPerCell);
-    Plato::Fluids::SIMP::TemperatureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
-    tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
-
-    // test values
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
-    auto tTol = 1e-4;
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.01,0.015}, {0.0,0.0,0.0}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumEnergyDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-        }
-    }
-    //Plato::print_array_2D(tResult, "results");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Brinkman_VelocityPredictorResidual_EvaluateBoundary)
-{
-    // set xml file inputs
-    Teuchos::RCP<Teuchos::ParameterList> tInputs =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
-            "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
-            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
-            "    <ParameterList  name='Traction Vector Boundary Condition'>"
-            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
-            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0}'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
-
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    auto tSpatialDomainName = std::string("my box");
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tSpatialDomainName);
-    auto tElementBlockName = std::string("body");
-    tDomain.cellOrdinals(tElementBlockName);
-    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
-    tSpatialModel.append(tDomain);
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
-    using ConfigT = EvaluationT::ConfigScalarType;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using ControlT = EvaluationT::ControlScalarType;
-    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
-        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
-    Plato::blas2::fill(1.0, tControl->mData);
-    tWorkSets.set("control", tControl);
-
-    using PrevVelT = EvaluationT::PreviousMomentumScalarType;
-    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
-        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 7;
-    tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 8;
-    tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 9;
-    tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 10;
-    tHostVelocity(0, 4) = 5; tHostVelocity(1, 4) = 11;
-    tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 12;
-    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
-    tWorkSets.set("previous velocity", tPrevVel);
-
-    using PrevPressT = EvaluationT::PreviousMassScalarType;
-    auto tPrevPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
-        ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
-    auto tHostPrevPress = Kokkos::create_mirror(tPrevPress->mData);
-    tHostPrevPress(0, 0) = 1; tHostPrevPress(1, 0) = 4;
-    tHostPrevPress(0, 1) = 2; tHostPrevPress(1, 1) = 5;
-    tHostPrevPress(0, 2) = 3; tHostPrevPress(1, 2) = 6;
-    Kokkos::deep_copy(tPrevPress->mData, tHostPrevPress);
-    tWorkSets.set("previous pressure", tPrevPress);
-
-    auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("time step", 1) );
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
-    tHostTimeStep(0) = 0.01;
-    Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
-    tWorkSets.set("critical time step", tTimeStep);
-
-    // evaluate pressure increment residual
-    Plato::DataMap tDataMap;
-    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::Brinkman::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
-    tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
-
-    // test values
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
-    auto tTol = 1e-4;
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.02,0.02,0.04,0.04,0.0,0.0}, {-0.08,-0.08,-0.1,-0.1,0.0,0.0}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-        }
-    }
-    //Plato::print_array_2D(tResult, "results");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Brinkman_VelocityPredictorResidual_EvaluatePrescribedBoundary)
-{
-    // set xml file inputs
-    Teuchos::RCP<Teuchos::ParameterList> tInputs =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
-            "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
-            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
-            "    <ParameterList  name='Traction Vector Boundary Condition'>"
-            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
-            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0}'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
-
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    auto tSpatialDomainName = std::string("my box");
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tSpatialDomainName);
-    auto tElementBlockName = std::string("body");
-    tDomain.cellOrdinals(tElementBlockName);
-    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
-    tSpatialModel.append(tDomain);
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
-    using ConfigT = EvaluationT::ConfigScalarType;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using ControlT = EvaluationT::ControlScalarType;
-    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
-        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
-    Plato::blas2::fill(1.0, tControl->mData);
-    tWorkSets.set("control", tControl);
-
-    using PrevVelT = EvaluationT::PreviousMomentumScalarType;
-    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
-        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 7;
-    tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 8;
-    tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 9;
-    tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 10;
-    tHostVelocity(0, 4) = 5; tHostVelocity(1, 4) = 11;
-    tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 12;
-    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
-    tWorkSets.set("previous velocity", tPrevVel);
-
-    using PrevPressT = EvaluationT::PreviousMassScalarType;
-    auto tPrevPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
-        ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
-    auto tHostPrevPress = Kokkos::create_mirror(tPrevPress->mData);
-    tHostPrevPress(0, 0) = 1; tHostPrevPress(1, 0) = 4;
-    tHostPrevPress(0, 1) = 2; tHostPrevPress(1, 1) = 5;
-    tHostPrevPress(0, 2) = 3; tHostPrevPress(1, 2) = 6;
-    Kokkos::deep_copy(tPrevPress->mData, tHostPrevPress);
-    tWorkSets.set("previous pressure", tPrevPress);
-
-    auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("time step", 1) );
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
-    tHostTimeStep(0) = 0.01;
-    Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
-    tWorkSets.set("critical time step", tTimeStep);
-
-    // evaluate pressure increment residual
-    Plato::DataMap tDataMap;
-    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::Brinkman::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
-    tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
-
-    // test values
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
-    auto tTol = 1e-4;
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.0,-0.02,0.01,-0.03,0.015}, {0.0,0.0,0.0,0.0,0.0,0.0}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-        }
-    }
-    //Plato::print_array_2D(tResult, "results");
-}
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBoundary)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
             "    <ParameterList  name='Zero Velocity X-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
@@ -12540,12 +12225,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.0,0.0},{0.0,0.15125,0.1815}};
+        {{0.0,0.0,0.0},{0.0,-217.0,-217.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -12641,12 +12325,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureResidual)
     tResidual.evaluate(tWorkSets, tResult);
 
     // test values
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{10.008225,5.0055,3.30055833333333},{2.4006,1.98625,1.832566666666667}};
+        {{4.5,1.66667,-6.16667},{-15.5,-1.66667,17.1667}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -12735,7 +12418,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDivergenceOperator)
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.5,-0.5,1.0},{1.5,0.5,-2.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.166667,-0.166667,0.333333},{0.5,0.166667,-0.666667}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -13128,7 +12811,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-2.48717,-2.77761,-1.4955,-1.66333,-2.4845,-2.77561,-0.9885,-1.11444};
+    std::vector<Plato::Scalar> tGold = {-2.43333,-2.77778,-1.48333,-1.65,-2.43333,-2.77778,-0.95,-1.1277};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
@@ -13268,11 +12951,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
             (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tForce, tResult);
     }, "unit test integrate_stabilizing_vector_force");
 
-    // TODO: FIX GOLD VALUES ONCE THINGS ARE WORKING
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.166666666666667,0.166666666666667,0.166666666666667,0.166666666666667,1.666666666666667,1.666666666666667},
-         {0.833333333333333,0.833333333333333,-0.166666666666667,-0.166666666666667,-2.666666666666667,-2.666666666666667}};
+        {{-0.5,-0.5,-0.5,-0.5,1.0,1.0}, {1.5,1.5,0.5,0.5,-2.0,-2.0}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGoldVector : tGold)
@@ -13373,7 +13054,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
     }, "unit test calculate_advected_momentum_forces");
 
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{26.0,30.0},{-74.0,-78.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{14.0,14.0},{-38.0,-38.0}};
     auto tHostInternalForces = Kokkos::create_mirror(tInternalForces);
     Kokkos::deep_copy(tHostInternalForces, tInternalForces);
     for(auto& tGoldVector : tGold)
@@ -13644,7 +13325,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
     std::vector<Plato::Scalar> tGold =
-        {-0.212591, -0.190382, -0.163095, -0.161822, -0.293077, -0.0450344, -0.269574, -0.0480922};
+        {-0.318111, -0.312444, -0.191667, -0.191667, -0.318111, -0.262444, -0.126444, -0.0707778};
     auto tTol = 1e-4;
     for(auto& tValue : tGold)
     {
@@ -13896,9 +13577,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDoma
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     Plato::blas1::fill(3.0, tCurTemp);
     tPrimal.vector("current temperature", tCurTemp);
-    Plato::ScalarVector tTimeSteps("critical time step", 1);
-    Plato::blas1::fill(4.0, tTimeSteps);
-    tPrimal.vector("critical time step", tTimeSteps);
 
     // call build_scalar_function_worksets
     Plato::WorkSets tWorkSets;
@@ -13951,13 +13629,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDoma
             TEST_FLOATING_EQUALITY(3.0, tHostCurTempWS(tCell, tDof), tTol);
         }
     }
-
-    // test time steps results
-    auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(tWorkSets.get("critical time step"));
-    TEST_EQUALITY(1, tTimeStepWS.extent(0));
-    auto tHostTimeStepWS = Kokkos::create_mirror(tTimeStepWS);
-    Kokkos::deep_copy(tHostTimeStepWS, tTimeStepWS);
-    TEST_FLOATING_EQUALITY(4.0, tHostTimeStepWS(0), tTol);
 
     // test controls results
     auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
@@ -14442,9 +14113,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     Plato::blas1::fill(3.0, tCurTemp);
     tPrimal.vector("current temperature", tCurTemp);
-    Plato::ScalarVector tTimeSteps("critical time step", 1);
-    Plato::blas1::fill(4.0, tTimeSteps);
-    tPrimal.vector("critical time step", tTimeSteps);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
@@ -14500,13 +14168,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
             TEST_FLOATING_EQUALITY(3.0, tHostCurTempWS(tCell, tDof), tTol);
         }
     }
-
-    // test time steps results
-    auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(tWorkSets.get("critical time step"));
-    TEST_EQUALITY(1u, tTimeStepWS.extent(0));
-    auto tHostTimeStepWS = Kokkos::create_mirror(tTimeStepWS);
-    Kokkos::deep_copy(tHostTimeStepWS, tTimeStepWS);
-    TEST_FLOATING_EQUALITY(4.0, tHostTimeStepWS(0), tTol);
 
     // test controls results
     auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
