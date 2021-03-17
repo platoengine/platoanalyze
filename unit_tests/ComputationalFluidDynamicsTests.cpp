@@ -8,10 +8,12 @@
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 #include <unordered_map>
 
+#include "Omega_h_vtk.hpp"
 #include <Omega_h_mark.hpp>
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_shape.hpp>
 #include <Omega_h_array_ops.hpp>
+#include <Omega_h_filesystem.hpp>
 
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
@@ -9631,7 +9633,7 @@ private:
     Plato::OrdinalType mMaxCorrectorIterations = 5; /*!< maximum number of corrector solver iterations */
     Plato::OrdinalType mMaxTemperatureIterations = 5; /*!< maximum number of temperature solver iterations */
     Plato::OrdinalType mNumForwardSolveTimeSteps = 0; /*!< number of time steps taken to reach steady state */
-    Plato::OrdinalType mMaxSteadyStateIterations = 2000; /*!< maximum number of steady state iterations */
+    Plato::OrdinalType mMaxSteadyStateIterations = 1000; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
@@ -10084,7 +10086,7 @@ private:
         {
             auto tConvergence = aInputs.sublist("Convergence");
             mSteadyStateTolerance = tConvergence.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
-            mMaxSteadyStateIterations = tConvergence.get<Plato::OrdinalType>("Maximum Iterations", 2000);
+            mMaxSteadyStateIterations = tConvergence.get<Plato::OrdinalType>("Maximum Iterations", 1000);
             mOutputFrequency = tConvergence.get<Plato::OrdinalType>("Output Frequency", mMaxSteadyStateIterations + 1);
         }
     }
@@ -10962,11 +10964,138 @@ private:
 }
 // namespace Hyperbolic
 
+inline std::vector<Omega_h::filesystem::path>
+read_pvtu_file_paths
+(const std::string & aPvdDir)
+{
+    std::vector<Omega_h::Real> tTimes;
+    std::vector<Omega_h::filesystem::path> tPvtuPaths;
+    auto const tPvdPath = Omega_h::vtk::get_pvd_path(aPvdDir);
+    Omega_h::vtk::read_pvd(tPvdPath, &tTimes, &tPvtuPaths);
+    return tPvtuPaths;
+}
+
 }
 //namespace Plato
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Outlet Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='10'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,10,10);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+
+    // read pvtu file paths
+    auto tPaths = Plato::read_pvtu_file_paths("solution_history");
+    TEST_EQUALITY(11u, tPaths.size());
+
+    // test paths
+    std::vector<std::string> tGold = 
+        {"solution_history/steps/step_0/pieces.pvtu", "solution_history/steps/step_1/pieces.pvtu", "solution_history/steps/step_2/pieces.pvtu",
+	 "solution_history/steps/step_3/pieces.pvtu", "solution_history/steps/step_4/pieces.pvtu", "solution_history/steps/step_5/pieces.pvtu",
+	 "solution_history/steps/step_6/pieces.pvtu", "solution_history/steps/step_7/pieces.pvtu", "solution_history/steps/step_8/pieces.pvtu",
+	 "solution_history/steps/step_9/pieces.pvtu", "solution_history/steps/step_10/pieces.pvtu"};
+    for(auto& tPath : tPaths)
+    {
+	auto tIndex = &tPath - &tPaths[0];
+	TEST_EQUALITY(tGold[tIndex], tPath.string());
+    }
+    std::system("rm -rf solution_history");
+    std::system("rm -f cfd_solver_diagnostics.txt");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionGradient)
 {
