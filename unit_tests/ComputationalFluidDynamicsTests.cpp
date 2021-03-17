@@ -1212,6 +1212,56 @@ private:
 typedef Variables Dual;   /*!< variant name used for the Variables structure to identify quantities associated with the dual problem in optimization */
 typedef Variables Primal; /*!< variant name used for the Variables structure to identify quantities associated with the primal problem in optimization */
 
+struct FieldTags
+{
+private:
+    std::unordered_map<std::string, std::string> mFields;
+
+public:
+    void set(const std::string& aTag, const std::string& aName)
+    {
+        mFields[aTag] = aName;
+    }
+
+    std::vector<std::string> tags() const
+    {
+        std::vector<std::string> tTags;
+        for(auto& tPair : mFields)
+        {
+            tTags.push_back(tPair.first);
+        }
+        return tTags;
+    }
+
+    std::string name(const std::string& aTag) const
+    {
+        auto tItr = mFields.find(aTag);
+        if(tItr == mFields.end())
+        {
+            THROWERR(std::string("Field with tag '") + aTag + "' is not defined.")
+        }
+        return tItr->second;
+    }
+};
+
+template<Omega_h::LO EntityDim>
+inline void
+read_fields
+(const Omega_h::Mesh& aMesh,
+ const Omega_h::filesystem::path& aPath,
+ const Plato::FieldTags& aFieldTags,
+       Plato::Variables& aVariables)
+{
+    Omega_h::Mesh tReadMesh(aMesh.library());
+    Omega_h::vtk::read_parallel(aPath, aMesh.library()->world(), &tReadMesh);
+    auto tTags = aFieldTags.tags();
+    for(auto& tTag : tTags)
+    {
+        auto tData = Plato::omega_h::read_metadata_from_mesh(tReadMesh, EntityDim, tTag);
+        auto tFieldName = aFieldTags.name(tTag);
+        aVariables.vector(tFieldName, tData);
+    }
+}
 
 namespace Fluids
 {
@@ -9838,7 +9888,7 @@ public:
             mNumForwardSolveTimeSteps = tIteration + 1;
             tPrimal.scalar("time step index", mNumForwardSolveTimeSteps);
 
-            this->setPrimalStates(tPrimal);
+            this->setPrimal(tPrimal);
             this->calculateCriticalTimeStep(tPrimal);
 
             this->printIteration(tPrimal);
@@ -9921,8 +9971,8 @@ public:
 
         Plato::Dual tDual;
         Plato::Primal tPrimal;
-        this->setDualVariables(tDual);
-        this->setPrimalStates(tPrimal);
+        this->setDual(tDual);
+        this->setPrimal(tPrimal);
         tDual.vector("critical time step", mCriticalTimeStep);
         tPrimal.vector("critical time step", mCriticalTimeStep);
 
@@ -9933,7 +9983,7 @@ public:
         this->updateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
         this->updatePressureAdjoint(aName, aControl, tPrimal, tDual);
         this->updatePredictorAdjoint(aControl, tPrimal, tDual);
-        auto tTotalDerivative = this->calculateGradientControl(aName, aControl, tPrimal, tDual);
+        auto tTotalDerivative = this->updateTotalDerivative(aName, aControl, tPrimal, tDual);
         return tTotalDerivative;
     }
     */
@@ -9949,8 +9999,8 @@ public:
         }
 
         Plato::Dual tDual;
-        Plato::Primal tCurrentPrimalState;
-        Plato::Primal tPreviousPrimalState;
+        Plato::Primal tCurrentState;
+        Plato::Primal tPreviousState;
         auto tPaths = Plato::omega_h::read_pvtu_file_paths("solution_history");
 	if(tPaths.size() != static_cast<size_t>(mNumForwardSolveTimeSteps))
 	{
@@ -9960,25 +10010,25 @@ public:
         Plato::ScalarVector tTotalDerivative("total derivative", mSpatialModel.Mesh.nverts());
         for(auto tTimeStepIndex = mNumForwardSolveTimeSteps; tTimeStepIndex >= static_cast<Plato::OrdinalType>(0); tTimeStepIndex--)
         {
-            tCurrentPrimalState.scalar("time step index", tTimeStepIndex);
-            tPreviousPrimalState.scalar("time step index", tTimeStepIndex + 1);
+            tCurrentState.scalar("time step index", tTimeStepIndex);
+            tPreviousState.scalar("time step index", tTimeStepIndex + 1);
 
             // todo: set critical time step
             auto tCurrentCriticalTimeStep = mCriticalTimeStepHistory[tTimeStepIndex];
 
-            this->setDualVariables(tDual);
-            this->setPrimalStates(tCurrentPrimalState);
-            this->setPrimalStates(tPreviousPrimalState);
+            this->setDual(tDual);
+            this->setPrimal(tCurrentState);
+            this->setPrimal(tPreviousState);
 
             if(mCalculateHeatTransfer)
             {
-                this->updateTemperatureAdjoint(aName, aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
+                this->updateTemperatureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
             }
-            this->updateCorrectorAdjoint(aName, aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
-            this->updatePressureAdjoint(aName, aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
-            this->updatePredictorAdjoint(aControl, tCurrentPrimalState, tPreviousPrimalState, tDual);
+            this->updateCorrectorAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
+            this->updatePressureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
+            this->updatePredictorAdjoint(aControl, tCurrentState, tPreviousState, tDual);
 
-            this->calculateGradientControl(aName, aControl, tCurrentPrimalState, tDual, tTotalDerivative);
+            this->updateTotalDerivative(aName, aControl, tCurrentState, tDual, tTotalDerivative);
         }
         return tTotalDerivative;
     }
@@ -9998,8 +10048,8 @@ public:
 
         Plato::Dual tDual;
         Plato::Primal tPrimal;
-        this->setDualVariables(tDual);
-        this->setPrimalStates(tPrimal);
+        this->setDual(tDual);
+        this->setPrimal(tPrimal);
         tDual.vector("critical time step", mCriticalTimeStep);
         tPrimal.vector("critical time step", mCriticalTimeStep);
 
@@ -10373,7 +10423,7 @@ private:
         }
     }
 
-    void setDualVariables(Plato::Dual & aVariables)
+    void setDual(Plato::Dual & aVariables)
     {
         if(aVariables.isVectorMapEmpty())
         {
@@ -10434,7 +10484,7 @@ private:
         }
     }
 
-    void setPrimalStates(Plato::Primal & aVariables)
+    void setPrimal(Plato::Primal & aVariables)
     {
         constexpr Plato::OrdinalType tCurrentState = 1;
         auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentState, Kokkos::ALL());
@@ -10966,7 +11016,7 @@ private:
         tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRightHandSide);
     }
 
-    void  calculateGradientControl
+    void  updateTotalDerivative
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aCurrentPrimalState,
@@ -11033,57 +11083,6 @@ private:
 
 }
 // namespace Hyperbolic
-
-struct FieldTags
-{
-private:
-    std::unordered_map<std::string, std::string> mFields;
-
-public:
-    void set(const std::string& aTag, const std::string& aName)
-    {
-        mFields[aTag] = aName;
-    }
-
-    std::vector<std::string> tags() const
-    {
-	std::vector<std::string> tTags;
-	for(auto& tPair : mFields)
-	{
-	    tTags.push_back(tPair.first);
-	}
-	return tTags;
-    }
-
-    std::string name(const std::string& aTag) const
-    {
-	auto tItr = mFields.find(aTag);
-	if(tItr == mFields.end())
-	{
-	    THROWERR(std::string("Field with tag '") + aTag + "' is not defined.")
-	}
-	return tItr->second;
-    }
-};
-
-template<Omega_h::LO EntityDim>
-inline void 
-read_fields
-(const Omega_h::Mesh& aMesh, 
- const Omega_h::filesystem::path& aPath,
- const Plato::FieldTags& aFieldTags,
-       Plato::Variables& aVariables)
-{
-    Omega_h::Mesh tReadMesh(aMesh.library());
-    Omega_h::vtk::read_parallel(aPath, aMesh.library()->world(), &tReadMesh);
-    auto tTags = aFieldTags.tags();
-    for(auto& tTag : tTags)
-    {
-        auto tData = Plato::omega_h::read_metadata_from_mesh(tReadMesh, EntityDim, tTag);
-	auto tFieldName = aFieldTags.name(tTag);
-        aVariables.vector(tFieldName, tData);
-    }
-}
 
 }
 //namespace Plato
