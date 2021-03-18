@@ -713,7 +713,7 @@ private:
         {
             Plato::OrdinalType tNumDofsPerNode = mPDE->numDofsPerNode();
             auto & tMyParams = aProblemParams.sublist("Multipoint Constraints", false);
-            mMPCs = std::make_shared<Plato::MultipointConstraints>(mSpatialModel.Mesh, mSpatialModel.MeshSets, tNumDofsPerNode, tMyParams);
+            mMPCs = std::make_shared<Plato::MultipointConstraints>(mSpatialModel, tNumDofsPerNode, tMyParams);
             mMPCs->setupTransform();
         }
     }

@@ -12,6 +12,7 @@
 #include "PlatoMathHelpers.hpp"
 #include "MultipointConstraintFactory.hpp"
 #include "MultipointConstraint.hpp"
+#include "SpatialModel.hpp"
 
 namespace Plato
 {
@@ -40,8 +41,7 @@ public :
      \brief Constructor that parses and creates a vector of MultipointConstraint objects
      based on the ParameterList.
      */
-    MultipointConstraints(Omega_h::Mesh & aMesh,
-                          const Omega_h::MeshSets & aMeshSets, 
+    MultipointConstraints(const Plato::SpatialModel & aSpatialModel,
                           const OrdinalType & aNumDofsPerNode, 
                           Teuchos::ParameterList & aParams);
 

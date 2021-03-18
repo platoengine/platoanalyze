@@ -17,6 +17,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_file.hpp>
 
+#include "SpatialModel.hpp"
 
 namespace Plato {
 namespace Geometry {
@@ -333,6 +334,160 @@ findParentElements(
         for(OrdinalT iVert=1; iVert<tNVertsPerElem; ++iVert)
         {
             OrdinalT tVertIndex = tCells2Nodes[iCellOrdinal*tNVertsPerElem + iVert];
+            for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
+            {
+                if( tMin(iDim, iCellOrdinal) > tCoords[tVertIndex*cSpaceDim+iDim] )
+                {
+                    tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+                }
+                else
+                if( tMax(iDim, iCellOrdinal) < tCoords[tVertIndex*cSpaceDim+iDim] )
+                {
+                    tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+                }
+            }
+        }
+        for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
+        {
+            ScalarT tLen = tMax(iDim, iCellOrdinal) - tMin(iDim, iCellOrdinal);
+            tMax(iDim, iCellOrdinal) += cRelativeTol * tLen;
+            tMin(iDim, iCellOrdinal) -= cRelativeTol * tLen;
+        }
+    }, "element bounding boxes");
+
+
+    auto d_x0 = Kokkos::subview(tMin, (size_t)Dim::X, Kokkos::ALL());
+    auto d_y0 = Kokkos::subview(tMin, (size_t)Dim::Y, Kokkos::ALL());
+    auto d_z0 = Kokkos::subview(tMin, (size_t)Dim::Z, Kokkos::ALL());
+    auto d_x1 = Kokkos::subview(tMax, (size_t)Dim::X, Kokkos::ALL());
+    auto d_y1 = Kokkos::subview(tMax, (size_t)Dim::Y, Kokkos::ALL());
+    auto d_z1 = Kokkos::subview(tMax, (size_t)Dim::Z, Kokkos::ALL());
+
+    // construct search tree
+    ArborX::BVH<DeviceType>
+      bvh{BoundingBoxes{d_x0.data(), d_y0.data(), d_z0.data(),
+                        d_x1.data(), d_y1.data(), d_z1.data(), tNElems}};
+
+    // conduct search for bounding box elements
+    auto d_x = Kokkos::subview(aMappedLocations, (size_t)Dim::X, Kokkos::ALL());
+    auto d_y = Kokkos::subview(aMappedLocations, (size_t)Dim::Y, Kokkos::ALL());
+    auto d_z = Kokkos::subview(aMappedLocations, (size_t)Dim::Z, Kokkos::ALL());
+
+    auto tNumLocations = aParentElements.size();
+    Kokkos::View<int*, DeviceType> tIndices("indices", 0), tOffset("offset", 0);
+    bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), static_cast<int>(tNumLocations)}, tIndices, tOffset);
+
+    // loop over indices and find containing element
+    GetBasis<ScalarT> tGetBasis(aMesh);
+    Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumLocations), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
+    {
+        ScalarT tBasis[cNVertsPerElem];
+        aParentElements(iNodeOrdinal) = -1;
+        if( aLocations(Dim::X, iNodeOrdinal) != aMappedLocations(Dim::X, iNodeOrdinal) ||
+            aLocations(Dim::Y, iNodeOrdinal) != aMappedLocations(Dim::Y, iNodeOrdinal) ||
+            aLocations(Dim::Z, iNodeOrdinal) != aMappedLocations(Dim::Z, iNodeOrdinal) )
+        {
+            aParentElements(iNodeOrdinal) = -2;
+            constexpr ScalarT cNotFound = -1e8; // big negative number ensures max min is found
+            constexpr ScalarT cEpsilon = -1e-8; // small negative number for checking if float greater than 0
+            ScalarT tMaxMin = cNotFound;
+            OrdinalT tRunningNegCount = 4;
+            typename Plato::ScalarVectorT<int>::value_type iParent = -2;
+            for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
+            {
+                auto tElem = tIndices(iElem);
+                tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
+                ScalarT tEleMin = tBasis[0];
+                OrdinalT tNegCount = 0;
+                for(OrdinalT iB=0; iB<cNVertsPerElem; iB++)
+                {
+                    if( tBasis[iB] < tEleMin ) tEleMin = tBasis[iB];
+                    if( tBasis[iB] < cEpsilon ) tNegCount += 1;
+                }
+                if( tNegCount < tRunningNegCount )
+                {
+                     tRunningNegCount = tNegCount;
+                     tMaxMin = tEleMin;
+                     iParent = tElem;
+                }
+                else if ( ( tNegCount == tRunningNegCount ) && ( tEleMin > tMaxMin ) )
+                {
+                     tMaxMin = tEleMin;
+                     iParent = tElem;
+                
+                }
+            }
+            if( tMaxMin >= cEpsilon )
+            {
+                aParentElements(iNodeOrdinal) = iParent;
+            }
+            else
+            {
+                OrdinalT tBoundCheck = 0;
+                for(OrdinalT iDim=0; iDim<cSpaceDim; iDim++)
+                {
+                    ScalarT tBoundTol = cRelativeTol * (tMax(iDim, iParent) - tMin(iDim, iParent))/(1 + 2 * cRelativeTol);
+                    if( tMaxMin < -tBoundTol ) tBoundCheck += 1;
+                }
+                if( tBoundCheck < 1 )
+                {
+                    aParentElements(iNodeOrdinal) = iParent;
+                }
+            }
+        }
+    }, "find parent element");
+}
+
+/***************************************************************************//**
+* @brief Find element that contains each mapped node
+ * @param [in]  aDomainCellMap map of local parent domain cell IDs to global cell IDs
+ * @param [in]  aLocations location of mesh nodes
+ * @param [in]  aMappedLocations mapped location of mesh nodes
+ * @param [out] aParentElements if node is mapped, index of parent element.
+
+   If a node is mapped (i.e., aLocations(*,node_id)!=aMappedLocations(*,node_id))
+   and the parent element is found, aParentElements(node_id) is set to the index
+   of the parent element.
+   If a node is mapped but the parent element isn't found, aParentElements(node_id)
+   is set to -2.
+   If a node is not mapped, aParentElements(node_id) is set to -1.
+*******************************************************************************/
+template <typename ScalarT>
+void
+findParentElements(
+  Omega_h::Mesh& aMesh,
+  const Omega_h::LOs & aDomainCellMap,
+  Plato::ScalarMultiVectorT<ScalarT> aLocations,
+  Plato::ScalarMultiVectorT<ScalarT> aMappedLocations,
+  Plato::ScalarVectorT<int> aParentElements)
+{
+    using OrdinalT      = typename Plato::ScalarVectorT<ScalarT>::size_type;
+
+    auto tNElems = aDomainCellMap.size();
+    Plato::ScalarMultiVectorT<ScalarT> tMin("min", cSpaceDim, tNElems);
+    Plato::ScalarMultiVectorT<ScalarT> tMax("max", cSpaceDim, tNElems);
+
+    constexpr ScalarT cRelativeTol = 1e-2;
+
+    // fill d_* data
+    auto tCoords = aMesh.coords();
+    Omega_h::LOs tCells2Nodes = aMesh.ask_elem_verts();
+    Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNElems), LAMBDA_EXPRESSION(OrdinalT iCellOrdinal)
+    {
+        OrdinalT tNVertsPerElem = cSpaceDim+1;
+        OrdinalT tCellOrdinal = aDomainCellMap[iCellOrdinal];
+
+        // set min and max of element bounding box to first node
+        for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
+        {
+            OrdinalT tVertIndex = tCells2Nodes[tCellOrdinal*tNVertsPerElem];
+            tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+            tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+        }
+        // loop on remaining nodes to find min
+        for(OrdinalT iVert=1; iVert<tNVertsPerElem; ++iVert)
+        {
+            OrdinalT tVertIndex = tCells2Nodes[tCellOrdinal*tNVertsPerElem + iVert];
             for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
             {
                 if( tMin(iDim, iCellOrdinal) > tCoords[tVertIndex*cSpaceDim+iDim] )

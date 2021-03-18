@@ -12,6 +12,8 @@
 #include "alg/PlatoSolverFactory.hpp"
 #include "MultipointConstraints.hpp"
 
+#include "SpatialModel.hpp"
+
 #ifdef HAVE_AMGX
 #include <alg/AmgXSparseLinearProblem.hpp>
 #endif
@@ -271,7 +273,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   
   // parse multipoint constraints
   //
-  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(*tMesh, tMeshSets, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
+  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(tSpatialModel, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
   tMPCs->setupTransform();
   
   // create solver
@@ -464,6 +466,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
     "    <ParameterList  name='PBC Constraint 1'>                            \n"
     "      <Parameter  name='Type'     type='string'    value='PBC'/>        \n"
     "      <Parameter  name='Child'    type='string'    value='MPC Child'/>  \n"
+    "      <Parameter  name='Parent'   type='string'    value='Design Volume'/>  \n"
     "      <Parameter  name='Vector'  type='Array(double)' value='{0, 1, 0}'/>  \n"
     "      <Parameter  name='Value'    type='double'    value='0.0'/>        \n"
     "    </ParameterList>                                                    \n"
@@ -513,7 +516,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
   
   // parse multipoint constraints
   //
-  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(*tMesh, tMeshSets, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
+  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(tSpatialModel, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
   tMPCs->setupTransform();
   
   // create solver

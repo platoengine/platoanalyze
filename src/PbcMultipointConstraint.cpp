@@ -11,16 +11,15 @@ namespace Plato
 
 /****************************************************************************/
 Plato::PbcMultipointConstraint::
-PbcMultipointConstraint(Omega_h::Mesh & aMesh,
-                        const Omega_h::MeshSets & aMeshSets,
+PbcMultipointConstraint(const Plato::SpatialModel & aSpatialModel,
                         const std::string & aName, 
                         Teuchos::ParameterList & aParam) :
                         Plato::MultipointConstraint(aName)
 /****************************************************************************/
 {
     // Ensure mesh is 3D
-    auto tSpaceDim = aMesh.dim();
-    if (tSpaceDim != Plato::Geometry::cSpaceDim)
+    auto tSpaceDim = aSpatialModel.Mesh.dim();
+    if ( tSpaceDim != Plato::Geometry::cSpaceDim )
     {
         std::ostringstream tMsg;
         tMsg << "INVALID MESH DIMENSION: PBC MULTIPOINT CONSTRAINTS ONLY IMPLEMENTED FOR 3D MESHES.";
@@ -33,7 +32,7 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     Plato::Scalar tTranslationX;
     Plato::Scalar tTranslationY;
     Plato::Scalar tTranslationZ;
-    if (tIsVector)
+    if ( tIsVector )
     {
         auto tVector = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
         tTranslationX = tVector[0];
@@ -62,10 +61,10 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     mValue = aParam.get<Plato::Scalar>("Value");
 
     // parse child node set
-    auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
+    auto& tNodeSets = aSpatialModel.MeshSets[Omega_h::NODE_SET];
     std::string tChildNodeSet = aParam.get<std::string>("Child");
     auto tChildNodeSetsIter = tNodeSets.find(tChildNodeSet);
-    if(tChildNodeSetsIter == tNodeSets.end())
+    if( tChildNodeSetsIter == tNodeSets.end() )
     {
         std::ostringstream tMsg;
         tMsg << "Could not find Node Set with name = '" << tChildNodeSet.c_str()
@@ -84,18 +83,36 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     Plato::ScalarMultiVector tChildNodeLocations       ("child node locations",        Plato::Geometry::cSpaceDim, tNumberChildNodes);
     Plato::ScalarMultiVector tMappedChildNodeLocations ("mapped child node locations", Plato::Geometry::cSpaceDim, tNumberChildNodes);
 
-    this->mapChildVertexLocations(aMesh, tTranslationX, tTranslationY, tTranslationZ, tChildNodeLocations, tMappedChildNodeLocations);
+    this->mapChildVertexLocations(aSpatialModel.Mesh, tTranslationX, tTranslationY, tTranslationZ, tChildNodeLocations, tMappedChildNodeLocations);
+
+    // get parent domain element data
+    std::string tParentDomainName = aParam.get<std::string>("Parent");
+    Omega_h::LOs tDomainCellMap;
+    bool tFindName = 0;
+    for(auto& tDomain : aSpatialModel.Domains)
+    {
+        auto tName = tDomain.getDomainName();
+        if( tName == tParentDomainName )
+            tDomainCellMap = tDomain.cellOrdinals();
+            tFindName = 1;
+    }
+    if( tFindName == 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "PARENT DOMAIN FOR PBC MULTIPOINT CONSTRAINT NOT FOUND.";
+        THROWERR(tMsg.str())
+    }
     
-    // find elements that contain mapped child node locations
+    // find elements that contain mapped child node locations (in specified domain)
     Plato::LocalOrdinalVector tParentElements("mapped elements", tNumberChildNodes);
-    Plato::Geometry::findParentElements<Plato::Scalar>(aMesh, tChildNodeLocations, tMappedChildNodeLocations, tParentElements);
+    Plato::Geometry::findParentElements<Plato::Scalar>(aSpatialModel.Mesh, tDomainCellMap, tChildNodeLocations, tMappedChildNodeLocations, tParentElements);
 
     // get global IDs of unique parent nodes
     Plato::LocalOrdinalVector tParentGlobalLocalMap;
-    this->getUniqueParentNodes(aMesh, tParentElements, tParentGlobalLocalMap);
+    this->getUniqueParentNodes(aSpatialModel.Mesh, tParentElements, tParentGlobalLocalMap);
     
     // fill in mpc matrix values
-    this->setMatrixValues(aMesh, tParentElements, tMappedChildNodeLocations, tParentGlobalLocalMap);
+    this->setMatrixValues(aSpatialModel.Mesh, tParentElements, tMappedChildNodeLocations, tParentGlobalLocalMap);
 }
 
 /****************************************************************************/
@@ -236,7 +253,7 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
     Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tNumberParentElements),
     LAMBDA_EXPRESSION(const Plato::OrdinalType& aElemOrdinal, Plato::OrdinalType & aUpdate)
     {
-        if (aParentElements(aElemOrdinal) == -2) 
+        if ( aParentElements(aElemOrdinal) == -2 ) 
         {  
             aUpdate++;
         }
@@ -252,7 +269,7 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
     Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tNumberParentElements),
     LAMBDA_EXPRESSION(const Plato::OrdinalType& aElemOrdinal, Plato::OrdinalType & aUpdate)
     {
-        if (aParentElements(aElemOrdinal) == -1) 
+        if ( aParentElements(aElemOrdinal) == -1 ) 
         {  
             aUpdate++;
         }

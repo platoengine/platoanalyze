@@ -4,12 +4,11 @@ namespace Plato
 {
 
 /****************************************************************************/
-MultipointConstraints::MultipointConstraints(Omega_h::Mesh & aMesh,
-                                             const Omega_h::MeshSets & aMeshSets, 
+MultipointConstraints::MultipointConstraints(const Plato::SpatialModel & aSpatialModel,
                                              const OrdinalType & aNumDofsPerNode, 
                                              Teuchos::ParameterList & aParams) :
                                              MPCs(),
-                                             mNumNodes(aMesh.nverts()),
+                                             mNumNodes(aSpatialModel.Mesh.nverts()),
                                              mNumDofsPerNode(aNumDofsPerNode),
                                              mTransformMatrix(Teuchos::null),
                                              mTransformMatrixTranspose(Teuchos::null)
@@ -25,7 +24,7 @@ MultipointConstraints::MultipointConstraints(Omega_h::Mesh & aMesh,
         Teuchos::ParameterList& tSublist = aParams.sublist(tMyName);
         Plato::MultipointConstraintFactory tMultipointConstraintFactory(tSublist);
 
-        std::shared_ptr<MultipointConstraint> tMyMPC = tMultipointConstraintFactory.create(aMesh, aMeshSets, tMyName);
+        std::shared_ptr<MultipointConstraint> tMyMPC = tMultipointConstraintFactory.create(aSpatialModel, tMyName);
         MPCs.push_back(tMyMPC);
     }
 }

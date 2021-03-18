@@ -17,6 +17,7 @@
 #include "PlatoStaticsTypes.hpp"
 #include "BLAS1.hpp"
 #include "Plato_MeshMapUtils.hpp"
+#include "SpatialModel.hpp"
 
 namespace Plato
 {
@@ -29,8 +30,7 @@ class PbcMultipointConstraint : public Plato::MultipointConstraint
 {
 
 public:
-    PbcMultipointConstraint(Omega_h::Mesh & aMesh,
-                            const Omega_h::MeshSets & aMeshSets,
+    PbcMultipointConstraint(const Plato::SpatialModel & aSpatialModel,
                             const std::string & aName, 
                             Teuchos::ParameterList & aParam);
 
