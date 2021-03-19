@@ -450,7 +450,6 @@ findParentElements(
    of the parent element.
    If a node is mapped but the parent element isn't found, aParentElements(node_id)
    is set to -2.
-   If a node is not mapped, aParentElements(node_id) is set to -1.
 *******************************************************************************/
 template <typename ScalarT>
 void
@@ -536,57 +535,51 @@ findParentElements(
     Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumLocations), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
     {
         ScalarT tBasis[cNVertsPerElem];
-        aParentElements(iNodeOrdinal) = -1;
-        if( aLocations(Dim::X, iNodeOrdinal) != aMappedLocations(Dim::X, iNodeOrdinal) ||
-            aLocations(Dim::Y, iNodeOrdinal) != aMappedLocations(Dim::Y, iNodeOrdinal) ||
-            aLocations(Dim::Z, iNodeOrdinal) != aMappedLocations(Dim::Z, iNodeOrdinal) )
+        aParentElements(iNodeOrdinal) = -2;
+        constexpr ScalarT cNotFound = -1e8; // big negative number ensures max min is found
+        constexpr ScalarT cEpsilon = -1e-8; // small negative number for checking if float greater than 0
+        ScalarT tMaxMin = cNotFound;
+        OrdinalT tRunningNegCount = 4;
+        typename Plato::ScalarVectorT<int>::value_type iParent = -2;
+        for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
         {
-            aParentElements(iNodeOrdinal) = -2;
-            constexpr ScalarT cNotFound = -1e8; // big negative number ensures max min is found
-            constexpr ScalarT cEpsilon = -1e-8; // small negative number for checking if float greater than 0
-            ScalarT tMaxMin = cNotFound;
-            OrdinalT tRunningNegCount = 4;
-            typename Plato::ScalarVectorT<int>::value_type iParent = -2;
-            for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
+            auto tElem = tIndices(iElem);
+            tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
+            ScalarT tEleMin = tBasis[0];
+            OrdinalT tNegCount = 0;
+            for(OrdinalT iB=0; iB<cNVertsPerElem; iB++)
             {
-                auto tElem = tIndices(iElem);
-                tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
-                ScalarT tEleMin = tBasis[0];
-                OrdinalT tNegCount = 0;
-                for(OrdinalT iB=0; iB<cNVertsPerElem; iB++)
-                {
-                    if( tBasis[iB] < tEleMin ) tEleMin = tBasis[iB];
-                    if( tBasis[iB] < cEpsilon ) tNegCount += 1;
-                }
-                if( tNegCount < tRunningNegCount )
-                {
-                     tRunningNegCount = tNegCount;
-                     tMaxMin = tEleMin;
-                     iParent = tElem;
-                }
-                else if ( ( tNegCount == tRunningNegCount ) && ( tEleMin > tMaxMin ) )
-                {
-                     tMaxMin = tEleMin;
-                     iParent = tElem;
-                
-                }
+                if( tBasis[iB] < tEleMin ) tEleMin = tBasis[iB];
+                if( tBasis[iB] < cEpsilon ) tNegCount += 1;
             }
-            if( tMaxMin >= cEpsilon )
+            if( tNegCount < tRunningNegCount )
+            {
+                 tRunningNegCount = tNegCount;
+                 tMaxMin = tEleMin;
+                 iParent = tElem;
+            }
+            else if ( ( tNegCount == tRunningNegCount ) && ( tEleMin > tMaxMin ) )
+            {
+                 tMaxMin = tEleMin;
+                 iParent = tElem;
+            
+            }
+        }
+        if( tMaxMin >= cEpsilon )
+        {
+            aParentElements(iNodeOrdinal) = iParent;
+        }
+        else
+        {
+            OrdinalT tBoundCheck = 0;
+            for(OrdinalT iDim=0; iDim<cSpaceDim; iDim++)
+            {
+                ScalarT tBoundTol = cRelativeTol * (tMax(iDim, iParent) - tMin(iDim, iParent))/(1 + 2 * cRelativeTol);
+                if( tMaxMin < -tBoundTol ) tBoundCheck += 1;
+            }
+            if( tBoundCheck < 1 )
             {
                 aParentElements(iNodeOrdinal) = iParent;
-            }
-            else
-            {
-                OrdinalT tBoundCheck = 0;
-                for(OrdinalT iDim=0; iDim<cSpaceDim; iDim++)
-                {
-                    ScalarT tBoundTol = cRelativeTol * (tMax(iDim, iParent) - tMin(iDim, iParent))/(1 + 2 * cRelativeTol);
-                    if( tMaxMin < -tBoundTol ) tBoundCheck += 1;
-                }
-                if( tBoundCheck < 1 )
-                {
-                    aParentElements(iNodeOrdinal) = iParent;
-                }
             }
         }
     }, "find parent element");

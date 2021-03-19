@@ -254,22 +254,6 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
         THROWERR(tMsg.str())
     }
 
-    Plato::OrdinalType tNumMissingMap(0);
-    Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tNumberParentElements),
-    LAMBDA_EXPRESSION(const Plato::OrdinalType& aElemOrdinal, Plato::OrdinalType & aUpdate)
-    {
-        if ( aParentElements(aElemOrdinal) == -1 ) 
-        {  
-            aUpdate++;
-        }
-    }, tNumMissingMap);
-    if ( tNumMissingMap > 0 )
-    {
-        std::ostringstream tMsg;
-        tMsg << "AT LEAST ONE CHILD NODE COULD NOT BE MAPPED IN PBC MULTIPOINT CONSTRAINT. \n";
-        THROWERR(tMsg.str())
-    }
-
     // fill in parent element vertex ordinals
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberParentElements), LAMBDA_EXPRESSION(Plato::OrdinalType iElemOrdinal)
     {
