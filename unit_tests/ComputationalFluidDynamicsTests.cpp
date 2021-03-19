@@ -11181,11 +11181,18 @@ private:
         }
         Plato::blas1::scale(-1.0, tRightHandSide);
 
+        // prepare constraints dofs
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+        Plato::blas1::fill(0.0, tBcValues);
+
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         auto tJacCorrectorResWrtCurVel = mCorrectorResidual.gradientCurrentVel(aControl, aCurrentPrimalState);
+        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacCorrectorResWrtCurVel, tRightHandSide);
         tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRightHandSide);
     }
 
