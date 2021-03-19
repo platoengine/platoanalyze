@@ -9797,13 +9797,22 @@ private:
     Plato::OrdinalType mNumForwardSolveTimeSteps = 0; /*!< number of time steps taken to reach steady state */
     Plato::OrdinalType mMaxSteadyStateIterations = 1000; /*!< maximum number of steady state iterations */
 
+    // primal state containers 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
     Plato::ScalarMultiVector mPredictor;
     Plato::ScalarMultiVector mTemperature;
 
+    // adjoint state containers
+    Plato::ScalarMultiVector mAdjointPressure;
+    Plato::ScalarMultiVector mAdjointVelocity;
+    Plato::ScalarMultiVector mAdjointPredictor;
+    Plato::ScalarMultiVector mAdjointTemperature;
+
+    // critical time step container
     std::vector<Plato::Scalar> mCriticalTimeStepHistory;
 
+    // vector functions
     Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
@@ -9811,13 +9820,17 @@ private:
     // Temperature VectorFunction allocation is optional since heat transfer calculations are optional
     std::shared_ptr<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>> mTemperatureResidual;
 
+    // optimization problem criteria
     using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>;
     using Criteria  = std::unordered_map<std::string, Criterion>;
     Criteria mCriteria;
 
+    // local conservation equation, i.e. physics, types
     using MassConservationT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
     using EnergyConservationT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
     using MomentumConservationT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
+
+    // essential boundary conditions accessors
     Plato::EssentialBCs<MassConservationT>     mPressureEssentialBCs;
     Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
     Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
@@ -9964,7 +9977,7 @@ public:
             {
                 break;
             }
-            this->updatePreviousStates(tPrimal);
+            this->savePrimal(tPrimal);
         }
 
         auto tSolution = this->setOutputSolution();
@@ -10096,6 +10109,8 @@ public:
 
 	    // update total derivative with respect to control variables 
             this->updateTotalDerivativeWrtControl(aName, aControl, tCurrentState, tDual, tTotalDerivative);
+
+	    this->saveDual(tDual);
         }
         return tTotalDerivative;
     }
@@ -10270,13 +10285,13 @@ private:
     void initialize
     (Teuchos::ParameterList & aInputs)
     {
-        this->allocateCriteriaList(aInputs);
-        this->allocateMemberStates(aInputs);
+        this->allocatePrimalStates();
         this->areDianosticsEnabled(aInputs);
         this->parseNewtonSolverInputs(aInputs);
         this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
+        this->allocateOptimizationMetadata(aInputs);
     }
 
     void parseHeatTransferEquation
@@ -10367,37 +10382,57 @@ private:
         }
     }
 
-    void allocateMemberStates(Teuchos::ParameterList & aInputs)
+    void allocateDualStates()
+    {
+        constexpr auto tTimeSnapshotsStored = 2;
+        auto tNumNodes = mSpatialModel.Mesh.nverts();
+        mAdjointPressure    = Plato::ScalarMultiVector("Adjoint Pressure Snapshots", tTimeSnapshotsStored, tNumNodes);
+        mAdjointVelocity    = Plato::ScalarMultiVector("Adjoint Velocity Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+        mAdjointPredictor   = Plato::ScalarMultiVector("Adjoint Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+
+	if(mCalculateHeatTransfer)
+	{
+            mAdjointTemperature = Plato::ScalarMultiVector("Adjoint Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
+	}
+    }
+
+    void allocatePrimalStates()
     {
         constexpr auto tTimeSnapshotsStored = 2;
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         mPressure    = Plato::ScalarMultiVector("Pressure Snapshots", tTimeSnapshotsStored, tNumNodes);
-        mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
         mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
         mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+        mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
     }
 
     void allocateCriteriaList(Teuchos::ParameterList &aInputs)
     {
+        Plato::Fluids::CriterionFactory<PhysicsT> tScalarFuncFactory;
+
+        auto tCriteriaParams = aInputs.sublist("Criteria");
+        for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
+        {
+            const Teuchos::ParameterEntry& tEntry = tCriteriaParams.entry(tIndex);
+            if(tEntry.isList() == false)
+            {
+                THROWERR("Parameter in Criteria block is not supported. Expect lists only.")
+            }
+            auto tName = tCriteriaParams.name(tIndex);
+            auto tCriterion = tScalarFuncFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
+            if( tCriterion != nullptr )
+            {
+                mCriteria[tName] = tCriterion;
+            }
+        }
+    }
+
+    void allocateOptimizationMetadata(Teuchos::ParameterList &aInputs)
+    {
         if(aInputs.isSublist("Criteria"))
         {
-            Plato::Fluids::CriterionFactory<PhysicsT> tScalarFuncFactory;
-
-            auto tCriteriaParams = aInputs.sublist("Criteria");
-            for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
-            {
-                const Teuchos::ParameterEntry& tEntry = tCriteriaParams.entry(tIndex);
-                if(tEntry.isList() == false)
-                {
-                    THROWERR("Parameter in Criteria block is not supported. Expect lists only.")
-                }
-                auto tName = tCriteriaParams.name(tIndex);
-                auto tCriterion = tScalarFuncFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
-                if( tCriterion != nullptr )
-                {
-                    mCriteria[tName] = tCriterion;
-                }
-            }
+	    this->allocateDualStates();
+	    this->allocateCriteriaList(aInputs);
         }
     }
 
@@ -10546,8 +10581,33 @@ private:
         }
     }
 
-    void setDual(Plato::Dual & aVariables)
+    void setDual(Plato::Dual& aDual)
     {
+        constexpr auto tCurrentSnapshot = 1u;
+        auto tCurrentAdjointVel = Kokkos::subview(mAdjointVelocity, tCurrentSnapshot, Kokkos::ALL());
+        auto tCurrentAdjointPred = Kokkos::subview(mAdjointPredictor, tCurrentSnapshot, Kokkos::ALL());
+        auto tCurrentAdjointPress = Kokkos::subview(mAdjointPressure, tCurrentSnapshot, Kokkos::ALL());
+        aDual.vector("current velocity adjoint", tCurrentAdjointVel);
+        aDual.vector("current pressure adjoint", tCurrentAdjointPress);
+        aDual.vector("current predictor adjoint", tCurrentAdjointPred);
+
+        constexpr auto tPreviousSnapshot = tCurrentSnapshot - 1u;
+        auto tPreviouAdjointVel = Kokkos::subview(mAdjointVelocity, tPreviousSnapshot, Kokkos::ALL());
+        auto tPreviousAdjointPred = Kokkos::subview(mAdjointPredictor, tPreviousSnapshot, Kokkos::ALL());
+        auto tPreviousAdjointPress = Kokkos::subview(mAdjointPressure, tPreviousSnapshot, Kokkos::ALL());
+        aDual.vector("previous velocity adjoint", tPreviouAdjointVel);
+        aDual.vector("previous predictor adjoint", tPreviousAdjointPred);
+        aDual.vector("previous pressure adjoint", tPreviousAdjointPress);
+
+	if(mCalculateHeatTransfer)
+	{
+            auto tCurrentAdjointTemp = Kokkos::subview(mAdjointTemperature, tCurrentSnapshot, Kokkos::ALL());
+            auto tPreviousAdjointTemp = Kokkos::subview(mAdjointTemperature, tPreviousSnapshot, Kokkos::ALL());
+            aDual.vector("current temperature adjoint", tCurrentAdjointTemp);
+            aDual.vector("previous temperature adjoint", tPreviousAdjointTemp);
+	}
+
+	/*
         if(aVariables.isVectorMapEmpty())
         {
             // FIRST BACKWARD TIME INTEGRATION STEP
@@ -10581,28 +10641,53 @@ private:
                 aVariables.vector(std::string("previous ") + tName, tVector);
             }
         }
+	*/
     }
 
-    void updatePreviousStates(Plato::Primal & aVariables)
+    void saveDual(Plato::Dual & aDual)
     {
-        constexpr Plato::OrdinalType tPrevState = 0;
+        constexpr auto tPreviousSnapshot = 0u;
 
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tPreviousVelocity = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
+        auto tCurrentAdjointVelocity = aDual.vector("current velocity adjoint");
+        auto tPreviousAdjointVelocity = Kokkos::subview(mAdjointVelocity, tPreviousSnapshot, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentAdjointVelocity, tPreviousAdjointVelocity);
+
+        auto tCurrentAdjointPressure = aDual.vector("current pressure adjoint");
+        auto tPreviousAdjointPressure = Kokkos::subview(mAdjointPressure, tPreviousSnapshot, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentAdjointPressure, tPreviousAdjointPressure);
+
+        auto tCurrentAdjointPredictor = aDual.vector("current predictor adjoint");
+        auto tPreviousAdjointPredictor = Kokkos::subview(mAdjointPredictor, tPreviousSnapshot, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentAdjointPredictor, tPreviousAdjointPredictor);
+
+        if(mCalculateHeatTransfer)
+        {
+            auto tCurrentAdjointTemperature = aDual.vector("current temperature adjoint");
+            auto tPreviousAdjointTemperature = Kokkos::subview(mAdjointTemperature, tPreviousSnapshot, Kokkos::ALL());
+            Plato::blas1::copy(tCurrentAdjointTemperature, tPreviousAdjointTemperature);
+        }
+    }
+
+    void savePrimal(Plato::Primal & aPrimal)
+    {
+        constexpr auto tPreviousSnapshot = 0u;
+
+        auto tCurrentVelocity = aPrimal.vector("current velocity");
+        auto tPreviousVelocity = Kokkos::subview(mVelocity, tPreviousSnapshot, Kokkos::ALL());
         Plato::blas1::copy(tCurrentVelocity, tPreviousVelocity);
 
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        auto tPreviousPressure = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
+        auto tCurrentPressure = aPrimal.vector("current pressure");
+        auto tPreviousPressure = Kokkos::subview(mPressure, tPreviousSnapshot, Kokkos::ALL());
         Plato::blas1::copy(tCurrentPressure, tPreviousPressure);
 
-        auto tCurrentPredictor = aVariables.vector("current predictor");
-        auto tPreviousPredictor = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
+        auto tCurrentPredictor = aPrimal.vector("current predictor");
+        auto tPreviousPredictor = Kokkos::subview(mPredictor, tPreviousSnapshot, Kokkos::ALL());
         Plato::blas1::copy(tCurrentPredictor, tPreviousPredictor);
 
         if(mCalculateHeatTransfer)
         {
-            auto tCurrentTemperature = aVariables.vector("current temperature");
-            auto tPreviousTemperature = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
+            auto tCurrentTemperature = aPrimal.vector("current temperature");
+            auto tPreviousTemperature = Kokkos::subview(mTemperature, tPreviousSnapshot, Kokkos::ALL());
             Plato::blas1::copy(tCurrentTemperature, tPreviousTemperature);
         }
     }
@@ -11857,7 +11942,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
-            "    <Parameter name='Maximum Iterations' type='int' value='1'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='2'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
             "  </ParameterList>"
             "</ParameterList>"
