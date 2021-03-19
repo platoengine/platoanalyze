@@ -10606,42 +10606,6 @@ private:
             aDual.vector("current temperature adjoint", tCurrentAdjointTemp);
             aDual.vector("previous temperature adjoint", tPreviousAdjointTemp);
 	}
-
-	/*
-        if(aVariables.isVectorMapEmpty())
-        {
-            // FIRST BACKWARD TIME INTEGRATION STEP
-            auto tTotalNumNodes = mSpatialModel.Mesh.nverts();
-            std::vector<std::string> tNames =
-                {"current pressure adjoint" , "current temperature adjoint",
-                "previous pressure adjoint", "previous temperature adjoint"};
-            for(auto& tName : tNames)
-            {
-                Plato::ScalarVector tView(tName, tTotalNumNodes);
-                aVariables.vector(tName, tView);
-            }
-
-            auto tTotalNumDofs = mNumVelDofsPerNode * tTotalNumNodes;
-            tNames = {"current velocity adjoint" , "current predictor adjoint" ,
-                      "previous velocity adjoint", "previous predictor adjoint"};
-            for(auto& tName : tNames)
-            {
-                Plato::ScalarVector tView(tName, tTotalNumDofs);
-                aVariables.vector(tName, tView);
-            }
-        }
-        else
-        {
-            // N-TH BACKWARD TIME INTEGRATION STEP
-            std::vector<std::string> tNames =
-                {"pressure adjoint", "temperature adjoint", "velocity adjoint", "predictor adjoint" };
-            for(auto& tName : tNames)
-            {
-                auto tVector = aVariables.vector(std::string("current ") + tName);
-                aVariables.vector(std::string("previous ") + tName, tVector);
-            }
-        }
-	*/
     }
 
     void saveDual(Plato::Dual & aDual)
