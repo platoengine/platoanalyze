@@ -6,6 +6,7 @@
 
 #include <Teuchos_UnitTestHarness.hpp>
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
+
 #include <unordered_map>
 
 #include "Omega_h_vtk.hpp"
@@ -43,6 +44,29 @@
 
 namespace Plato
 {
+
+namespace filesystem
+{
+
+bool exist
+(const std::string& aPath)
+{
+    struct stat tBuf;
+    int tReturn = stat(aPath.c_str(), &tBuf);
+    return (tReturn == 0 ? true : false);
+}
+
+void remove
+(const std::string& aPath)
+{
+    if(Plato::filesystem::exist(aPath))
+    {
+	auto tCommand = std::string("rm -rf ") + aPath;
+        std::system(tCommand.c_str());
+    }
+}
+
+}
 
 template<Plato::OrdinalType SpaceDims,
          Plato::OrdinalType NumNodes,
@@ -531,6 +555,10 @@ read_pvtu_file_paths
     std::vector<Omega_h::filesystem::path> tPvtuPaths;
     auto const tPvdPath = Omega_h::vtk::get_pvd_path(aPvdDir);
     Omega_h::vtk::read_pvd(tPvdPath, &tTimes, &tPvtuPaths);
+    if(tPvtuPaths.empty())
+    {
+	THROWERR("Array with .pvtu file paths is empty.")
+    }
     return tPvtuPaths;
 }
 // function read_pvtu_file_paths
@@ -2198,12 +2226,6 @@ build_scalar_function_worksets
     tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
-    using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
-    auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
-        ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
-    aWorkSets.set("current temperature", tCurTempWS);
-
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
@@ -2215,6 +2237,15 @@ build_scalar_function_worksets
         ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
     tWorkSetBuilder.buildConfigWorkSet(aDomain, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
+
+    if(aVariables.defined("current temperature"))
+    {
+        using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
+        auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
+            ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+        tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+        aWorkSets.set("current temperature", tCurTempWS);
+    }
 }
 // function build_scalar_function_worksets
 
@@ -2259,12 +2290,6 @@ build_scalar_function_worksets
     tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
-    using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
-    auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
-        ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
-    aWorkSets.set("current temperature", tCurTempWS);
-
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
@@ -2276,6 +2301,15 @@ build_scalar_function_worksets
         ( Plato::ScalarArray3DT<ConfigT>("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
     tWorkSetBuilder.buildConfigWorkSet(aNumCells, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
+
+    if(aVariables.defined("current temperature"))
+    {
+        using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
+        auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
+            ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+        tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+        aWorkSets.set("current temperature", tCurTempWS);
+    }
 }
 // function build_scalar_function_worksets
 
@@ -2328,11 +2362,14 @@ build_vector_function_worksets
     tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
-    using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
-    auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
-        ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
-    aWorkSets.set("current temperature", tCurTempWS);
+    if(aVariables.defined("current temperature"))
+    {
+        using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
+        auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
+            ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+        tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+        aWorkSets.set("current temperature", tCurTempWS);
+    }
 
     using PreviousVelocityT = typename EvaluationT::PreviousMomentumScalarType;
     auto tPrevVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousVelocityT> > >
@@ -2346,11 +2383,14 @@ build_vector_function_worksets
     tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous pressure"), tPrevPressWS->mData);
     aWorkSets.set("previous pressure", tPrevPressWS);
 
-    using PreviousTemperatureT = typename EvaluationT::PreviousEnergyScalarType;
-    auto tPrevTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousTemperatureT> > >
-        ( Plato::ScalarMultiVectorT<PreviousTemperatureT>("previous temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
-    aWorkSets.set("previous temperature", tPrevTempWS);
+    if(aVariables.defined("previous temperature"))
+    {
+        using PreviousTemperatureT = typename EvaluationT::PreviousEnergyScalarType;
+        auto tPrevTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousTemperatureT> > >
+            ( Plato::ScalarMultiVectorT<PreviousTemperatureT>("previous temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+        tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
+        aWorkSets.set("previous temperature", tPrevTempWS);
+    }
 
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
@@ -2417,11 +2457,14 @@ build_vector_function_worksets
     tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
-    using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
-    auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
-        ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
-    aWorkSets.set("current temperature", tCurTempWS);
+    if(aVariables.defined("current temperature"))
+    {
+        using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
+        auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
+            ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+        tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+        aWorkSets.set("current temperature", tCurTempWS);
+    }
 
     using PreviousVelocityT = typename EvaluationT::PreviousMomentumScalarType;
     auto tPrevVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousVelocityT> > >
@@ -2435,11 +2478,14 @@ build_vector_function_worksets
     tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous pressure"), tPrevPressWS->mData);
     aWorkSets.set("previous pressure", tPrevPressWS);
 
-    using PreviousTemperatureT = typename EvaluationT::PreviousEnergyScalarType;
-    auto tPrevTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousTemperatureT> > >
-        ( Plato::ScalarMultiVectorT<PreviousTemperatureT>("previous temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
-    aWorkSets.set("previous temperature", tPrevTempWS);
+    if(aVariables.defined("previous temperature"))
+    {
+        using PreviousTemperatureT = typename EvaluationT::PreviousEnergyScalarType;
+        auto tPrevTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousTemperatureT> > >
+            ( Plato::ScalarMultiVectorT<PreviousTemperatureT>("previous temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+        tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
+        aWorkSets.set("previous temperature", tPrevTempWS);
+    }
 
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
@@ -9776,8 +9822,6 @@ private:
     Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
     Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
 
-    Omega_h::vtk::Writer mWriter;
-
 public:
     QuasiImplicit
     (Omega_h::Mesh          & aMesh,
@@ -9842,7 +9886,9 @@ public:
         tWriter.write(tCurrentTimeStep, tTime, tTags);
     }
 
-    void output(const Plato::Primal& aPrimal)
+    void output
+    (const Plato::Primal& aPrimal,
+     Omega_h::vtk::Writer& aWriter)
     {
         constexpr auto tStride = 0;
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
@@ -9860,6 +9906,12 @@ public:
         Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelocityView, tVelocity);
         mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
 
+	tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current predictor" : "previous predictor";
+        auto tPredictorView = aPrimal.vector(tTag);
+        Omega_h::Write<Omega_h::Real> tPredictor(tPredictorView.size(), "Predictor");
+        Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tPredictorView, tPredictor);
+        mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Predictor", mNumVelDofsPerNode, Omega_h::Reals(tPredictor));
+
 	if(mCalculateHeatTransfer)
         {
 	    tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current temperature" : "previous temperature";
@@ -9870,7 +9922,7 @@ public:
         }
 
         auto tTags = Omega_h::vtk::get_all_vtk_tags(&mSpatialModel.Mesh, mNumSpatialDims);
-        mWriter.write(tTimeStepIndex, tTimeStepIndex, tTags);
+        aWriter.write(tTimeStepIndex, tTimeStepIndex, tTags);
     }
 
     Plato::Solutions solution
@@ -9880,7 +9932,8 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimal;
-        this->setInitialConditions(tPrimal);
+        auto tWriter = Omega_h::vtk::Writer("solution_history", &mSpatialModel.Mesh, mNumSpatialDims);
+        this->setInitialConditions(tPrimal, tWriter);
         this->calculateElemCharacteristicSize(tPrimal);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
@@ -9904,7 +9957,7 @@ public:
 	    auto tModulo = (tIteration + static_cast<Plato::OrdinalType>(1) ) % mOutputFrequency;
 	    if(tModulo == static_cast<Plato::OrdinalType>(0))
             {
-                this->output(tPrimal);
+                this->output(tPrimal, tWriter);
             }
 
             if(this->checkStoppingCriteria(tPrimal))
@@ -9936,16 +9989,21 @@ public:
             THROWERR(std::string("Criterion with tag '") + aName + "' is not in the criteria list");
         }
 
-        Plato::Primal tPrimal;
-        constexpr Plato::OrdinalType tSteadyStateStep = 1;
-        auto tPressure = Kokkos::subview(mPressure, tSteadyStateStep, Kokkos::ALL());
-        auto tVelocity = Kokkos::subview(mVelocity, tSteadyStateStep, Kokkos::ALL());
-        auto tTemperature = Kokkos::subview(mTemperature, tSteadyStateStep, Kokkos::ALL());
-        tPrimal.vector("current pressure", tPressure);
-        tPrimal.vector("current velocity", tVelocity);
-        tPrimal.vector("current temperature", tTemperature);
+	auto tDirectory = std::string("solution_history");
+        auto tSolutionHistory = Plato::omega_h::read_pvtu_file_paths(tDirectory);
+	if(tSolutionHistory.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
+	{
+	    THROWERR(std::string("Number of time steps read from the '") + tDirectory 
+		+ "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
+	}
 
+	// evaluate steady-state criterion
+        Plato::Primal tPrimal;
+	auto tLastTimeStepIndex = tSolutionHistory.size() - 1u;
+        tPrimal.scalar("time step index", tLastTimeStepIndex);
+	this->setPrimal(tSolutionHistory, tPrimal);
         auto tOutput = tItr->second->value(aControl, tPrimal);
+
      	return tOutput;
     }
 
@@ -9983,7 +10041,7 @@ public:
         this->updateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
         this->updatePressureAdjoint(aName, aControl, tPrimal, tDual);
         this->updatePredictorAdjoint(aControl, tPrimal, tDual);
-        auto tTotalDerivative = this->updateTotalDerivative(aName, aControl, tPrimal, tDual);
+        auto tTotalDerivative = this->updateTotalDerivativeWrtControl(aName, aControl, tPrimal, tDual);
         return tTotalDerivative;
     }
     */
@@ -9999,27 +10057,35 @@ public:
         }
 
         Plato::Dual tDual;
-        Plato::Primal tCurrentState;
-        Plato::Primal tPreviousState;
-        auto tPaths = Plato::omega_h::read_pvtu_file_paths("solution_history");
-	if(tPaths.size() != static_cast<size_t>(mNumForwardSolveTimeSteps))
+        Plato::Primal tCurrentState, tPreviousState;
+	auto tDirectory = std::string("solution_history");
+        auto tSolutionHistoryPaths = Plato::omega_h::read_pvtu_file_paths(tDirectory);
+	if(tSolutionHistoryPaths.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
 	{
-	    THROWERR("Number of time steps read from the 'solution_history' directory does not match the number of time steps used to solve the forward problem.")
+	    THROWERR(std::string("Number of time steps read from the '") + tDirectory 
+		+ "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
 	}
 
         Plato::ScalarVector tTotalDerivative("total derivative", mSpatialModel.Mesh.nverts());
-        for(auto tTimeStepIndex = mNumForwardSolveTimeSteps; tTimeStepIndex >= static_cast<Plato::OrdinalType>(0); tTimeStepIndex--)
+        for(auto tItr = tSolutionHistoryPaths.rbegin(); tItr != tSolutionHistoryPaths.rend() - 1; tItr++)
         {
-            tCurrentState.scalar("time step index", tTimeStepIndex);
-            tPreviousState.scalar("time step index", tTimeStepIndex + 1);
+	    // set fields for the current primal state
+            auto tCurrentStateIndex = (tSolutionHistoryPaths.size() - 1u) - std::distance(tSolutionHistoryPaths.rbegin(), tItr);
+            tCurrentState.scalar("time step index", tCurrentStateIndex);
+	    this->setPrimal(tSolutionHistoryPaths, tCurrentState);
 
-            // todo: set critical time step
-            auto tCurrentCriticalTimeStep = mCriticalTimeStepHistory[tTimeStepIndex];
+	    // set fields for the previous primal state
+            auto tPreviousStateIndex = tCurrentStateIndex + 1u;
+            tPreviousState.scalar("time step index", tPreviousStateIndex);
+	    if(tPreviousStateIndex != tSolutionHistoryPaths.size())
+	    {
+	        this->setPrimal(tSolutionHistoryPaths, tPreviousState);
+	    }
 
+	    // set adjoint state
             this->setDual(tDual);
-            this->setPrimal(tCurrentState);
-            this->setPrimal(tPreviousState);
 
+	    // update adjoint states
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperatureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
@@ -10028,7 +10094,8 @@ public:
             this->updatePressureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
             this->updatePredictorAdjoint(aControl, tCurrentState, tPreviousState, tDual);
 
-            this->updateTotalDerivative(aName, aControl, tCurrentState, tDual, tTotalDerivative);
+	    // update total derivative with respect to control variables 
+            this->updateTotalDerivativeWrtControl(aName, aControl, tCurrentState, tDual, tTotalDerivative);
         }
         return tTotalDerivative;
     }
@@ -10037,8 +10104,8 @@ public:
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
     {
-        auto tNumVertices = mSpatialModel.Mesh.nverts();
-        Plato::ScalarVector tTotalDerivative("total derivative", tNumVertices);
+        auto tNumDofs = mSpatialModel.Mesh.nverts() * mNumSpatialDims;
+        Plato::ScalarVector tTotalDerivative("total derivative", tNumDofs);
         /*
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -10067,6 +10134,56 @@ public:
     }
 
 private:
+    void setCurrentFields
+    (const Omega_h::filesystem::path& aPath,
+           Plato::Primal& aStates)
+    {
+        Plato::FieldTags tFieldTags;
+        tFieldTags.set("Velocity", "current velocity");
+        tFieldTags.set("Pressure", "current pressure");
+        tFieldTags.set("Predictor", "current predictor");
+        if(mCalculateHeatTransfer)
+        {
+            tFieldTags.set("Temperature", "current temperature");
+        }
+        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aStates);
+    }
+
+    void setPreviousFields
+    (const Omega_h::filesystem::path& aPath,
+           Plato::Primal& aStates)
+    {
+        Plato::FieldTags tFieldTags;
+        tFieldTags.set("Velocity", "previous velocity");
+        tFieldTags.set("Pressure", "previous pressure");
+        if(mCalculateHeatTransfer)
+        {
+            tFieldTags.set("Temperature", "previous temperature");
+        }
+        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aStates);
+    }
+
+    void setPrimal
+    (const std::vector<Omega_h::filesystem::path>& aPaths,
+           Plato::Primal& aPrimal)
+    {
+        auto tTimeStepIndex = static_cast<size_t>(aPrimal.scalar("time step index"));
+        this->setCurrentFields(aPaths[tTimeStepIndex], aPrimal);
+        this->setPreviousFields(aPaths[tTimeStepIndex - 1u], aPrimal);
+	this->setCriticalTimeStep(aPrimal);
+    }
+
+    void setCriticalTimeStep
+    (Plato::Primal& aPrimal)
+    {
+        auto tTimeStepIndex = static_cast<size_t>(aPrimal.scalar("time step index"));
+        Plato::ScalarVector tCriticalTimeStep("critical time step", 1);
+        auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
+        tHostCriticalTimeStep(0) = mCriticalTimeStepHistory[tTimeStepIndex];
+        Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
+        aPrimal.vector("critical time step", tCriticalTimeStep);
+    }
+
     Plato::Solutions setOutputSolution()
     {
 	Plato::Solutions tSolution;
@@ -10080,7 +10197,8 @@ private:
     }
 
     void setInitialConditions
-    (Plato::Primal & aPrimal)
+    (Plato::Primal & aPrimal,
+     Omega_h::vtk::Writer& aWriter)
     {
         const Plato::Scalar tTime = 0.0;
         const Plato::OrdinalType tTimeStep = 0;
@@ -10101,6 +10219,9 @@ private:
         Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
         aPrimal.vector("previous pressure", tPreviousPress);
 
+        auto tPreviousPred = Kokkos::subview(mPredictor, tTimeStep, Kokkos::ALL());
+        aPrimal.vector("previous predictor", tPreviousPred);
+
         if(mCalculateHeatTransfer)
         {
             Plato::ScalarVector tTempBcValues;
@@ -10111,7 +10232,7 @@ private:
             aPrimal.vector("previous temperature", tPreviousTemp);
         }
 
-        this->output(aPrimal);
+        this->output(aPrimal, aWriter);
     }
 
     void printIteration
@@ -10156,7 +10277,6 @@ private:
         this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
-        mWriter = Omega_h::vtk::Writer("solution_history", &mSpatialModel.Mesh, mNumSpatialDims);
     }
 
     void parseHeatTransferEquation
@@ -10219,6 +10339,9 @@ private:
         Plato::blas2::fill(0.0, mVelocity);
         Plato::blas2::fill(0.0, mPredictor);
         Plato::blas2::fill(0.0, mTemperature);
+
+	auto tDirectory = std::string("solution_history");
+	Plato::filesystem::remove(tDirectory);
     }
 
     void checkProblemSetup()
@@ -10880,8 +11003,8 @@ private:
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
 
         // add objective function contribution to right hand side adjoint vector
-        auto tNumVertices = mSpatialModel.Mesh.nverts();
-        Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
+        auto tNumDofs = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tRightHandSide("right hand side vector", tNumDofs);
         if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tPartialObjWrtCurrentPressure = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentPrimalState);
@@ -10910,6 +11033,7 @@ private:
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mPressureEssentialBCs.get(tBcDofs, tBcValues);
+	Plato::blas1::fill(0.0, tBcValues);
 
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -10933,8 +11057,8 @@ private:
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
 
         // add objective function contribution to right hand side adjoint vector
-        auto tNumVertices = mSpatialModel.Mesh.nverts();
-        Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
+        auto tNumDofs = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tRightHandSide("right hand side vector", tNumDofs);
         if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tPartialObjWrtCurrentTemperature = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentPrimalState);
@@ -10975,8 +11099,8 @@ private:
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
 
         // add objective function contribution to right hand side adjoint vector
-        auto tNumVertices = mSpatialModel.Mesh.nverts();
-        Plato::ScalarVector tRightHandSide("right hand side vector", tNumVertices);
+        auto tNumDofs = mSpatialModel.Mesh.nverts() * mNumVelDofsPerNode;
+        Plato::ScalarVector tRightHandSide("right hand side vector", tNumDofs);
         if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
             auto tPartialObjFuncWrtCurrentVel = mCriteria[aName]->gradientCurrentVel(aControl, aCurrentPrimalState);
@@ -11016,7 +11140,7 @@ private:
         tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRightHandSide);
     }
 
-    void  updateTotalDerivative
+    void  updateTotalDerivativeWrtControl
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
      const Plato::Primal       & aCurrentPrimalState,
@@ -11351,10 +11475,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
     Plato::FieldTags tFieldTags;
     tFieldTags.set("Velocity", "current velocity");
     tFieldTags.set("Pressure", "current pressure");
+    tFieldTags.set("Predictor", "current predictor");
 
     auto tTol = 1e-2;
     std::vector<Plato::Scalar> tGoldMaxVel = {1.0, 1.0, 1.0};
     std::vector<Plato::Scalar> tGoldMinVel = {0.0, -0.0795658, -0.0916226};
+    std::vector<Plato::Scalar> tGoldMaxPred = {0.0, 0.921744, 1.01069};
+    std::vector<Plato::Scalar> tGoldMinPred = {0.0, -0.125735, -0.113359};
     std::vector<Plato::Scalar> tGoldMaxPress = {0.0, 6.40268, 4.27897};
     std::vector<Plato::Scalar> tGoldMinPress = {0.0, 0.0, 0.0};
     for(auto tItr = tPaths.rbegin(); tItr != tPaths.rend(); tItr++)
@@ -11368,6 +11495,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
         Plato::Scalar tMinVel = 0;
         Plato::blas1::min(tCurrentState.vector("current velocity"), tMinVel);
         TEST_FLOATING_EQUALITY(tGoldMinVel[tIndex], tMinVel, tTol);
+
+        Plato::Scalar tMaxPred = 0;
+        Plato::blas1::max(tCurrentState.vector("current predictor"), tMaxPred);
+        TEST_FLOATING_EQUALITY(tGoldMaxPred[tIndex], tMaxPred, tTol);
+        Plato::Scalar tMinPred = 0;
+        Plato::blas1::min(tCurrentState.vector("current predictor"), tMinPred);
+        TEST_FLOATING_EQUALITY(tGoldMinPred[tIndex], tMinPred, tTol);
 
         Plato::Scalar tMaxPress = 0;
         Plato::blas1::max(tCurrentState.vector("current pressure"), tMaxPress);
@@ -11484,6 +11618,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
     auto tTol = 1e-2;
     std::vector<Plato::Scalar> tGoldMaxVel = {1.0, 1.0, 1.0};
     std::vector<Plato::Scalar> tGoldMinVel = {0.0, -0.0795658, -0.0916226};
+    std::vector<Plato::Scalar> tGoldMaxPred = {0.0, 0.921744, 1.01069};
+    std::vector<Plato::Scalar> tGoldMinPred = {0.0, -0.125735, -0.113359};
     std::vector<Plato::Scalar> tGoldMaxPress = {0.0, 6.40268, 4.27897};
     std::vector<Plato::Scalar> tGoldMinPress = {0.0, 0.0, 0.0};
     for(auto& tPath : tPaths)
@@ -11500,6 +11636,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
         Plato::Scalar tMinVel = 0;
         Plato::blas1::min(tVelocity, tMinVel);
         TEST_FLOATING_EQUALITY(tGoldMinVel[tIndex], tMinVel, tTol);
+
+	auto tPredictor = Plato::omega_h::read_metadata_from_mesh(tReadMesh, Omega_h::VERT, "Predictor");
+	TEST_EQUALITY(242, tPredictor.size());
+        Plato::Scalar tMaxPred = 0;
+        Plato::blas1::max(tPredictor, tMaxPred);
+        TEST_FLOATING_EQUALITY(tGoldMaxPred[tIndex], tMaxPred, tTol);
+        Plato::Scalar tMinPred = 0;
+        Plato::blas1::min(tPredictor, tMinPred);
+        TEST_FLOATING_EQUALITY(tGoldMinPred[tIndex], tMinPred, tTol);
 
 	auto tPressure = Plato::omega_h::read_metadata_from_mesh(tReadMesh, Omega_h::VERT, "Pressure");
 	TEST_EQUALITY(121, tPressure.size());
@@ -11711,14 +11856,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Maximum Iterations' type='int' value='2000'/>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-10'/>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='1'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,10,10);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -11731,6 +11877,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    auto tControls = Plato::ScalarVector("Controls", tMesh->nverts());
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    //auto tTotalDerivative = tProblem.criterionGradient(tControls, "Inlet Average Surface Pressure");
     Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 3, 6);
 }
 
@@ -11817,6 +11967,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
