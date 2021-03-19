@@ -46,17 +46,6 @@ PbcMultipointConstraint(const Plato::SpatialModel & aSpatialModel,
         THROWERR(tMsg.str())
     }
 
-    auto tLength = tTranslationX * tTranslationX
-                 + tTranslationY * tTranslationY
-                 + tTranslationZ * tTranslationZ;
-
-    if( tLength == 0.0 )
-    {
-        std::ostringstream tMsg;
-        tMsg << "TRANSLATION VECTOR FOR PBC MULTIPOINT CONSTRAINT HAS NO LENGTH.";
-        THROWERR(tMsg.str())
-    }
-      
     // parse RHS value
     mValue = aParam.get<Plato::Scalar>("Value");
 
