@@ -12166,7 +12166,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(0.1, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
 
     // test solution
     auto tTags = tSolution.tags();
@@ -12298,7 +12298,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
 
     // test solution
     auto tTags = tSolution.tags();
@@ -12312,7 +12312,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
         TEST_EQUALITY(*tItr, tTag);
     }
 
-    /*
     auto tTol = 1e-2;
     auto tPressure = tSolution.get("pressure");
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
@@ -12333,7 +12332,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    */
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
@@ -12602,7 +12600,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
 
     auto tTol = 1e-2;
     auto tPressure = tSolution.get("pressure");
