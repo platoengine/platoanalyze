@@ -10721,7 +10721,7 @@ private:
 
         // set initial guess for current velocity
         Plato::OrdinalType tIteration = 1;
-        Plato::Scalar tInitialNormStep = 0.0;
+        Plato::Scalar tInitialNormStep = 0.0, tInitialNormResidual = 0.0;
         Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
         while(true)
         {
@@ -10733,14 +10733,16 @@ private:
             Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
-            aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaCorrector);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
+		tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
+            tNormResidual = tNormResidual / tInitialNormResidual;
+            aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
@@ -10826,7 +10828,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
-        Plato::Scalar tInitialNormStep = 0.0;
+        Plato::Scalar tInitialNormStep = 0.0, tInitialNormResidual = 0.0;
         Plato::ScalarVector tDeltaPredictor("delta predictor", tCurrentPredictor.size());
         while(true)
         {
@@ -10838,14 +10840,16 @@ private:
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
-            aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaPredictor);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
+		tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
+            tNormResidual = tNormResidual / tInitialNormResidual;
+            aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
@@ -10895,7 +10899,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
-        Plato::Scalar tInitialNormStep = 0.0;
+        Plato::Scalar tInitialNormStep = 0.0, tInitialNormResidual = 0.0;
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
         while(true)
         {
@@ -10912,14 +10916,16 @@ private:
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
-            aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaPressure);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
+		tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
+            tNormResidual = tNormResidual / tInitialNormResidual;
+            aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
@@ -10957,10 +10963,6 @@ private:
         auto tCurrentTemperature = aStates.vector("current temperature");
         Plato::blas1::fill(0.0, tCurrentTemperature);
 
-        // calculate current residual and jacobian matrix
-        auto tResidual = mTemperatureResidual->value(aControl, aStates);
-        auto tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
-
         // apply constraints
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
@@ -10972,39 +10974,46 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
-        Plato::Scalar tInitialNormStep = 0.0;
+        Plato::Scalar tInitialNormStep = 0.0, tInitialNormResidual = 0.0;
         Plato::ScalarVector tDeltaTemperature("delta temperature", tCurrentTemperature.size());
         while(true)
         {
             aStates.scalar("newton iteration", tIteration);
 
-            Plato::blas1::fill(0.0, tDeltaTemperature);
+            // update residual and jacobian
+            auto tResidual = mTemperatureResidual->value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
+            auto tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
+
+	    // solve system of equations
+	    Plato::Scalar tScale = (tIteration == 1) ? 1.0 : 0.0;
+            Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual, tScale);
+            Plato::blas1::fill(0.0, tDeltaTemperature);
             tSolver->solve(*tJacobian, tDeltaTemperature, tResidual);
             Plato::blas1::update(1.0, tDeltaTemperature, 1.0, tCurrentTemperature);
 
+	    // calculate stopping criteria 
             auto tNormResidual = Plato::blas1::norm(tResidual);
-            aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaTemperature);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
+		tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
+            tNormResidual = tNormResidual / tInitialNormResidual;
+            aStates.scalar("norm residual", tNormResidual);
 
+	    // check stopping criteria
             this->printNewtonDiagnostics(aStates);
             if(tNormResidual < mTemperatureTolerance || tIteration >= mMaxTemperatureIterations)
             {
                 break;
             }
 
-            // calculate current residual and jacobian matrix
-            tResidual = mTemperatureResidual->value(aControl, aStates);
-
             tIteration++;
         }
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
 
     void updatePredictorAdjoint
@@ -11123,11 +11132,18 @@ private:
         }
         Plato::blas1::scale(-1.0, tRightHandSide);
 
+        // prepare constraints dofs
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
+        Plato::blas1::fill(0.0, tBcValues);
+
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
         auto tJacobianCurrentTemp = mTemperatureResidual->gradientCurrentTemp(aControl, aCurrentPrimalState);
+        Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobianCurrentTemp, tRightHandSide);
         tSolver->solve(*tJacobianCurrentTemp, tCurrentTempAdjoint, tRightHandSide);
     }
 
@@ -11188,7 +11204,7 @@ private:
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         auto tJacCorrectorResWrtCurVel = mCorrectorResidual.gradientCurrentVel(aControl, aCurrentPrimalState);
-        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacCorrectorResWrtCurVel, tRightHandSide);
+        Plato::set_dofs_values(tBcDofs, tRightHandSide, 0.0);
         tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRightHandSide);
     }
 
@@ -11909,7 +11925,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
-            "    <Parameter name='Maximum Iterations' type='int' value='2'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='5'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
             "  </ParameterList>"
             "</ParameterList>"
@@ -11932,8 +11948,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     auto tControls = Plato::ScalarVector("Controls", tMesh->nverts());
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    //auto tTotalDerivative = tProblem.criterionGradient(tControls, "Inlet Average Surface Pressure");
-    Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 3, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 1, 6);
+    TEST_ASSERT(tError < 1e-4);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
@@ -12699,7 +12715,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
             "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
             "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-2'/>"
+            "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor' type='double' value='1.0'/>"
