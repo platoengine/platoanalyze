@@ -5950,7 +5950,8 @@ calculate_convective_forces
 template<Plato::OrdinalType NumNodes,
          typename ConfigT,
          typename SourceT,
-         typename ResultT>
+         typename ResultT,
+	 typename ScalarT>
 DEVICE_TYPE inline void
 integrate_scalar_field
 (const Plato::OrdinalType & aCellOrdinal,
@@ -5958,7 +5959,7 @@ integrate_scalar_field
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarVectorT<SourceT> & aField,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
- Plato::Scalar aMultiplier = 1.0)
+       ScalarT aMultiplier)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
@@ -6300,6 +6301,7 @@ public:
     {
         this->setSourceTerm(aInputs);
         this->setPenaltyModelParameters(aInputs);
+        this->setThermalDiffusivityRatio(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
 	mEffectiveConductivity = Plato::Fluids::dimensionless_effective_conductivity(aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
@@ -6373,52 +6375,53 @@ public:
             ControlT tPenalizedDiffusivityRatio = Plato::Fluids::penalize_thermal_diffusivity<mNumNodesPerCell>
                 (aCellOrdinal, tThermalDiffusivityRatio, tThermalDiffusivityPenaltyExponent, tControlWS);
 	    ControlT tPenalizedEffectiveConductivity = tEffConductivity * tPenalizedDiffusivityRatio;
-            ControlT tMultiplierControlT = static_cast<Plato::Scalar>(-1.0) * 
-	        (tArtificialDamping - static_cast<Plato::Scalar>(1.0)) * tPenalizedEffectiveConductivity;
+            ControlT tMultiplierControlT = (tArtificialDamping - static_cast<Plato::Scalar>(1.0)) * 
+	        tPenalizedEffectiveConductivity;
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, tMultiplierControlT);
+                (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, -tMultiplierControlT);
 
             // 2. add previous convective force contribution to residual, i.e. R += C T^n
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
+	    Plato::Scalar tMultiplier = 1.0;
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, tMultiplier);
 
             // 3. add current diffusive force contribution to residual, i.e. R += \theta_3 K T^{n+1}
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCurTempWS, tCurThermalFlux);
-	    tMultiplierControlT = static_cast<Plato::Scalar>(-1.0) * tArtificialDamping * tPenalizedEffectiveConductivity;
+	    tMultiplierControlT = tArtificialDamping * tPenalizedEffectiveConductivity;
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tCurThermalFlux, aResultWS, tMultiplierControlT);
 
             // 4. add previous heat source contribution to residual, i.e. R -= \alpha Q^n
-            auto tHeatSourceDimensionlessConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
-            ControlT tPenalizedDimensionlessHeatSourceConstant = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
-                (aCellOrdinal, tHeatSourceDimensionlessConstant, tHeatSourcePenaltyExponent, tControlWS);
-            tHeatSource(aCellOrdinal) = static_cast<Plato::Scalar>(-1.0) *
-                    tPenalizedDimensionlessHeatSourceConstant * tHeatSource(aCellOrdinal);
+            auto tHeatSrcDimlessConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
+            ControlT tPenalizedDimlessHeatSrcConstant = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
+                (aCellOrdinal, tHeatSrcDimlessConstant, tHeatSourcePenaltyExponent, tControlWS);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, aResultWS, -tPenalizedDimlessHeatSrcConstant);
 
             // 5. apply time step, i.e. R = \Delta{t}*( \theta_3 K T^{n+1} + C T^n - (\theta_3-1) K T^n - Q^n)
             Plato::blas1::scale<mNumTempDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 6. add previous inertial force contribution to residual, i.e. R -= M T^n
+	    tMultiplier = -1.0;
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, tMultiplier);
 
             // 7. add current inertial force contribution to residual, i.e. R += M T^{n+1}
+	    tMultiplier = 1.0;
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS, tMultiplier);
 
             // 8. add stabilizing force contribution to residual, i.e. R += C_u T^n - Q_u^n
             auto tMultiplierScalarT = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tMultiplierScalarT);
-            tMultiplierScalarT = tStabilization * tHeatSourceDimensionlessConstant * 
+            tMultiplierScalarT = tStabilization * tHeatSrcDimlessConstant * 
 		static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tMultiplierScalarT);
@@ -6440,26 +6443,29 @@ private:
                     + std::to_string(mReferenceTemperature) + "'.")
             }
 
-            this->setThermalProperties(aInputs);
+            this->setThermalConductivity(aInputs);
             this->setCharacteristicLength(aInputs);
         }
     }
 
-    void setThermalProperties
+    void setThermalConductivity
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Heat Source"))
-        {
-            auto tMaterialName = mSpatialDomain.getMaterialName();
-            Plato::is_material_defined(tMaterialName, aInputs);
-            auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-            auto tThermalPropBlock = std::string("Thermal Properties");
+	auto tMaterialName = mSpatialDomain.getMaterialName();
+        Plato::is_material_defined(tMaterialName, aInputs);
+        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
+        mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
+	Plato::Fluids::is_positive_number(mThermalConductivity, "Thermal Conductivity");
+    }
 
-            mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
-	    Plato::Fluids::is_positive_number(mThermalConductivity, "Thermal Conductivity");
-            mThermalDiffusivityRatio = Plato::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", tThermalPropBlock, tMaterial);
-	    Plato::Fluids::is_positive_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
-        }
+    void setThermalDiffusivityRatio
+    (Teuchos::ParameterList & aInputs)
+    {
+	auto tMaterialName = mSpatialDomain.getMaterialName();
+        Plato::is_material_defined(tMaterialName, aInputs);
+        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
+        mThermalDiffusivityRatio = Plato::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
+	Plato::Fluids::is_positive_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
     }
 
     void setCharacteristicLength
@@ -6634,7 +6640,7 @@ public:
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, 1.0);
 
             // 3. add current diffusive force contribution to residual, i.e. R += \theta_3 K T^{n+1}
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
@@ -6659,7 +6665,7 @@ public:
             // 7. add current inertial force contribution to residual, i.e. R += M T^{n+1}
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS, 1.0);
 
             // 8. add stabilizing force contribution to residual, i.e. R += C_u T^n - Q_u^n
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
@@ -7083,7 +7089,7 @@ public:
                 (aCellOrdinal, tDimensionlessConst, tHeatSrcPenaltyExp, tControlWS);
             tHeatSource(aCellOrdinal) += tPenalizedDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces, 1.0);
             Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tInternalForces);
 
             // 2. calculate stabilizing forces
@@ -11986,6 +11992,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='Air'>"
+            "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Thermal Diffusivity Ratio' type='double' value='0.5'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
             "    <ParameterList  name='X-Dir No-Slip on X-'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
@@ -12092,7 +12105,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 4, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 1, 3);
     TEST_ASSERT(tError < 1e-4);
 }
 
@@ -13681,7 +13694,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
     auto tBasisFunctions = tCubRule.getBasisFunctions();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult);
+        Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult, 1.0);
     }, "unit test integrate_scalar_field");
 
     auto tTol = 1e-4;
