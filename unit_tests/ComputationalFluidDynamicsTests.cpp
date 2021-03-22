@@ -9586,7 +9586,7 @@ calculate_critical_thermal_time_step
 {
     Plato::Scalar tMinValue = 0;
     Plato::blas1::min(aElemCharSize, tMinValue);
-    auto tCriticalStep = tMinValue * tMinValue *  static_cast<Plato::Scalar>(2) * aPrNum;
+    auto tCriticalStep = aSafetyFactor * tMinValue * tMinValue *  static_cast<Plato::Scalar>(2) * aPrNum;
     return tCriticalStep;
 }
 
@@ -9602,8 +9602,8 @@ calculate_critical_diffusive_time_step
     Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        auto tOptionOne = static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber;
-        auto tOptionTwo = static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber * aPrandtlNumber;
+        auto tOptionOne = aSafetyFactor * static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber;
+        auto tOptionTwo = aSafetyFactor * static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber * aPrandtlNumber;
         tLocalTimeStep(aNodeOrdinal) = tOptionOne < tOptionTwo ? tOptionOne : tOptionTwo;
     }, "calculate local critical time step");
 
@@ -10533,6 +10533,7 @@ private:
 
         Plato::ScalarVector tCriticalTimeStep("critical time step", 1);
         auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
+
         if(mCalculateHeatTransfer)
         {
 	    auto tCriticalThermalTimeStep = Plato::cbs::calculate_critical_thermal_time_step
@@ -11959,17 +11960,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Criteria'>"
-            "    <ParameterList name='Inlet Average Surface Temperature'>"
+            "    <ParameterList name='Average Surface Temperature'>"
             "      <Parameter name='Type' type='string' value='Scalar Function'/> "
-            "      <Parameter  name='Sides' type='Array(string)' value='{x-}'/>"
+            "      <Parameter  name='Sides' type='Array(string)' value='{y+}'/>"
             "      <Parameter name='Scalar Function Type' type='string' value='Average Surface Temperature'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
+            "    </ParameterList>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -12048,7 +12053,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
             "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
             "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
+            "    <Parameter name='Temperature Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor' type='double' value='1.0'/>"
@@ -12058,7 +12063,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "  </ParameterList>"
                 "  <ParameterList  name='Convergence'>"
                 "    <Parameter name='Output Frequency' type='int' value='1'/>"
-                "    <Parameter name='Maximum Iterations' type='int' value='5'/>"
+                "    <Parameter name='Maximum Iterations' type='int' value='1'/>"
                 "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
                 "  </ParameterList>"
             "</ParameterList>"
@@ -12070,6 +12075,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
+    // add pressure essential boundary condition to node set list
+    Omega_h::Write<int> tWritePress(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tWritePress[aOrdinal]=0;
+    }, "set pressure bc dofs value");
+    auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
+
     // create communicator
     MPI_Comm tMyComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
@@ -12078,7 +12092,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Temperature", 1, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 4, 6);
     TEST_ASSERT(tError < 1e-4);
 }
 
