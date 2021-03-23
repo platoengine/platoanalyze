@@ -97,9 +97,7 @@ inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 {
     if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        std::stringstream tMsg;
-        tMsg << "BLAS 1 FILL: INPUT VECTOR WITH LABEL '" << aVector.label() << "' IS EMPTY.\n";
-        THROWERR(tMsg.str().c_str())
+	return;
     }
 
     if(std::isfinite(aInput) == false)
