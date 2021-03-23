@@ -10711,7 +10711,6 @@ private:
         Plato::blas1::fill(0.0, tCurrentVelocity);
 
         // calculate current residual and jacobian matrix
-        auto tResidual = mCorrectorResidual.value(aControl, aStates);
         auto tJacobian = mCorrectorResidual.gradientCurrentVel(aControl, aStates);
 
         // apply constraints
@@ -10732,8 +10731,9 @@ private:
         {
             aStates.scalar("newton iteration", tIteration);
 
-            Plato::blas1::fill(0.0, tDeltaCorrector);
+            auto tResidual = mCorrectorResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
+            Plato::blas1::fill(0.0, tDeltaCorrector);
             tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
             Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
 
@@ -10754,9 +10754,6 @@ private:
             {
                 break;
             }
-
-            // calculate current residual and jacobian matrix
-            tResidual = mCorrectorResidual.value(aControl, aStates);
 
             tIteration++;
         }
