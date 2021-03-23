@@ -10365,10 +10365,10 @@ private:
 
     void checkProblemSetup()
     {
-        if(mPressureEssentialBCs.empty())
-        {
-            THROWERR("Pressure essential boundary conditions are not defined.")
-        }
+        //if(mPressureEssentialBCs.empty())
+        //{
+        //    THROWERR("Pressure essential boundary conditions are not defined.")
+        //}
         if(mVelocityEssentialBCs.empty())
         {
             THROWERR("Velocity essential boundary conditions are not defined.")
@@ -12036,13 +12036,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "      <Parameter  name='Sides'    type='string' value='y+'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
-            "    <ParameterList  name='Zero Pressure'>"
-            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
-            "      <Parameter  name='Index'    type='int'    value='0'/>"
-            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
             "  <ParameterList  name='Temperature Essential Boundary Conditions'>"
             "    <ParameterList  name='Cold Wall'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
@@ -12082,15 +12075,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
-
-    // add pressure essential boundary condition to node set list
-    Omega_h::Write<int> tWritePress(1);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        tWritePress[aOrdinal]=0;
-    }, "set pressure bc dofs value");
-    auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
-    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
 
     // create communicator
     MPI_Comm tMyComm;
@@ -12731,6 +12715,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
+
     // add pressure essential boundary condition to node set list
     Omega_h::Write<int> tWritePress(1);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
@@ -12840,13 +12825,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "      <Parameter  name='Sides'    type='string' value='y+'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
-            "    <ParameterList  name='Zero Pressure'>"
-            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
-            "      <Parameter  name='Index'    type='int'    value='0'/>"
-            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
             "  <ParameterList  name='Temperature Essential Boundary Conditions'>"
             "    <ParameterList  name='Cold Wall'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
@@ -12885,15 +12863,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
-    // add pressure essential boundary condition to node set list
-    Omega_h::Write<int> tWritePress(1);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        tWritePress[aOrdinal]=0;
-    }, "set pressure bc dofs value");
-    auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
-    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
-
     // create communicator
     MPI_Comm tMyComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
@@ -12925,26 +12894,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(5.28514, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(231.625, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-427.517, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-201.884, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(3.60176, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(3.60594, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-4.90433, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-4.90525, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(11.9136, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(11.9346, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
 }
 
