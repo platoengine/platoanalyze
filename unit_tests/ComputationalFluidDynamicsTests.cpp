@@ -1201,14 +1201,14 @@ public:
         { return false; }
     }
 
-    void print()
+    void print() const
     {
         this->printScalarMap();
         this->printVectorMap();
     }
 
 private:
-    void printVectorMap()
+    void printVectorMap() const
     {
         if(mVectors.empty())
         {
@@ -1222,7 +1222,7 @@ private:
         }
     }
 
-    void printScalarMap()
+    void printScalarMap() const
     {
         if(mScalars.empty())
         {
