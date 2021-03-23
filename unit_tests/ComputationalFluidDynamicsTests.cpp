@@ -4701,7 +4701,6 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. add brinkman force contribution to residual, R += \Delta{t}\gamma M u^n
-            //auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
             auto tMultiplier = static_cast<Plato::Scalar>(1.0) * tCriticalTimeStep(0);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
@@ -4712,7 +4711,6 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, aResultWS, tMultiplier);
 
             // 2. add stabilizing brinkman force to residual, R += (\frac{\Delta{t}^2}{2}\gamma) M u_n
-            //tMultiplier = tStabilization * static_cast<Plato::Scalar>(-0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tBrinkman, aResultWS, tMultiplier);
