@@ -12925,26 +12925,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(5.34984, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(5.28514, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-424.281, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-427.517, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(3.59025, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(3.60176, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-4.87989, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-4.90433, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(11.8214, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(11.9136, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
 }
 
