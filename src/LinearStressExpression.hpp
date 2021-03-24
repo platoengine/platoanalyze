@@ -404,7 +404,7 @@ public:
         }
       }
 
-      // The expression evaluator has a limit number of types so
+      // The expression evaluator has a limited number of types so
       // convert the VelGrad type to the Strain type.
       Plato::ScalarMultiVectorT<StrainT>
         tVelGrad("velocity gradient", tNumCells, mNumVoigtTerms);
