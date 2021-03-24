@@ -29,11 +29,11 @@ class StressPNorm :
 /******************************************************************************/
 {
   private:
-    static constexpr Plato::OrdinalType SpaceDim = EvaluationType::SpatialDim;
+    static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
     
-    using Plato::SimplexMechanics<SpaceDim>::mNumVoigtTerms;
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
-    using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerCell;
+    using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms;
+    using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
+    using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell;
 
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
@@ -48,7 +48,7 @@ class StressPNorm :
     Plato::Scalar mQuadratureWeight;
 
     IndicatorFunctionType mIndicatorFunction;
-    Plato::ApplyWeighting<SpaceDim,mNumVoigtTerms,IndicatorFunctionType> mApplyWeighting;
+    Plato::ApplyWeighting<mSpaceDim,mNumVoigtTerms,IndicatorFunctionType> mApplyWeighting;
 
     Teuchos::RCP<TensorNormBase<mNumVoigtTerms,EvaluationType>> mNorm;
 
@@ -66,13 +66,13 @@ class StressPNorm :
         mApplyWeighting    (mIndicatorFunction)
     /**************************************************************************/
     {
-      Plato::ElasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+      Plato::ElasticModelFactory<mSpaceDim> mmfactory(aProblemParams);
       auto materialModel = mmfactory.create(aSpatialDomain.getMaterialName());
       mCellStiffness = materialModel->getStiffnessMatrix();
 
 //TODO quadrature
       mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (Plato::OrdinalType d=2; d<=SpaceDim; d++)
+      for (Plato::OrdinalType d=2; d<=mSpaceDim; d++)
       { 
         mQuadratureWeight /= Plato::Scalar(d);
       }
@@ -94,15 +94,16 @@ class StressPNorm :
     ) const
     /**************************************************************************/
     {
+      using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+      using StrainScalarType =
+        typename Plato::fad_type_t<SimplexPhysics, StateScalarType, ConfigScalarType>;
+
       auto tNumCells = mSpatialDomain.numCells();
 
-      Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::Strain<SpaceDim>                        voigtStrain;
-      Plato::LinearStress<SpaceDim>                  voigtStress(mCellStiffness);
-
-      using StrainScalarType = 
-        typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>,
-                            StateScalarType, ConfigScalarType>;
+      Plato::ComputeGradientWorkset<mSpaceDim> computeGradient;
+      Plato::Strain<mSpaceDim>                 voigtStrain;
+      Plato::LinearStress<EvaluationType,
+                          SimplexPhysics>      voigtStress(mCellStiffness);
 
       Plato::ScalarVectorT<ConfigScalarType>
         cellVolume("cell weight", tNumCells);
@@ -111,7 +112,7 @@ class StressPNorm :
         strain("strain", tNumCells, mNumVoigtTerms);
 
       Plato::ScalarArray3DT<ConfigScalarType>
-        gradient("gradient", tNumCells, mNumNodesPerCell, SpaceDim);
+        gradient("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
       Plato::ScalarMultiVectorT<ResultScalarType>
         stress("stress", tNumCells, mNumVoigtTerms);

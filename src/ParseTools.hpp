@@ -1,7 +1,12 @@
 #ifndef PLATO_PARSE_TOOLS
 #define PLATO_PARSE_TOOLS
 
-#include <Teuchos_ParameterList.hpp>
+#include "AnalyzeMacros.hpp"
+#include "PlatoTypes.hpp"
+#include "Teuchos_ParameterList.hpp"
+
+#include <sstream>
+#include <string>
 
 namespace Plato {
 
@@ -52,7 +57,10 @@ T getParam(
     {
         return aInputParams.get<T>(aParamName);
     }
-    else { return aDefaultValue; }
+    else
+    {
+        return aDefaultValue;
+    }
 }
 
 /**************************************************************************//**
@@ -79,6 +87,28 @@ T getParam(
         THROWERR(sstream.str());
     }
 }
+
+/**************************************************************************//**
+ * \brief Get an equation if it exists, otherwise throw an exception
+ * \param [in] aInputParams The containing ParameterList
+ * \param [in] equationName The name of the desired equation
+ * \return The requested equation, otherwise throw
+ *****************************************************************************/
+
+std::string getEquationParam(const Teuchos::ParameterList& aInputParams,
+                             const std::string equationName );
+
+/**************************************************************************//**
+ * \brief Get an equation if it exists, otherwise throw an exception
+ * \param [in] aInputParams The containing ParameterList
+ * \param [in] equationIndex The index of the desired equation in a Bingo File
+ * \param [in] equationName The name of the desired equation
+ * \return The requested equation, otherwise throw
+ *****************************************************************************/
+
+std::string getEquationParam(const Teuchos::ParameterList& aInputParams,
+                             const Plato::OrdinalType equationIndex = -1,
+                             const std::string equationName = std::string("Equation") );
 
 } // namespace ParseTools
 

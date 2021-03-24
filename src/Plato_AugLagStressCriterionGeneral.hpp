@@ -281,15 +281,17 @@ public:
               Plato::Scalar aTimeStep = 0.0
     ) const
     {
-        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
+        using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+        using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;
 
-        using StrainT = typename Plato::fad_type_t<Plato::SimplexMechanics<mSpaceDim>, StateT, ConfigT>;
+        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
 
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;
         Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
+        Plato::LinearStress<EvaluationType,
+                            SimplexPhysics>      tComputeCauchyStress(mCellStiffMatrix);
 
         // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
         Plato::ScalarVectorT<ResultT> tVonMises("von mises", tNumCells);
@@ -373,6 +375,8 @@ public:
         const Plato::ScalarArray3D & aConfigWS
     )
     {
+        using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+
         const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
 
         // Create Cauchy stress functors
@@ -380,7 +384,8 @@ public:
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
         Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
+        Plato::LinearStress<Plato::ResidualTypes<SimplexPhysics>,
+                            SimplexPhysics>      tComputeCauchyStress(mCellStiffMatrix);
 
         // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
         Plato::ScalarVector tVonMises("von mises", tNumCells);

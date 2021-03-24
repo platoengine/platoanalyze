@@ -5,7 +5,17 @@ configure_file(
 
 ## material model sources
 set(ANALYZE_SOURCES
+    ParseTools.cpp
     CustomMaterial.cpp 
+    AbstractLinearStress.cpp
+    LinearStress.cpp
+    LinearStressExpression.cpp
+    LinearStressFactory.cpp
+    AbstractYieldStress.cpp
+    YieldStress.cpp
+    YieldStressExpression.cpp
+    YieldStressFactory.cpp
+    LinearElasticMaterial.cpp
 ##    ElasticModelFactory.cpp 
     LinearElasticMaterial.cpp 
     CubicLinearElasticMaterial.cpp 

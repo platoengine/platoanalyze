@@ -127,6 +127,7 @@ template <typename SimplexPhysicsT>
 struct ResidualTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = Plato::Scalar;
@@ -142,6 +143,7 @@ struct JacobianTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
   using StateScalarType          = SFadType;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = Plato::Scalar;
@@ -157,6 +159,7 @@ struct JacobianPTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = SFadType;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = Plato::Scalar;
@@ -172,6 +175,7 @@ struct JacobianNTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::NodeStateFad;
 
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = Plato::Scalar;
@@ -187,6 +191,7 @@ struct LocalJacobianTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::LocalStateFad;
 
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = SFadType;
   using PrevLocalStateScalarType = Plato::Scalar;
@@ -202,6 +207,7 @@ struct LocalJacobianPTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::LocalStateFad;
 
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = SFadType;
@@ -217,6 +223,7 @@ struct GradientXTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ConfigFad;
 
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = Plato::Scalar;
@@ -232,6 +239,7 @@ struct GradientZTypes : EvaluationTypes<SimplexPhysicsT>
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ControlFad;
 
   using StateScalarType          = Plato::Scalar;
+  using StateDotScalarType       = Plato::Scalar;
   using PrevStateScalarType      = Plato::Scalar;
   using LocalStateScalarType     = Plato::Scalar;
   using PrevLocalStateScalarType = Plato::Scalar;

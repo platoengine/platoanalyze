@@ -1,14 +1,10 @@
 #ifndef PLATO_LINEAR_STRESS_HPP
 #define PLATO_LINEAR_STRESS_HPP
 
-#include "SimplexMechanics.hpp"
-#include "LinearElasticMaterial.hpp"
-
-#include <Omega_h_matrix.hpp>
+#include "AbstractLinearStress.hpp"
 
 namespace Plato
 {
-
 /******************************************************************************/
 /*! Stress functor.
 
@@ -16,93 +12,203 @@ namespace Plato
  stress tensor in Voigt notation = {s_xx, s_yy, s_zz, s_yz, s_xz, s_xy}
  */
 /******************************************************************************/
-template<Plato::OrdinalType SpaceDim>
-class LinearStress : public Plato::SimplexMechanics<SpaceDim>
+template< typename EvaluationType, typename SimplexPhysics >
+class LinearStress :
+    public Plato::AbstractLinearStress<EvaluationType, SimplexPhysics>
 {
-private:
-    using Plato::SimplexMechanics<SpaceDim>::mNumVoigtTerms;               /*!< number of stress/strain terms */
+protected:
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
-    const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;  /*!< material stiffness matrix */
-    Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;                      /*!< reference strain tensor */
-    Plato::Scalar mRayleighB;
+    using StateT    = typename EvaluationType::StateScalarType;     /*!< state variables automatic differentiation type */
+    using StateDotT = typename EvaluationType::StateDotScalarType;
+    using ConfigT   = typename EvaluationType::ConfigScalarType;    /*!< configuration variables automatic differentiation type */
+    using ResultT   = typename EvaluationType::ResultScalarType;    /*!< result variables automatic differentiation type */
+
+    using StrainT  = typename Plato::fad_type_t<SimplexPhysics, StateT,    ConfigT>; /*!<   strain variables automatic differentiation type */
+    using VelGradT = typename Plato::fad_type_t<SimplexPhysics, StateDotT, ConfigT>; /*!< vel grad variables automatic differentiation type */
+
+    using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms;               /*!< number of stress/strain terms */
 
 public:
     /******************************************************************************//**
      * \brief Constructor
      * \param [in] aCellStiffness material element stiffness matrix
     **********************************************************************************/
-    LinearStress(const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> aCellStiffness) :
-            mCellStiffness(aCellStiffness)
+    LinearStress(const Omega_h::Matrix<mNumVoigtTerms,
+                 mNumVoigtTerms> aCellStiffness) :
+      AbstractLinearStress< EvaluationType, SimplexPhysics >(aCellStiffness)
     {
-        for(Plato::OrdinalType tIndex = 0; tIndex < mNumVoigtTerms; tIndex++)
-        {
-            mReferenceStrain(tIndex) = 0.0;
-        }
     }
 
     /******************************************************************************//**
      * \brief Constructor
      * \param [in] aMaterialModel material model interface
     **********************************************************************************/
-    LinearStress(const Teuchos::RCP<Plato::LinearElasticMaterial<SpaceDim>> aMaterialModel) :
-            mCellStiffness(aMaterialModel->getStiffnessMatrix()),
-            mReferenceStrain(aMaterialModel->getReferenceStrain()),
-            mRayleighB(aMaterialModel->getRayleighB())
+    LinearStress(const Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> aMaterialModel) :
+      AbstractLinearStress< EvaluationType, SimplexPhysics >(aMaterialModel)
     {
     }
 
     /******************************************************************************//**
-     * \brief Compute Cauchy stress tensor
+     * \brief Compute the Cauchy stress tensor
+     * \param [out] aCauchyStress Cauchy stress tensor
+     * \param [in]  aSmallStrain Infinitesimal strain tensor
+    **********************************************************************************/
+    void
+    operator()(Plato::ScalarMultiVectorT<ResultT> const& aCauchyStress,
+               Plato::ScalarMultiVectorT<StrainT> const& aSmallStrain) const override
+  {
+       // Method used to compute the stress with the factory and has
+       // its own Kokkos parallel_for.
+
+       // A lambda inside a member function captures the "this"
+       // pointer not the actual members as such a local copy of the
+       // data is need here for the lambda to capture everything.
+
+       // If compiling with C++17 (Clang as the compiler or CUDA 11
+       // with Kokkos 3.2). And using KOKKOS_CLASS_LAMBDA instead of
+       // KOKKOS_EXPRESSION. Then the memeber data can be used
+       // directly.
+      const auto tCellStiffness   = this->mCellStiffness;
+      const auto tReferenceStrain = this->mReferenceStrain;
+
+      const Plato::OrdinalType tNumCells = aCauchyStress.extent(0);
+
+      // Because the parallel_for loop is local, two dimensions of
+      // parallelism can be exploited.
+      Kokkos::parallel_for("Compute linear stress",
+                           Kokkos::MDRangePolicy< Kokkos::Rank<2> >( {0, 0}, {tNumCells, mNumVoigtTerms} ),
+                           LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal,
+                                             const Plato::OrdinalType & tVoigtIndex_I)
+      {
+          aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
+
+          for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
+          {
+              aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+                (aSmallStrain(aCellOrdinal, tVoigtIndex_J) -
+                  tReferenceStrain(tVoigtIndex_J)) *
+                tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+          }
+      } );
+    }
+
+    /******************************************************************************//**
+     * \brief Compute the Cauchy stress tensor
      * \param [in]  aCellOrdinal element ordinal
      * \param [out] aCauchyStress Cauchy stress tensor
      * \param [in]  aSmallStrain Infinitesimal strain tensor
     **********************************************************************************/
-    template<typename StressScalarType, typename StrainScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
-                                       Kokkos::View<StressScalarType**, Plato::Layout, Plato::MemSpace> const& aCauchyStress,
-                                       Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace> const& aSmallStrain) const
+                                       Plato::ScalarMultiVectorT<ResultT> const& aCauchyStress,
+                                       Plato::ScalarMultiVectorT<StrainT> const& aSmallStrain) const
     {
-
-        // compute stress
-        //
+        // Method used to compute the stress and called from within a
+        // Kokkos parallel_for.
         for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
         {
             aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
+
             for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
             {
-                aCauchyStress(aCellOrdinal, tVoigtIndex_I) += (aSmallStrain(aCellOrdinal, tVoigtIndex_J)
-                        - mReferenceStrain(tVoigtIndex_J)) * mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+                aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+                  (aSmallStrain(aCellOrdinal, tVoigtIndex_J) -
+                   this->mReferenceStrain(tVoigtIndex_J)) *
+                  this->mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
             }
         }
     }
 
+
     /******************************************************************************//**
-     * \brief Compute Cauchy stress tensor
+     * \brief Compute the Cauchy stress tensor
+     * \param [out] aCauchyStress Cauchy stress tensor
+     * \param [in]  aSmallStrain Infinitesimal strain tensor
+     * \param [in]  aVelGrad Velocity gradient tensor
+    **********************************************************************************/
+    void
+    operator()(Plato::ScalarMultiVectorT<ResultT > const& aCauchyStress,
+               Plato::ScalarMultiVectorT<StrainT > const& aSmallStrain,
+               Plato::ScalarMultiVectorT<VelGradT> const& aVelGrad) const override
+  {
+       // Method used to compute the stress with the factory and has
+       // its own Kokkos parallel_for.
+
+       // A lambda inside a member function captures the "this"
+       // pointer not the actual members as such a local copy of the
+       // data is need here for the lambda to capture everything.
+
+       // If compiling with C++17 (Clang as the compiler or CUDA 11
+       // with Kokkos 3.2). And using KOKKOS_CLASS_LAMBDA instead of
+       // KOKKOS_EXPRESSION. Then the memeber data can be used
+       // directly.
+      const auto tRayleighB       = this->mRayleighB;
+      const auto tCellStiffness   = this->mCellStiffness;
+      const auto tReferenceStrain = this->mReferenceStrain;
+
+      const Plato::OrdinalType tNumCells = aCauchyStress.extent(0);
+
+      // Because the parallel_for loop is local, two dimensions of
+      // parallelism can be exploited.
+      Kokkos::parallel_for("Compute linear stress",
+                           Kokkos::MDRangePolicy< Kokkos::Rank<2> >( {0, 0}, {tNumCells, mNumVoigtTerms} ),
+                           LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal,
+                                             const Plato::OrdinalType & tVoigtIndex_I)
+      {
+          aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
+
+          for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
+          {
+	      aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+		((aSmallStrain(aCellOrdinal, tVoigtIndex_J) - tReferenceStrain(tVoigtIndex_J)) +
+		 (aVelGrad(aCellOrdinal, tVoigtIndex_J) * tRayleighB)) *
+		tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+          }
+      } );
+    }
+
+    /******************************************************************************//**
+     * \brief Compute the Cauchy stress tensor
      * \param [in]  aCellOrdinal element ordinal
      * \param [out] aCauchyStress Cauchy stress tensor
      * \param [in]  aSmallStrain Infinitesimal strain tensor
      * \param [in]  aVelGrad Velocity gradient tensor
     **********************************************************************************/
-    template<typename StressScalarType, typename StrainScalarType, typename VelGradScalarType>
-    DEVICE_TYPE inline void
-    operator()( int cellOrdinal,
-                Kokkos::View<StressScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aCauchyStress,
-                Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aSmallStrain,
-                Kokkos::View<VelGradScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aVelGrad) const {
+    DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
+                                       Plato::ScalarMultiVectorT<ResultT > const& aCauchyStress,
+                                       Plato::ScalarMultiVectorT<StrainT > const& aSmallStrain,
+				       Plato::ScalarMultiVectorT<VelGradT> const& aVelGrad) const
+    {
+        // Method used to compute the stress and called from within a
+        // Kokkos parallel_for.
+        for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
+        {
+            aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
 
-      // compute stress
-      //
-      for( int iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++){
-        aCauchyStress(cellOrdinal,iVoigt) = 0.0;
-        for( int jVoigt=0; jVoigt<mNumVoigtTerms; jVoigt++){
-          aCauchyStress(cellOrdinal,iVoigt) += (aSmallStrain(cellOrdinal,jVoigt)-mReferenceStrain(jVoigt))*mCellStiffness(iVoigt, jVoigt)
-                                     +  aVelGrad(cellOrdinal,jVoigt)*mCellStiffness(iVoigt, jVoigt)*mRayleighB;
+            for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
+            {
+	        aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+		  ((aSmallStrain(aCellOrdinal, tVoigtIndex_J) - this->mReferenceStrain(tVoigtIndex_J)) +
+		   (aVelGrad(aCellOrdinal, tVoigtIndex_J) * this->mRayleighB)) *
+		  this->mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+            }
         }
-      }
     }
-
 };
 // class LinearStress
 
 }// namespace Plato
+#endif
+
+
+#ifdef PLATOANALYZE_1D
+PLATO_EXPL_DEC2(Plato::LinearStress      , Plato::SimplexMechanics, 1)
+#endif
+
+#ifdef PLATOANALYZE_2D
+PLATO_EXPL_DEC2(Plato::LinearStress      , Plato::SimplexMechanics, 2)
+#endif
+
+#ifdef PLATOANALYZE_3D
+PLATO_EXPL_DEC2(Plato::LinearStress      , Plato::SimplexMechanics, 3)
 #endif

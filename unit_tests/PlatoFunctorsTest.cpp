@@ -347,6 +347,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;
     const Plato::OrdinalType tMeshWidth = 1;
+
+    using SimplexPhysics = typename Plato::SimplexMechanics<tSpaceDim>;
+
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
     // ******************** SET ELASTOSTATICS' EVALUATION TYPES FOR UNIT TEST ********************
@@ -418,7 +421,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
     Plato::Strain<tSpaceDim> tComputeLinearStrain;
     Plato::IsotropicLinearElasticMaterial<tSpaceDim> tMaterialModel(tYoungModulus, tPoissonRatio);
     auto tStiffnessMatrix = tMaterialModel.getStiffnessMatrix();
-    Plato::LinearStress<tSpaceDim> tComputeLinearStress(tStiffnessMatrix);
+    Plato::LinearStress<Plato::ResidualTypes<SimplexPhysics>,
+                        SimplexPhysics> tComputeLinearStress(tStiffnessMatrix);
 
     const Plato::OrdinalType tNumVoigtTerms = 6;
     Plato::ScalarMultiVectorT<StrainT> tRealLinearStrain("RealLinearStrain", tNumCells, tNumVoigtTerms);
@@ -525,6 +529,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElas
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;
     const Plato::OrdinalType tMeshWidth = 1;
+
+    using SimplexPhysics = typename Plato::SimplexMechanics<tSpaceDim>;
+
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
     // ******************** SET ELASTOSTATICS' EVALUATION TYPES FOR UNIT TEST ********************
@@ -598,7 +605,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElas
     Plato::StressDivergence<tSpaceDim> tComputeElasticForces;
     Plato::IsotropicLinearElasticMaterial<tSpaceDim> tMaterialModel(tYoungModulus, tPoissonRatio);
     auto tStiffnessMatrix = tMaterialModel.getStiffnessMatrix();
-    Plato::LinearStress<tSpaceDim> tComputeLinearStress(tStiffnessMatrix);
+    Plato::LinearStress<Plato::ResidualTypes<SimplexPhysics>,
+                        SimplexPhysics> tComputeLinearStress(tStiffnessMatrix);
 
     const Plato::OrdinalType tNumVoigtTerms = 6;
     Plato::ScalarMultiVectorT<StrainT> tRealLinearStrain("RealLinearStrain", tNumCells, tNumVoigtTerms);
