@@ -404,6 +404,22 @@ public:
         }
       }
 
+      // The expression evaluator has a limit number of types so
+      // convert the VelGrad type to the Strain type.
+      Plato::ScalarMultiVectorT<StrainT>
+        tVelGrad("velocity gradient", tNumCells, mNumVoigtTerms);
+
+      Kokkos::parallel_for("Compute temporary velocity grad",
+                           Kokkos::RangePolicy<>(0, tNumCells),
+                           LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+      {
+        // Convert the vel grad type to the strain type.
+        for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
+        {
+	    tVelGrad(aCellOrdinal, tVoigtIndex_I) = aVelGrad(aCellOrdinal, tVoigtIndex_I);
+	}
+      } );
+
       // Indices for the equation variable mapping.
       const Plato::OrdinalType cRayleighB       = 0;
       const Plato::OrdinalType cCellStiffness   = 1;
@@ -565,11 +581,11 @@ public:
       if( tVarMaps(cRayleighB).key )
         tExpEval.set_variable( tVarMaps(cRayleighB).value, this->mRayleighB );
 
+      if( tVarMaps(cVelGrad).key )
+        tExpEval.set_variable( tVarMaps(cVelGrad).value, tVelGrad );
+
       if( tVarMaps(cSmallStrain).key )
         tExpEval.set_variable( tVarMaps(cSmallStrain).value, aSmallStrain );
-
-      // if( tVarMaps(cVelGrad).key )
-      //   tExpEval.set_variable( tVarMaps(cVelGrad).value, aVelGrad );
 
       // The reference strain does not change.
       if( tVarMaps(cReferenceStrain).key )
