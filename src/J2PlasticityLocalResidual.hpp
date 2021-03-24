@@ -74,7 +74,7 @@ private:
 
     const Plato::Scalar mSqrt3Over2 = std::sqrt(3.0/2.0);
 
-    Teuchos::ParameterList mInputParams;
+    Teuchos::ParameterList mPlasticityParamList;
 
     /**************************************************************************//**
     * \brief Return the names of the local state degrees of freedom
@@ -128,8 +128,6 @@ private:
     ******************************************************************************/
     void initialize(Teuchos::ParameterList& aInputParams)
     {
-        mInputParams = aInputParams;
-
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Teuchos::ParameterList tMaterialParamLists = aInputParams.sublist("Material Models");
         Teuchos::ParameterList tMaterialParamList  = tMaterialParamLists.sublist(tMaterialName);
@@ -183,10 +181,11 @@ private:
     ******************************************************************************/
     void initializeJ2Plasticity(Teuchos::ParameterList& aInputParams)
     {
-        auto tPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
-        if( tPlasticityParamList.isSublist("J2 Plasticity") )
+        mPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
+
+        if( mPlasticityParamList.isSublist("J2 Plasticity") )
         {
-          auto tJ2PlasticitySubList = tPlasticityParamList.sublist("J2 Plasticity");
+          auto tJ2PlasticitySubList = mPlasticityParamList.sublist("J2 Plasticity");
           this->checkJ2PlasticityInputs(tJ2PlasticitySubList);
 
           mHardeningModulusIsotropic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Isotropic");
@@ -323,11 +322,8 @@ public:
       Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
 
       // The yield stress requires a factory.
-      auto tPlasticityParamList =
-        mInputParams.get<Teuchos::ParameterList>("Plasticity Model");
-
       Plato::YieldStressFactory< EvaluationType > tYieldStressFactory;
-      auto pComputeYieldStress = tYieldStressFactory.create(tPlasticityParamList);
+      auto pComputeYieldStress = tYieldStressFactory.create(mPlasticityParamList);
       auto & tComputeYieldStress = *pComputeYieldStress;
 
       // Transfer elasticity parameters to device
@@ -498,12 +494,9 @@ public:
       Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
 
       // The yield stress requires a factory.
-      auto tPlasticityParamList =
-        mInputParams.get<Teuchos::ParameterList>("Plasticity Model");
-
       Plato::YieldStressFactory< Plato::ResidualTypes<SimplexPhysicsType> >
         tYieldStressFactory;
-      auto pComputeYieldStress = tYieldStressFactory.create(tPlasticityParamList);
+      auto pComputeYieldStress = tYieldStressFactory.create(mPlasticityParamList);
       auto & tComputeYieldStress = *pComputeYieldStress;
 
       // Transfer elasticity parameters to device

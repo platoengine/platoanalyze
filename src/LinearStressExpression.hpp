@@ -568,8 +568,8 @@ public:
       if( tVarMaps(cSmallStrain).key )
         tExpEval.set_variable( tVarMaps(cSmallStrain).value, aSmallStrain );
 
-      if( tVarMaps(cVelGrad).key )
-        tExpEval.set_variable( tVarMaps(cVelGrad).value, aVelGrad );
+      // if( tVarMaps(cVelGrad).key )
+      //   tExpEval.set_variable( tVarMaps(cVelGrad).value, aVelGrad );
 
       // The reference strain does not change.
       if( tVarMaps(cReferenceStrain).key )
@@ -610,10 +610,10 @@ public:
               aCauchyStress(aCellOrdinal, tVoigtIndex_I) += tStress(aCellOrdinal, tVoigtIndex_J);
 
               // The original stress equation.
-	      // aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
-	      // 	((aSmallStrain(aCellOrdinal, tVoigtIndex_J) - tReferenceStrain(tVoigtIndex_J)) +
-	      // 	 (aVelGrad(aCellOrdinal, tVoigtIndex_J) *  tRayleighB)) *
-	      // 	tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+              // aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+              //        ((aSmallStrain(aCellOrdinal, tVoigtIndex_J) - tReferenceStrain(tVoigtIndex_J)) +
+              //         (aVelGrad(aCellOrdinal, tVoigtIndex_J) *  tRayleighB)) *
+              //        tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
             }
         }
       } );
