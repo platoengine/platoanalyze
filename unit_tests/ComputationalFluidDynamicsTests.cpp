@@ -829,7 +829,44 @@ inline Type parse_parameter
 }
 // function parse_parameter
 
+inline void
+is_positive_number
+(Plato::Scalar aInput,
+ std::string aName = "scalar")
+{
+    if(aInput <= static_cast<Plato::Scalar>(0.0))
+    {
+        THROWERR(std::string("Expected a positive number and instead user-defined parameter '") + aName
+             + "' was set to an invalid value of '" + std::to_string(aInput) + "'.")
+    }
+}
+// function is_positive_number
 
+template<typename Type>
+inline Type parse_max_material_property
+(Teuchos::ParameterList& aInputs,
+ const std::string& aBlock,
+ const std::string& aProperty,
+ const std::vector<Plato::SpatialDomain>& aDomains)
+{
+    std::vector<Type> tProperties;
+    for(auto& tDomain : aDomains)
+    {
+        auto tMaterialName = tDomain.getMaterialName();
+        Plato::is_material_defined(tMaterialName, aInputs);
+        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
+        if( aInputs.isSublist(aBlock) )
+        {
+            auto tValue = Plato::parse_parameter<Plato::Scalar>(aProperty, aBlock, tMaterial);
+            Plato::is_positive_number(tValue, aProperty);
+            tProperties.push_back(tValue);
+        }
+    }
+
+    auto tMax = *std::max_element(tProperties.begin(), tProperties.end());
+    return tMax;
+}
+// function parse_max_material_property
 
 
 /***************************************************************************//**
@@ -1236,6 +1273,7 @@ private:
         }
     }
 };
+
 // struct Variables
 typedef Variables Dual;   /*!< variant name used for the Variables structure to identify quantities associated with the dual problem in optimization */
 typedef Variables Primal; /*!< variant name used for the Variables structure to identify quantities associated with the primal problem in optimization */
@@ -4098,14 +4136,6 @@ inline bool calculate_heat_transfer
 // function calculate_heat_transfer
 
 
-inline void is_positive_number(Plato::Scalar aInput, std::string aName = "scalar")
-{
-    if(aInput <= static_cast<Plato::Scalar>(0.0))
-    {
-        THROWERR(std::string("Invalid '") + aName + "', expected a positive number greater than zero and instead the user-defined value was set to '" + std::to_string(aInput) + "'.")
-    }
-}
-
 inline Plato::Scalar
 dimensionless_effective_conductivity
 (Teuchos::ParameterList & aInputs)
@@ -4487,6 +4517,8 @@ stabilization_constant
     }
     return tOutput;
 }
+
+
 
 
 
@@ -6431,24 +6463,22 @@ private:
         }
     }
 
-    void setThermalConductivity
-    (Teuchos::ParameterList & aInputs)
+    void setThermalConductivity(Teuchos::ParameterList &aInputs)
     {
-	auto tMaterialName = mSpatialDomain.getMaterialName();
+        auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
-	Plato::Fluids::is_positive_number(mThermalConductivity, "Thermal Conductivity");
+        Plato::is_positive_number(mThermalConductivity, "Thermal Conductivity");
     }
 
-    void setThermalDiffusivityRatio
-    (Teuchos::ParameterList & aInputs)
+    void setThermalDiffusivityRatio(Teuchos::ParameterList &aInputs)
     {
-	auto tMaterialName = mSpatialDomain.getMaterialName();
+        auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         mThermalDiffusivityRatio = Plato::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
-	Plato::Fluids::is_positive_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
+        Plato::is_positive_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
     }
 
     void setCharacteristicLength
@@ -6677,7 +6707,7 @@ private:
             auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
             auto tThermalPropBlock = std::string("Thermal Properties");
             mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
-	    Plato::Fluids::is_positive_number(mThermalConductivity, "Thermal Conductivity");
+	        Plato::is_positive_number(mThermalConductivity, "Thermal Conductivity");
         }
     }
 
@@ -9530,6 +9560,29 @@ calculate_artificial_compressibility
 }
 
 inline Plato::Scalar
+calculate_critical_diffusion_time_step
+(const Plato::Scalar aKinematicViscocity,
+ const Plato::Scalar aThermalDiffusivity,
+ const Plato::ScalarVector & aElemCharSize,
+ Plato::Scalar aSafetyFactor = 0.7)
+{
+    auto tNumNodes = aElemCharSize.size();
+    Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        auto tKinematicStep = ( aSafetyFactor * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) ) /
+                ( static_cast<Plato::Scalar>(2) * aKinematicViscocity );
+        auto tDiffusivityStep = ( aSafetyFactor * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) ) /
+                ( static_cast<Plato::Scalar>(2) * aThermalDiffusivity );
+        tLocalTimeStep(aNodeOrdinal) = tKinematicStep < tDiffusivityStep ? tKinematicStep : tDiffusivityStep;
+    }, "calculate local critical time step");
+
+    Plato::Scalar tMinValue = 0.0;
+    Plato::blas1::min(tLocalTimeStep, tMinValue);
+    return tMinValue;
+}
+
+inline Plato::Scalar
 calculate_critical_convective_time_step
 (const Plato::SpatialModel & aSpatialModel,
  const Plato::ScalarVector & aElemCharSize,
@@ -9757,13 +9810,14 @@ private:
 
     std::ofstream mDiagnostics; /*!< output diagnostics */
 
-    Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mPressureTolerance = 1e-4;
     Plato::Scalar mPredictorTolerance = 1e-4;
     Plato::Scalar mCorrectorTolerance = 1e-4;
     Plato::Scalar mTemperatureTolerance = 1e-2;
     Plato::Scalar mSteadyStateTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
+    Plato::Scalar mCriticalThermalDiffusivity = 1.0; /*!< fluid thermal diffusivity - used to calculate stable time step */
+    Plato::Scalar mCriticalKinematicViscocity = 1.0; /*!< fluid kinematic viscocity - used to calculate stable time step */
 
     Plato::OrdinalType mOutputFrequency = 1e6; 
     Plato::OrdinalType mMaxPressureIterations = 5; /*!< maximum number of pressure solver iterations */
@@ -9875,7 +9929,7 @@ public:
         tWriter.write(tCurrentTimeStep, tTime, tTags);
     }
 
-    void output
+    void write
     (const Plato::Primal& aPrimal,
      Omega_h::vtk::Writer& aWriter)
     {
@@ -9883,27 +9937,27 @@ public:
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         const Plato::OrdinalType tTimeStepIndex = aPrimal.scalar("time step index");
 
-	std::string tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current pressure" : "previous pressure";
+        std::string tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current pressure" : "previous pressure";
         auto tPressureView = aPrimal.vector(tTag);
         Omega_h::Write<Omega_h::Real> tPressure(tPressureView.size(), "Pressure");
         Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressureView, tPressure);
         mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
 
-	tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current velocity" : "previous velocity";
+        tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current velocity" : "previous velocity";
         auto tVelocityView = aPrimal.vector(tTag);
         Omega_h::Write<Omega_h::Real> tVelocity(tVelocityView.size(), "Velocity");
         Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelocityView, tVelocity);
         mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
 
-	tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current predictor" : "previous predictor";
+        tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current predictor" : "previous predictor";
         auto tPredictorView = aPrimal.vector(tTag);
         Omega_h::Write<Omega_h::Real> tPredictor(tPredictorView.size(), "Predictor");
         Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tPredictorView, tPredictor);
         mSpatialModel.Mesh.add_tag(Omega_h::VERT, "Predictor", mNumVelDofsPerNode, Omega_h::Reals(tPredictor));
 
-	if(mCalculateHeatTransfer)
+        if(mCalculateHeatTransfer)
         {
-	    tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current temperature" : "previous temperature";
+            tTag = tTimeStepIndex != static_cast<Plato::OrdinalType>(0) ? "current temperature" : "previous temperature";
             auto tTemperatureView = aPrimal.vector(tTag);
             Omega_h::Write<Omega_h::Real> tTemperature(tTemperatureView.size(), "Temperature");
             Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTemperatureView, tTemperature);
@@ -9944,9 +9998,9 @@ public:
                 this->updateTemperature(aControl, tPrimal);
             }
 
-	    if(this->writeOutput(tIteration))
+            if(this->writeOutput(tIteration))
             {
-                this->output(tPrimal, tWriter);
+                this->write(tPrimal, tWriter);
             }
 
             if(this->checkStoppingCriteria(tPrimal))
@@ -9978,19 +10032,19 @@ public:
             THROWERR(std::string("Criterion with tag '") + aName + "' is not in the criteria list");
         }
 
-	auto tDirectory = std::string("solution_history");
+        auto tDirectory = std::string("solution_history");
         auto tSolutionHistory = Plato::omega_h::read_pvtu_file_paths(tDirectory);
-	if(tSolutionHistory.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
-	{
-	    THROWERR(std::string("Number of time steps read from the '") + tDirectory 
-		+ "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
-	}
+        if(tSolutionHistory.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
+        {
+            THROWERR(std::string("Number of time steps read from the '") + tDirectory
+                 + "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
+        }
 
-	// evaluate steady-state criterion
+        // evaluate steady-state criterion
         Plato::Primal tPrimal;
-	auto tLastTimeStepIndex = tSolutionHistory.size() - 1u;
+        auto tLastTimeStepIndex = tSolutionHistory.size() - 1u;
         tPrimal.scalar("time step index", tLastTimeStepIndex);
-	this->setPrimal(tSolutionHistory, tPrimal);
+        this->setPrimal(tSolutionHistory, tPrimal);
         auto tOutput = tItr->second->value(aControl, tPrimal);
 
      	return tOutput;
@@ -10047,34 +10101,34 @@ public:
 
         Plato::Dual tDual;
         Plato::Primal tCurrentState, tPreviousState;
-	auto tDirectory = std::string("solution_history");
+        auto tDirectory = std::string("solution_history");
         auto tSolutionHistoryPaths = Plato::omega_h::read_pvtu_file_paths(tDirectory);
-	if(tSolutionHistoryPaths.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
-	{
-	    THROWERR(std::string("Number of time steps read from the '") + tDirectory 
-		+ "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
-	}
+        if(tSolutionHistoryPaths.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
+        {
+            THROWERR(std::string("Number of time steps read from the '") + tDirectory
+                 + "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
+        }
 
         Plato::ScalarVector tTotalDerivative("total derivative", mSpatialModel.Mesh.nverts());
         for(auto tItr = tSolutionHistoryPaths.rbegin(); tItr != tSolutionHistoryPaths.rend() - 1; tItr++)
         {
-	    // set fields for the current primal state
+            // set fields for the current primal state
             auto tCurrentStateIndex = (tSolutionHistoryPaths.size() - 1u) - std::distance(tSolutionHistoryPaths.rbegin(), tItr);
             tCurrentState.scalar("time step index", tCurrentStateIndex);
-	    this->setPrimal(tSolutionHistoryPaths, tCurrentState);
+            this->setPrimal(tSolutionHistoryPaths, tCurrentState);
 
-	    // set fields for the previous primal state
+	        // set fields for the previous primal state
             auto tPreviousStateIndex = tCurrentStateIndex + 1u;
             tPreviousState.scalar("time step index", tPreviousStateIndex);
-	    if(tPreviousStateIndex != tSolutionHistoryPaths.size())
-	    {
-	        this->setPrimal(tSolutionHistoryPaths, tPreviousState);
-	    }
+            if(tPreviousStateIndex != tSolutionHistoryPaths.size())
+            {
+                this->setPrimal(tSolutionHistoryPaths, tPreviousState);
+            }
 
-	    // set adjoint state
+	        // set adjoint state
             this->setDual(tDual);
 
-	    // update adjoint states
+            // update adjoint states
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperatureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
@@ -10083,10 +10137,10 @@ public:
             this->updatePressureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
             this->updatePredictorAdjoint(aControl, tCurrentState, tPreviousState, tDual);
 
-	    // update total derivative with respect to control variables 
+            // update total derivative with respect to control variables
             this->updateTotalDerivativeWrtControl(aName, aControl, tCurrentState, tDual, tTotalDerivative);
 
-	    this->saveDual(tDual);
+            this->saveDual(tDual);
         }
         return tTotalDerivative;
     }
@@ -10174,7 +10228,7 @@ private:
         auto tTimeStepIndex = static_cast<size_t>(aPrimal.scalar("time step index"));
         this->setCurrentFields(aPaths[tTimeStepIndex], aPrimal);
         this->setPreviousFields(aPaths[tTimeStepIndex - 1u], aPrimal);
-	this->setCriticalTimeStep(aPrimal);
+        this->setCriticalTimeStep(aPrimal);
     }
 
     void setCriticalTimeStep
@@ -10190,14 +10244,14 @@ private:
 
     Plato::Solutions setOutputSolution()
     {
-	Plato::Solutions tSolution;
+        Plato::Solutions tSolution;
         tSolution.set("velocity", mVelocity);
         tSolution.set("pressure", mPressure);
         if(mCalculateHeatTransfer)
         {
             tSolution.set("temperature", mTemperature);
         }
-	return tSolution;
+        return tSolution;
     }
 
     void setInitialConditions
@@ -10207,7 +10261,7 @@ private:
         const Plato::Scalar tTime = 0.0;
         const Plato::OrdinalType tTimeStep = 0;
         mCriticalTimeStepHistory.push_back(0.0);
-	aPrimal.scalar("time step index", tTimeStep);
+        aPrimal.scalar("time step index", tTimeStep);
 
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
@@ -10234,12 +10288,15 @@ private:
             auto tPreviousTemp  = Kokkos::subview(mTemperature, tTimeStep, Kokkos::ALL());
             Plato::cbs::enforce_boundary_condition(tTempBcDofs, tTempBcValues, tPreviousTemp);
             aPrimal.vector("previous temperature", tPreviousTemp);
+
+            aPrimal.scalar("thermal diffusivity", mCriticalThermalDiffusivity);
+            aPrimal.scalar("kinematic viscocity", mCriticalKinematicViscocity);
         }
 
-	if(this->writeOutput(tTimeStep))
+        if(this->writeOutput(tTimeStep))
         {
-            this->output(aPrimal, aWriter);
-	}
+            this->write(aPrimal, aWriter);
+        }
     }
 
     void printIteration
@@ -10286,16 +10343,23 @@ private:
         this->allocateOptimizationMetadata(aInputs);
     }
 
+    void setCriticalFluidProperties(Teuchos::ParameterList &aInputs)
+    {
+        mCriticalThermalDiffusivity = Plato::parse_max_material_property<Plato::Scalar>
+            (aInputs, "Thermal Properties", "Thermal Diffusivity", mSpatialModel.Domains);
+        mCriticalKinematicViscocity = Plato::parse_max_material_property<Plato::Scalar>
+            (aInputs, "Viscous Properties", "Kinematic Viscocity", mSpatialModel.Domains);
+    }
+
     void parseHeatTransferEquation
     (Teuchos::ParameterList & aInputs)
     {
         mCalculateHeatTransfer = Plato::Fluids::calculate_heat_transfer(aInputs);
-
         if(mCalculateHeatTransfer)
         {
-            mTemperatureResidual =
-                std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>("Temperature", mSpatialModel, mDataMap, aInputs);
-            mPrandtlNumber = Plato::Fluids::dimensionless_prandtl_number(aInputs);
+            mTemperatureResidual = std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>
+                    ("Temperature", mSpatialModel, mDataMap, aInputs);
+            this->setCriticalFluidProperties(aInputs);
         }
     }
 
@@ -10423,8 +10487,8 @@ private:
     {
         if(aInputs.isSublist("Criteria"))
         {
-	    this->allocateDualStates();
-	    this->allocateCriteriaList(aInputs);
+            this->allocateDualStates();
+            this->allocateCriteriaList(aInputs);
         }
     }
 
@@ -10513,34 +10577,45 @@ private:
         aVariables.vector("element characteristic size", tElemCharSizes);
     }
 
-    Plato::ScalarVector criticalTimeStep
+    Plato::Scalar calculateCriticalConvectiveTimeStep
     (const Plato::Primal & aVariables,
-     const Plato::ScalarVector & aPreviousVelocity)
+     const Plato::ScalarVector & aVelocity)
     {
         auto tElemCharSize = aVariables.vector("element characteristic size");
-        auto tConvectiveVel = 
-	    Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, aPreviousVelocity);
-        auto tCriticalConvectiveTimeStep = Plato::cbs::calculate_critical_convective_time_step
-            (mSpatialModel, tElemCharSize, tConvectiveVel, mTimeStepSafetyFactor);
+        auto tVelMag = Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, aVelocity);
+        auto tCriticalTimeStep = Plato::cbs::calculate_critical_convective_time_step
+            (mSpatialModel, tElemCharSize, tVelMag, mTimeStepSafetyFactor);
+        return tCriticalTimeStep;
+    }
 
+    Plato::Scalar calculateCriticalDiffusionTimeStep
+    (const Plato::Primal & aVariables)
+    {
+        auto tElemCharSize = aVariables.vector("element characteristic size");
+        auto tKinematicViscocity = aVariables.scalar("kinematic viscocity");
+        auto tThermalDiffusivity = aVariables.scalar("thermal diffusivity");
+        auto tCriticalTimeStep = Plato::cbs::calculate_critical_diffusion_time_step
+            (tKinematicViscocity, tThermalDiffusivity, tElemCharSize, mTimeStepSafetyFactor);
+        return tCriticalTimeStep;
+    }
+
+    Plato::ScalarVector criticalTimeStep
+    (const Plato::Primal & aVariables,
+     const Plato::ScalarVector & aVelocity)
+    {
         Plato::ScalarVector tCriticalTimeStep("critical time step", 1);
         auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
 
+        tHostCriticalTimeStep(0) = this->calculateCriticalConvectiveTimeStep(aVariables, aVelocity);
         if(mCalculateHeatTransfer)
         {
-	    auto tCriticalThermalTimeStep = Plato::cbs::calculate_critical_thermal_time_step
-	        (tElemCharSize, mPrandtlNumber, mTimeStepSafetyFactor);
-            auto tMinCriticalTimeStep = std::min(tCriticalConvectiveTimeStep, tCriticalThermalTimeStep);
+            auto tCriticalDiffusionTimeStep = this->calculateCriticalDiffusionTimeStep(aVariables);
+            auto tMinCriticalTimeStep = std::min(tCriticalDiffusionTimeStep, tHostCriticalTimeStep(0));
             tHostCriticalTimeStep(0) = tMinCriticalTimeStep;
-            Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
-            mCriticalTimeStepHistory.push_back(tMinCriticalTimeStep);
         }
-        else
-        {
-            tHostCriticalTimeStep(0) = tCriticalConvectiveTimeStep;
-            Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
-            mCriticalTimeStepHistory.push_back(tCriticalConvectiveTimeStep);
-        }
+
+        mCriticalTimeStepHistory.push_back(tHostCriticalTimeStep(0));
+        Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
         return tCriticalTimeStep;
     }
 
@@ -10558,18 +10633,18 @@ private:
         return tCriticalTimeStep;
     }
 
-    void checkCriticalTimeStep(const Plato::Primal & aVariables)
+    void checkCriticalTimeStep(const Plato::Primal &aVariables)
     {
-	auto tCriticalTimeStep = aVariables.vector("critical time step");
-	auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
-	Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
-	if(tHostCriticalTimeStep(0) < std::numeric_limits<Plato::Scalar>::epsilon())
-	{
-	    std::ostringstream tOutSStream;
-	    tOutSStream << tHostCriticalTimeStep(0);
-	    THROWERR(std::string("Unstable critical time step (dt = '") + tOutSStream.str()
-		+ "') detected. Refine the finite element mesh or coarsen the steady state stopping tolerance.")
-	}
+        auto tCriticalTimeStep = aVariables.vector("critical time step");
+        auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
+        Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
+        if(tHostCriticalTimeStep(0) < std::numeric_limits<Plato::Scalar>::epsilon())
+        {
+            std::ostringstream tOutSStream;
+            tOutSStream << tHostCriticalTimeStep(0);
+            THROWERR(std::string("Unstable critical time step (dt = '") + tOutSStream.str()
+                 + "') detected. Refine the finite element mesh or coarsen the steady state stopping tolerance.")
+        }
     }
 
     void calculateCriticalTimeStep(Plato::Primal & aVariables)
@@ -10606,13 +10681,13 @@ private:
         aDual.vector("previous predictor adjoint", tPreviousAdjointPred);
         aDual.vector("previous pressure adjoint", tPreviousAdjointPress);
 
-	if(mCalculateHeatTransfer)
-	{
-            auto tCurrentAdjointTemp = Kokkos::subview(mAdjointTemperature, tCurrentSnapshot, Kokkos::ALL());
-            auto tPreviousAdjointTemp = Kokkos::subview(mAdjointTemperature, tPreviousSnapshot, Kokkos::ALL());
-            aDual.vector("current temperature adjoint", tCurrentAdjointTemp);
-            aDual.vector("previous temperature adjoint", tPreviousAdjointTemp);
-	}
+	    if(mCalculateHeatTransfer)
+	    {
+                auto tCurrentAdjointTemp = Kokkos::subview(mAdjointTemperature, tCurrentSnapshot, Kokkos::ALL());
+                auto tPreviousAdjointTemp = Kokkos::subview(mAdjointTemperature, tPreviousSnapshot, Kokkos::ALL());
+                aDual.vector("current temperature adjoint", tCurrentAdjointTemp);
+                aDual.vector("previous temperature adjoint", tPreviousAdjointTemp);
+	    }
     }
 
     void saveDual(Plato::Dual & aDual)
@@ -11992,7 +12067,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "  <ParameterList name='Material Models'>"
             "    <ParameterList name='Air'>"
             "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
             "        <Parameter  name='Thermal Diffusivity Ratio' type='double' value='0.5'/>"
+            "      </ParameterList>"
+            "      <ParameterList name='Viscous Properties'>"
+            "        <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -12786,7 +12865,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -12795,6 +12874,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
             "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='Air'>"
+            "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
+            "      </ParameterList>"
+            "      <ParameterList name='Viscous Properties'>"
+            "        <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -12943,7 +13032,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e4}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -12952,6 +13041,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
             "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='Air'>"
+            "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
+            "      </ParameterList>"
+            "      <ParameterList name='Viscous Properties'>"
+            "        <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
