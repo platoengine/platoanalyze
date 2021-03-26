@@ -4582,13 +4582,13 @@ public:
             Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
                 (aCellOrdinal, tBuoyancyConst, tNaturalConvectionNum, tPrevTempGP, tThermalBuoyancy);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, tMultiplier);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, -tMultiplier);
 
             // 2. add stabilizing buoyancy force to residual. i.e. R += \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tBuoyancyDamping * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, tMultiplier);
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, -tMultiplier);
         }, "add contribution from thermal buoyancy forces to residual");
     }
 
@@ -9932,6 +9932,7 @@ public:
 
             this->setPrimal(tPrimal);
             this->calculateCriticalTimeStep(tPrimal);
+            this->checkCriticalTimeStep(tPrimal);
 
             this->printIteration(tPrimal);
             this->updatePredictor(aControl, tPrimal);
@@ -9943,8 +9944,7 @@ public:
                 this->updateTemperature(aControl, tPrimal);
             }
 
-	    auto tModulo = (tIteration + static_cast<Plato::OrdinalType>(1) ) % mOutputFrequency;
-	    if(tModulo == static_cast<Plato::OrdinalType>(0))
+	    if(this->writeOutput(tIteration))
             {
                 this->output(tPrimal, tWriter);
             }
@@ -10125,6 +10125,19 @@ public:
     }
 
 private:
+    bool writeOutput
+    (const Plato::OrdinalType aIteration) 
+    const
+    {
+	auto tWrite = false;
+        if(mOutputFrequency > static_cast<Plato::OrdinalType>(0))
+	{
+	    auto tModulo = (aIteration + static_cast<Plato::OrdinalType>(1) ) % mOutputFrequency;
+	    tWrite = tModulo == static_cast<Plato::OrdinalType>(0) ? true : false;
+	}
+	return tWrite;
+    }
+
     void setCurrentFields
     (const Omega_h::filesystem::path& aPath,
            Plato::Primal& aStates)
@@ -10223,7 +10236,10 @@ private:
             aPrimal.vector("previous temperature", tPreviousTemp);
         }
 
-        this->output(aPrimal, aWriter);
+	if(this->writeOutput(tTimeStep))
+        {
+            this->output(aPrimal, aWriter);
+	}
     }
 
     void printIteration
@@ -10540,6 +10556,20 @@ private:
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tInitialVelocity);
         auto tCriticalTimeStep = this->criticalTimeStep(aVariables, tInitialVelocity);
         return tCriticalTimeStep;
+    }
+
+    void checkCriticalTimeStep(const Plato::Primal & aVariables)
+    {
+	auto tCriticalTimeStep = aVariables.vector("critical time step");
+	auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
+	Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
+	if(tHostCriticalTimeStep(0) < std::numeric_limits<Plato::Scalar>::epsilon())
+	{
+	    std::ostringstream tOutSStream;
+	    tOutSStream << tHostCriticalTimeStep(0);
+	    THROWERR(std::string("Unstable critical time step (dt = '") + tOutSStream.str()
+		+ "') detected. Refine the finite element mesh or coarsen the steady state stopping tolerance.")
+	}
     }
 
     void calculateCriticalTimeStep(Plato::Primal & aVariables)
@@ -11919,7 +11949,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 1, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 4, 6);
     TEST_ASSERT(tError < 1e-4);
 
     std::system("rm -rf solution_history");
@@ -12036,7 +12066,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "  </ParameterList>"
                 "  <ParameterList  name='Convergence'>"
                 "    <Parameter name='Output Frequency' type='int' value='1'/>"
-                "    <Parameter name='Maximum Iterations' type='int' value='20'/>"
+                "    <Parameter name='Maximum Iterations' type='int' value='10'/>"
                 "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
                 "  </ParameterList>"
             "</ParameterList>"
@@ -12058,6 +12088,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
     auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 1, 3);
     TEST_ASSERT(tError < 1e-4);
+
+    std::system("rm -rf solution_history");
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
@@ -12175,6 +12208,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     TEST_FLOATING_EQUALITY(0.0, tCriterionValue, tTol);
     tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Pressure");
     TEST_FLOATING_EQUALITY(0.0896025, tCriterionValue, tTol);
+
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrinkmanTerm)
@@ -12308,6 +12343,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0519869, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
+    
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
@@ -12440,6 +12477,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
+    
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
@@ -12590,6 +12629,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.33372, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
+    
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 
@@ -12731,6 +12772,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.633259, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
+    
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 
@@ -12818,7 +12861,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='1.0'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -12887,6 +12930,175 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
     TEST_FLOATING_EQUALITY(11.9889, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
+    
+    std::system("rm -f cfd_solver_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
+            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e4}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Zero Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Temperature Essential Boundary Conditions'>"
+            "    <ParameterList  name='Cold Wall'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Hot Wall'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,60,60);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // add pressure essential boundary condition to node set list
+    Omega_h::Write<int> tWritePress(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tWritePress[aOrdinal]=0;
+    }, "set pressure bc dofs value");
+    auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    //tProblem.output("cfd_test_problem");
+
+    /*
+    // test solution
+    auto tTags = tSolution.tags();
+    std::vector<std::string> tGoldTags = { "velocity", "pressure", "temperature" };
+    TEST_ASSERT(tTags.size() == tGoldTags.size());
+    TEST_EQUALITY(tGoldTags.size(), tTags.size());
+    for(auto& tTag : tTags)
+    {
+        auto tItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
+        TEST_ASSERT(tItr != tGoldTags.end());
+        TEST_EQUALITY(*tItr, tTag);
+    }
+
+    auto tTol = 1e-2;
+    auto tPressure = tSolution.get("pressure");
+    auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
+    Plato::Scalar tMaxPress = 0;
+    Plato::blas1::max(tPressSubView, tMaxPress);
+    TEST_FLOATING_EQUALITY(5.34984, tMaxPress, tTol);
+    Plato::Scalar tMinPress = 0;
+    Plato::blas1::min(tPressSubView, tMinPress);
+    TEST_FLOATING_EQUALITY(-424.281, tMinPress, tTol);
+    //Plato::print(tPressSubView, "steady state pressure");
+
+    auto tVelocity = tSolution.get("velocity");
+    auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
+    Plato::Scalar tMaxVel = 0;
+    Plato::blas1::max(tVelSubView, tMaxVel);
+    TEST_FLOATING_EQUALITY(3.59025, tMaxVel, tTol);
+    Plato::Scalar tMinVel = 0;
+    Plato::blas1::min(tVelSubView, tMinVel);
+    TEST_FLOATING_EQUALITY(-4.87989, tMinVel, tTol);
+    //Plato::print(tVelSubView, "steady state velocity");
+
+    auto tTemperature = tSolution.get("temperature");
+    auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
+    auto tTempNorm = Plato::blas1::norm(tTempSubView);
+    TEST_FLOATING_EQUALITY(11.8214, tTempNorm, tTol);
+    //Plato::print(tTempSubView, "steady state temperature");
+*/
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
