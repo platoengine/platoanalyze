@@ -471,10 +471,12 @@ findParentElements(
     // fill d_* data
     auto tCoords = aMesh.coords();
     Omega_h::LOs tCells2Nodes = aMesh.ask_elem_verts();
+    auto tDomainCellMap = aDomainCellMap;
+
     Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNElems), LAMBDA_EXPRESSION(OrdinalT iCellOrdinal)
     {
         OrdinalT tNVertsPerElem = cSpaceDim+1;
-        OrdinalT tCellOrdinal = aDomainCellMap[iCellOrdinal];
+        OrdinalT tCellOrdinal = tDomainCellMap[iCellOrdinal];
 
         // set min and max of element bounding box to first node
         for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
@@ -543,7 +545,7 @@ findParentElements(
         typename Plato::ScalarVectorT<int>::value_type iParent = -2;
         for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
         {
-            auto tElem = tIndices(iElem);
+            auto tElem = tDomainCellMap[tIndices(iElem)];
             tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
             ScalarT tEleMin = tBasis[0];
             OrdinalT tNegCount = 0;
