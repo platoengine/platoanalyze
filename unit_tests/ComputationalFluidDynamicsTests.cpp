@@ -830,17 +830,24 @@ inline Type parse_parameter
 // function parse_parameter
 
 inline void
-is_positive_number
-(Plato::Scalar aInput,
+is_positive_finite_number
+(const Plato::Scalar aInput,
  std::string aName = "scalar")
 {
+    if(!std::isfinite(aInput))
+    {
+	THROWERR(std::string("Paramater '") + aName + "' is set to a non-finite number")
+    }
+
     if(aInput <= static_cast<Plato::Scalar>(0.0))
     {
-        THROWERR(std::string("Expected a positive number and instead user-defined parameter '") + aName
-             + "' was set to an invalid value of '" + std::to_string(aInput) + "'.")
+        THROWERR(std::string("Expected a positive non-zero number and instead user-defined parameter '") 
+	     + aName + "' was set to '" + std::to_string(aInput) + "'.")
     }
 }
-// function is_positive_number
+// function is_positive_finite_number
+
+
 
 template<typename Type>
 inline Type parse_max_material_property
@@ -855,15 +862,19 @@ inline Type parse_max_material_property
         auto tMaterialName = tDomain.getMaterialName();
         Plato::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        if( aInputs.isSublist(aBlock) )
+        if( tMaterial.isSublist(aBlock) )
         {
             auto tValue = Plato::parse_parameter<Plato::Scalar>(aProperty, aBlock, tMaterial);
-            Plato::is_positive_number(tValue, aProperty);
+            Plato::is_positive_finite_number(tValue, aProperty);
             tProperties.push_back(tValue);
         }
     }
 
-    auto tMax = *std::max_element(tProperties.begin(), tProperties.end());
+    Plato::Scalar tMax = std::numeric_limits<Plato::Scalar>::infinity();
+    if(!tProperties.empty())
+    {
+        tMax = *std::max_element(tProperties.begin(), tProperties.end());
+    }
     return tMax;
 }
 // function parse_max_material_property
@@ -6426,17 +6437,20 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, aResultWS, -tPenalizedDimlessHeatSrcConstant);
 
             // 5. add current convective force contribution to residual, i.e. R += C(u^{n+1}) T^n
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
-            Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, 1.0);
+            //tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
+            //Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+            //    (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
+            //Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
+            //    (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, 1.0);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
+		/*
             // 6. add stabilizing force contribution to residual, i.e. R += C_u(u^{n+1}) T^n - Q_u(u^{n+1})
             auto tScalar = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tScalar);
-            tScalar = tStabilization * tHeatSrcDimlessConstant * 
+		*/
+            auto tScalar = tStabilization * tHeatSrcDimlessConstant * 
 		static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tScalar);
@@ -6469,7 +6483,7 @@ private:
         Plato::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
-        Plato::is_positive_number(mThermalConductivity, "Thermal Conductivity");
+        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
     }
 
     void setThermalDiffusivityRatio(Teuchos::ParameterList &aInputs)
@@ -6478,7 +6492,7 @@ private:
         Plato::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         mThermalDiffusivityRatio = Plato::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
-        Plato::is_positive_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
+        Plato::is_positive_finite_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
     }
 
     void setCharacteristicLength
@@ -6666,6 +6680,7 @@ public:
             auto tHeatSourceConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, aResultWS, -tHeatSourceConstant);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 5. add stabilizing force contribution to residual, i.e. R += C_u(u^{n+1}) T^n - Q_u(u^{n+1})
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
@@ -6707,7 +6722,7 @@ private:
             auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
             auto tThermalPropBlock = std::string("Thermal Properties");
             mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
-	        Plato::is_positive_number(mThermalConductivity, "Thermal Conductivity");
+	        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
         }
     }
 
@@ -9582,6 +9597,17 @@ calculate_critical_diffusion_time_step
     return tMinValue;
 }
 
+inline Plato::Scalar 
+calculate_time_step_upper_bound
+(const Plato::Scalar aVelUpperBound,
+ const Plato::ScalarVector& aElemCharSize)
+{
+    Plato::Scalar tMinValue = 0.0;
+    Plato::blas1::min(aElemCharSize, tMinValue);
+    auto tOutput = tMinValue / aVelUpperBound;
+    return tOutput;
+}
+
 inline Plato::Scalar
 calculate_critical_convective_time_step
 (const Plato::SpatialModel & aSpatialModel,
@@ -9810,6 +9836,7 @@ private:
 
     std::ofstream mDiagnostics; /*!< output diagnostics */
 
+    Plato::Scalar mTimeStepDamping = 1.0;
     Plato::Scalar mPressureTolerance = 1e-4;
     Plato::Scalar mPredictorTolerance = 1e-4;
     Plato::Scalar mCorrectorTolerance = 1e-4;
@@ -9818,6 +9845,7 @@ private:
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
     Plato::Scalar mCriticalThermalDiffusivity = 1.0; /*!< fluid thermal diffusivity - used to calculate stable time step */
     Plato::Scalar mCriticalKinematicViscocity = 1.0; /*!< fluid kinematic viscocity - used to calculate stable time step */
+    Plato::Scalar mCriticalVelocityLowerBound = 0.5; /*!< dimensionless critical convective velocity upper bound */
 
     Plato::OrdinalType mOutputFrequency = 1e6; 
     Plato::OrdinalType mMaxPressureIterations = 5; /*!< maximum number of pressure solver iterations */
@@ -10262,6 +10290,7 @@ private:
         const Plato::OrdinalType tTimeStep = 0;
         mCriticalTimeStepHistory.push_back(0.0);
         aPrimal.scalar("time step index", tTimeStep);
+        aPrimal.scalar("critical velocity lower bound", mCriticalVelocityLowerBound);
 
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
@@ -10347,8 +10376,10 @@ private:
     {
         mCriticalThermalDiffusivity = Plato::parse_max_material_property<Plato::Scalar>
             (aInputs, "Thermal Properties", "Thermal Diffusivity", mSpatialModel.Domains);
+	Plato::is_positive_finite_number(mCriticalThermalDiffusivity, "Thermal Diffusivity");
         mCriticalKinematicViscocity = Plato::parse_max_material_property<Plato::Scalar>
             (aInputs, "Viscous Properties", "Kinematic Viscocity", mSpatialModel.Domains);
+	Plato::is_positive_finite_number(mCriticalKinematicViscocity, "Kinematic Viscocity");
     }
 
     void parseHeatTransferEquation
@@ -10386,6 +10417,7 @@ private:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
+            mTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Damping", 1.0);
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
         }
     }
@@ -10599,6 +10631,16 @@ private:
         return tCriticalTimeStep;
     }
 
+    inline Plato::Scalar
+    calculateCriticalTimeStepUpperBound
+    (const Plato::Primal & aVariables)
+    {
+        auto tElemCharSize = aVariables.vector("element characteristic size");
+        auto tVelLowerBound = aVariables.scalar("critical velocity lower bound");
+	auto tOutput = Plato::cbs::calculate_time_step_upper_bound(tVelLowerBound, tElemCharSize);
+	return tOutput;
+    }
+
     Plato::ScalarVector criticalTimeStep
     (const Plato::Primal & aVariables,
      const Plato::ScalarVector & aVelocity)
@@ -10614,8 +10656,12 @@ private:
             tHostCriticalTimeStep(0) = tMinCriticalTimeStep;
         }
 
+	auto tCriticalTimeStepUpperBound = this->calculateCriticalTimeStepUpperBound(aVariables);
+        auto tMinCriticalTimeStep = std::min(tCriticalTimeStepUpperBound, tHostCriticalTimeStep(0));
+        tHostCriticalTimeStep(0) = mTimeStepDamping * tMinCriticalTimeStep;
         mCriticalTimeStepHistory.push_back(tHostCriticalTimeStep(0));
         Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
+
         return tCriticalTimeStep;
     }
 
@@ -12145,7 +12191,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "  </ParameterList>"
                 "  <ParameterList  name='Convergence'>"
                 "    <Parameter name='Output Frequency' type='int' value='1'/>"
-                "    <Parameter name='Maximum Iterations' type='int' value='10'/>"
+                "    <Parameter name='Maximum Iterations' type='int' value='3'/>"
                 "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
                 "  </ParameterList>"
             "</ParameterList>"
@@ -12169,7 +12215,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     TEST_ASSERT(tError < 1e-4);
 
     std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    //std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
@@ -12950,19 +12996,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "    <Parameter name='Damping' type='double' value='0.1'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20,20);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,25,25);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -12998,26 +13045,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(232.374, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(252.224, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-203.299, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-229.947, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(3.55549, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(3.70439, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-4.8505, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-3.34883, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(11.9889, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(15.077, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
     
     std::system("rm -f cfd_solver_diagnostics.txt");
@@ -13118,19 +13165,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "    <Parameter name='Damping' type='double' value='0.3'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,60,60);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,25,25);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -13158,7 +13206,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
     auto tSolution = tProblem.solution(tControls);
     //tProblem.output("cfd_test_problem");
 
-    /*
     // test solution
     auto tTags = tSolution.tags();
     std::vector<std::string> tGoldTags = { "velocity", "pressure", "temperature" };
@@ -13176,28 +13223,29 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(5.34984, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(4155.81, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-424.281, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-9.88111, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(3.59025, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(19.4625, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-4.87989, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-16.1093, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(11.8214, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(14.1776, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
-*/
+    
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
@@ -14612,7 +14660,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
     std::vector<Plato::Scalar> tGold =
-        {-0.318111, -0.312444, -0.191667, -0.191667, -0.318111, -0.262444, -0.126444, -0.0707778};
+        {-0.318111, -0.379111, -0.191667, -0.225, -0.318111, -0.329111, -0.126444, -0.104111};
     auto tTol = 1e-4;
     for(auto& tValue : tGold)
     {
