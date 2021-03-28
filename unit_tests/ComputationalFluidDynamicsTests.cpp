@@ -48,26 +48,57 @@ namespace Plato
 namespace filesystem
 {
 
-bool exist
-(const std::string& aPath)
+/******************************************************************************//**
+ * \fn exist
+ *
+ * \brief Return true if path exist; else, return false
+ * \param [in] aPath directory/file path
+ * \return boolean (true or false)
+**********************************************************************************/
+bool exist(const std::string &aPath)
 {
     struct stat tBuf;
     int tReturn = stat(aPath.c_str(), &tBuf);
     return (tReturn == 0 ? true : false);
 }
+// function exist
 
-void remove
-(const std::string& aPath)
+/******************************************************************************//**
+ * \fn exist
+ *
+ * \brief Delete file/directory if it exist
+ * \param [in] aPath directory/file path
+**********************************************************************************/
+void remove(const std::string &aPath)
 {
     if(Plato::filesystem::exist(aPath))
     {
-	auto tCommand = std::string("rm -rf ") + aPath;
+        auto tCommand = std::string("rm -rf ") + aPath;
         std::system(tCommand.c_str());
     }
 }
+// function remove
 
 }
+// namespace filesystem
 
+
+/******************************************************************************//**
+ * \tparam SpaceDims (integer) number of spatial dimensions
+ * \tparam NumNodes  (integer) number of nodes on surface/face
+ * \tparam InStateType  input state type
+ * \tparam OutStateType output state type
+ *
+ * \fn device_type inline project_vector_field_onto_surface
+ *
+ * \brief Return true if path exist; else, return false
+ *
+ * \param [in] aCellOrdinal       cell/element ordinal
+ * \param [in] aBasisFunctions    basis functions
+ * \param [in] aLocalNodeOrdinals local cell node ordinals
+ * \param [in] aInputState        input state
+ * \param [in/out] aInputState    output state
+**********************************************************************************/
 template<Plato::OrdinalType SpaceDims,
          Plato::OrdinalType NumNodes,
          typename InStateType,
