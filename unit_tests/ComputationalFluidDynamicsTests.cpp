@@ -6437,20 +6437,18 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, aResultWS, -tPenalizedDimlessHeatSrcConstant);
 
             // 5. add current convective force contribution to residual, i.e. R += C(u^{n+1}) T^n
-            //tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            //Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-            //    (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
-            //Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
-            //    (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, 1.0);
+	    tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
+            Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
+            Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, 1.0);
             Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
-		/*
             // 6. add stabilizing force contribution to residual, i.e. R += C_u(u^{n+1}) T^n - Q_u(u^{n+1})
             auto tScalar = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tScalar);
-		*/
-            auto tScalar = tStabilization * tHeatSrcDimlessConstant * 
+            tScalar = tStabilization * tHeatSrcDimlessConstant * 
 		static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tScalar);
@@ -10144,6 +10142,7 @@ public:
             auto tCurrentStateIndex = (tSolutionHistoryPaths.size() - 1u) - std::distance(tSolutionHistoryPaths.rbegin(), tItr);
             tCurrentState.scalar("time step index", tCurrentStateIndex);
             this->setPrimal(tSolutionHistoryPaths, tCurrentState);
+            this->setCriticalTimeStep(tCurrentState);
 
 	        // set fields for the previous primal state
             auto tPreviousStateIndex = tCurrentStateIndex + 1u;
@@ -10151,6 +10150,7 @@ public:
             if(tPreviousStateIndex != tSolutionHistoryPaths.size())
             {
                 this->setPrimal(tSolutionHistoryPaths, tPreviousState);
+                this->setCriticalTimeStep(tPreviousState);
             }
 
 	        // set adjoint state
@@ -10256,7 +10256,6 @@ private:
         auto tTimeStepIndex = static_cast<size_t>(aPrimal.scalar("time step index"));
         this->setCurrentFields(aPaths[tTimeStepIndex], aPrimal);
         this->setPreviousFields(aPaths[tTimeStepIndex - 1u], aPrimal);
-        this->setCriticalTimeStep(aPrimal);
     }
 
     void setCriticalTimeStep
@@ -11251,9 +11250,12 @@ private:
             auto tGradResPredWrtPreviousTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPreviousPrimalState);
             Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPreviousTemp, tPreviousPredAdjoint, tRightHandSide);
 
-            auto tPreviousTempAdjoint = aDual.vector("previous temperature adjoint");
-            auto tJacTempResWrtPreviousTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPreviousPrimalState);
-            Plato::MatrixTimesVectorPlusVector(tJacTempResWrtPreviousTemp, tPreviousTempAdjoint, tRightHandSide);
+	    if(mCalculateHeatTransfer)
+	    {
+                auto tPreviousTempAdjoint = aDual.vector("previous temperature adjoint");
+                auto tJacTempResWrtPreviousTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPreviousPrimalState);
+                Plato::MatrixTimesVectorPlusVector(tJacTempResWrtPreviousTemp, tPreviousTempAdjoint, tRightHandSide);
+	    }
         }
         Plato::blas1::scale(-1.0, tRightHandSide);
 
@@ -11300,6 +11302,7 @@ private:
             auto tJacTempResWrtCurVel = mTemperatureResidual->gradientCurrentVel(aControl, aCurrentPrimalState);
             Plato::MatrixTimesVectorPlusVector(tJacTempResWrtCurVel, tCurrentTempAdjoint, tRightHandSide);
         }
+	
 
         // add PDE contribution from previous state to right hand side adjoint vector
         if(tCurrentTimeStepIndex != mNumForwardSolveTimeSteps)
@@ -12184,21 +12187,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "    <Parameter name='Temperature Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='1.0'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.1'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
                 "  <ParameterList  name='Convergence'>"
                 "    <Parameter name='Output Frequency' type='int' value='1'/>"
-                "    <Parameter name='Maximum Iterations' type='int' value='3'/>"
-                "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
+                "    <Parameter name='Maximum Iterations' type='int' value='5'/>"
+                "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
                 "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,10,10);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,40, 40);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -12211,11 +12215,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 1, 3);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 3, 5);
     TEST_ASSERT(tError < 1e-4);
 
     std::system("rm -rf solution_history");
-    //std::system("rm -f cfd_solver_diagnostics.txt");
+    std::system("rm -f cfd_solver_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
