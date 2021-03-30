@@ -234,6 +234,35 @@ public:
             //
             tReturnVal += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResult);
         }
+
+        auto tFirstBlock = mSpatialModel.Domains.front();
+        auto tFirstBlockName = tFirstBlock.getDomainName();
+        if( mValueFunctions.at(tFirstBlockName)->hasBoundaryTerm() )
+        {
+            auto tNumCells = mSpatialModel.Mesh.nelems();
+
+            // workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            Plato::Geometric::WorksetBase<GeometryT>::worksetControl(aControl, tControlWS);
+
+            // workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::Geometric::WorksetBase<GeometryT>::worksetConfig(tConfigWS);
+
+            // create result view
+            //
+            Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
+
+            // evaluate function
+            //
+            mValueFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tControlWS, tConfigWS, tResult);
+
+            // sum across elements
+            //
+            tReturnVal += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResult);
+        }
         auto tName = mSpatialModel.Domains[0].getDomainName();
         mValueFunctions.at(tName)->postEvaluate(tReturnVal);
 

@@ -168,6 +168,34 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MassPropertiesUn
 add_test(NAME runMassPropertiesUnitTests COMMAND ${ES_MPI_TEST})
 #end: MassPropertiesTest unit test
 
+#begin: GeometryMisfitTest unit test
+set(GeometryMisfitTest_SOURCES
+  GeometryMisfitTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(GeometryMisfitTest_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(GeometryMisfitUnitTests
+  ${GeometryMisfitTest_SOURCES}
+  ${GeometryMisfitTest_HEADERS}
+)
+
+target_link_libraries(GeometryMisfitUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(GeometryMisfitUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(GeometryMisfitUnitTests ArborX::ArborX)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/GeometryMisfitUnitTests)
+add_test(NAME runGeometryMisfitUnitTests COMMAND ${ES_MPI_TEST})
+#end: GeometryMisfitTest unit test
+
 #begin: LinearMaterialModelTests unit test
 set(LinearMaterialModelTests_SOURCES
   LinearMaterialModelTests.cpp

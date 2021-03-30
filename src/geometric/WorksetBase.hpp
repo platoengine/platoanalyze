@@ -93,6 +93,22 @@ public:
     /******************************************************************************//**
      * \brief Get controls workset, e.g. design/optimization variables
      * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadControlWS controls workset (scalar type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aControlWS
+    ) const
+    {
+        Plato::workset_control_scalar_scalar<mNumNodesPerCell>(
+            mNumCells, mControlEntryOrdinal, aControl, aControlWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get controls workset, e.g. design/optimization variables
+     * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadControlWS controls workset (AD type), as a 2-D Kokkos::View
     **********************************************************************************/
     void
@@ -104,6 +120,21 @@ public:
     {
         Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
               aDomain, mControlEntryOrdinal, aControl, aFadControlWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get controls workset, e.g. design/optimization variables
+     * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadControlWS controls workset (AD type), as a 2-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <ControlFad>    & aFadControlWS
+    ) const
+    {
+        Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
+            mNumCells, mControlEntryOrdinal, aControl, aFadControlWS);
     }
 
     /******************************************************************************//**
@@ -122,6 +153,19 @@ public:
 
     /******************************************************************************//**
      * \brief Get configuration workset, i.e. coordinates for each cell
+     * \param [in/out] aConfigWS configuration workset (scalar type), as a 3-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetConfig(
+        Plato::ScalarArray3DT <Plato::Scalar> & aConfigWS
+    ) const
+    {
+      Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(
+          mNumCells, mNodeCoordinate, aConfigWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get configuration workset, i.e. coordinates for each cell
      * \param [in/out] aReturnValue configuration workset (AD type), as a 3-D Kokkos::View
     **********************************************************************************/
     void
@@ -132,6 +176,19 @@ public:
     {
       Plato::workset_config_fad<mSpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
               aDomain, mNodeCoordinate, aFadConfigWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get configuration workset, i.e. coordinates for each cell
+     * \param [in/out] aReturnValue configuration workset (AD type), as a 3-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetConfig(
+        Plato::ScalarArray3DT <ConfigFad> & aFadConfigWS
+    ) const
+    {
+      Plato::workset_config_fad<mSpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
+          mNumCells, mNodeCoordinate, aFadConfigWS);
     }
 
 #ifdef NOPE

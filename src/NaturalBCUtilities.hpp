@@ -299,8 +299,8 @@ ComputeSurfaceIntegralWeight<2>::operator()
  const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
  ResultScalarType & aOutput) const
 {
-    auto tJ11 = aJacobian(aFaceOrdinal, 0, 0) * aJacobian(aFaceOrdinal, 0, 0);
-    auto tJ12 = aJacobian(aFaceOrdinal, 0, 1) * aJacobian(aFaceOrdinal, 0, 1);
+    ConfigScalarType tJ11 = aJacobian(aFaceOrdinal, 0, 0) * aJacobian(aFaceOrdinal, 0, 0);
+    ConfigScalarType tJ12 = aJacobian(aFaceOrdinal, 0, 1) * aJacobian(aFaceOrdinal, 0, 1);
     aOutput = aMultiplier * sqrt( tJ11 + tJ12 );
 }
 // class ComputeSurfaceIntegralWeight<2>::operator()
@@ -317,9 +317,9 @@ ComputeSurfaceIntegralWeight<3>::operator()
  const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
  ResultScalarType & aOutput) const
 {
-    auto tJ23 = aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,2) - aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,1);
-    auto tJ31 = aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,0) - aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,2);
-    auto tJ12 = aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,1) - aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,0);
+    ConfigScalarType tJ23 = aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,2) - aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,1);
+    ConfigScalarType tJ31 = aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,0) - aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,2);
+    ConfigScalarType tJ12 = aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,1) - aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,0);
     aOutput = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
 }
 // class ComputeSurfaceIntegralWeight<3>::operator()
