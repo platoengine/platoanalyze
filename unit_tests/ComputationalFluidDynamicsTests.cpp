@@ -91,7 +91,7 @@ void remove(const std::string &aPath)
  *
  * \fn device_type inline project_vector_field_onto_surface
  *
- * \brief Return true if path exist; else, return false
+ * \brief Project vector field onto surface/face
  *
  * \param [in] aCellOrdinal       cell/element ordinal
  * \param [in] aBasisFunctions    basis functions
@@ -125,6 +125,21 @@ project_vector_field_onto_surface
 }
 // function project_vector_field_onto_surface
 
+/******************************************************************************//**
+ * \tparam NumNodes  (integer) number of nodes on surface/face
+ * \tparam InStateType  input state type
+ * \tparam OutStateType output state type
+ *
+ * \fn device_type inline project_scalar_field_onto_surface
+ *
+ * \brief Project scalar field onto surface/face
+ *
+ * \param [in] aCellOrdinal       cell/element ordinal
+ * \param [in] aBasisFunctions    basis functions
+ * \param [in] aLocalNodeOrdinals local cell node ordinals
+ * \param [in] aInputState        input state
+ * \param [in/out] aInputState    output state
+**********************************************************************************/
 template<Plato::OrdinalType NumNodes,
          typename InStateType,
          typename OutStateType>
@@ -407,7 +422,7 @@ inline void print_fad_val_values
  *
  * \fn inline void print_fad_dx_values
  *
- * \brief Print derivaitve values of 1D view of forward automatic differentiation (FAD) types.
+ * \brief Print derivative values of a 1D view of forward automatic differentiation (FAD) type.
  *
  * \param [in] aInput input 1D FAD view
  * \param [in] aName  name used to identify 1D view
@@ -523,6 +538,14 @@ calculate_element_size
 }
 // function calculate_element_size
 
+/******************************************************************************//**
+ * \fn inline std::string get_entity_name
+ *
+ * \brief Return entity type in string format.
+ *
+ * \param [in] aEntityDim Omega_h entity dimension
+ * \return entity type in string format
+**********************************************************************************/
 inline std::string
 get_entity_name
 (const Omega_h::Int aEntityDim)
@@ -551,6 +574,17 @@ get_entity_name
 }
 // function get_entity_name
 
+/******************************************************************************//**
+ * \fn inline Plato::ScalarVector read_metadata_from_mesh
+ *
+ * \brief Read metadata from finite element mesh.
+ *
+ * \param [in] aMesh      finite element mesh metadata
+ * \param [in] aEntityDim Omega_h entity dimension
+ * \param [in] aTagName   field tag
+ *
+ * \return field data
+**********************************************************************************/
 inline Plato::ScalarVector
 read_metadata_from_mesh
 (const Omega_h::Mesh& aMesh,
@@ -578,6 +612,15 @@ read_metadata_from_mesh
 }
 // function read_metadata_from_mesh
 
+/******************************************************************************//**
+ * \fn inline std::vector<Omega_h::filesystem::path> read_pvtu_file_paths
+ *
+ * \brief Return .pvtu file paths.
+ *
+ * \param [in] aPvdDir .pvd file path
+ *
+ * \return array of .pvtu file paths
+**********************************************************************************/
 inline std::vector<Omega_h::filesystem::path>
 read_pvtu_file_paths
 (const std::string & aPvdDir)
@@ -604,9 +647,9 @@ read_pvtu_file_paths
  *
  * \brief Return array with local entity identification numbers.
  *
- * \param [in] aMeshSets cell/element ordinal
- * \param [in] aSetName  map from cells to node ordinal
- * \param [in] aThrow    cell/element coordinates
+ * \param [in] aMeshSets mesh entity sets
+ * \param [in] aSetName  entity set name
+ * \param [in] aThrow    boolean (default = true)
  * \return array with local entity identification numbers
 **********************************************************************************/
 template<Omega_h::SetType EntitySet>
@@ -632,7 +675,7 @@ entity_ordinals
 /******************************************************************************//**
  * \fn void is_material_defined
  *
- * \brief Check if material is defined in input file and throw an error if it is not deifned.
+ * \brief Check if material is defined, if not, throw an error.
  *
  * \param [in] aMaterialName material sublist name
  * \param [in] aInputs       parameter list with input data information
@@ -712,6 +755,7 @@ get_entity_ordinals
  *
  * \param [in] aEntityDim entity dimension (vertex, edge, face, or region)
  * \param [in] aMesh      computational mesh metadata
+ *
  * \return total number of entities in the mesh
 **********************************************************************************/
 inline Plato::OrdinalType
@@ -860,26 +904,50 @@ inline Type parse_parameter
 }
 // function parse_parameter
 
+/******************************************************************************//**
+ * \fn inline void is_positive_finite_number
+ *
+ * \brief Check if scalar number is positive, if negative, throw error.
+ *
+ * \param [in] aInput  scalar
+ * \param [in] aTag   scalar tag
+ *
+ * \return parameter of type=Type
+**********************************************************************************/
 inline void
 is_positive_finite_number
 (const Plato::Scalar aInput,
- std::string aName = "scalar")
+ std::string aTag = "scalar")
 {
     if(!std::isfinite(aInput))
     {
-	THROWERR(std::string("Paramater '") + aName + "' is set to a non-finite number")
+	THROWERR(std::string("Paramater '") + aTag + "' is set to a non-finite number")
     }
 
     if(aInput <= static_cast<Plato::Scalar>(0.0))
     {
         THROWERR(std::string("Expected a positive non-zero number and instead user-defined parameter '") 
-	     + aName + "' was set to '" + std::to_string(aInput) + "'.")
+	     + aTag + "' was set to '" + std::to_string(aInput) + "'.")
     }
 }
 // function is_positive_finite_number
 
 
-
+/******************************************************************************//**
+ * \tparam Type scalar type
+ *
+ * \fn inline Type parse_max_material_property
+ *
+ * \brief Return maximum material property value from the list of similar material
+ *   properties defined in other material blocks.
+ *
+ * \param [in] aInput    input file metadata
+ * \param [in] aBlock    material block
+ * \param [in] aProperty material property
+ * \param [in] aDomains  spatial domain metadata
+ *
+ * \return material property scalar value
+**********************************************************************************/
 template<typename Type>
 inline Type parse_max_material_property
 (Teuchos::ParameterList& aInputs,
@@ -912,12 +980,15 @@ inline Type parse_max_material_property
 
 
 /***************************************************************************//**
- *  \brief Base class for simplex-based fluid mechanics problems
  *  \tparam SpaceDim    (integer) spatial dimensions
  *  \tparam NumControls (integer) number of design variable fields (default = 1)
+ *
+ *  \brief Base class for simplex fluid mechanics problems
  ******************************************************************************/
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
-class SimplexFluids: public Plato::Simplex<SpaceDim>
+template
+<Plato::OrdinalType SpaceDim,
+ Plato::OrdinalType NumControls = 1>
+class SimplexFluids : public Plato::Simplex<SpaceDim>
 {
 public:
     using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of spatial dimensions */
@@ -943,7 +1014,7 @@ public:
 
 /***************************************************************************//**
  * \struct Solutions
- *  \brief C++ structure with POD state solution data
+ *  \brief Holds POD state solutions
  ******************************************************************************/
 struct Solutions
 {
@@ -1176,7 +1247,7 @@ struct LocalOrdinalMaps
 /***************************************************************************//**
  * \struct Variables
  *
- * \brief Maps to quantity of interest associated with the simulation.
+ * \brief Holds quantity of interests pertaining to the simulation.
  ******************************************************************************/
 struct Variables
 {
@@ -1280,6 +1351,10 @@ public:
         { return false; }
     }
 
+    /***************************************************************************//**
+     * \fn void print
+     * \brief Print metadata stored in member containers.
+     ******************************************************************************/
     void print() const
     {
         this->printScalarMap();
@@ -1287,6 +1362,10 @@ public:
     }
 
 private:
+    /***************************************************************************//**
+     * \fn void printVectorMap
+     * \brief Print metadata stored in vector map.
+     ******************************************************************************/
     void printVectorMap() const
     {
         if(mVectors.empty())
@@ -1301,6 +1380,10 @@ private:
         }
     }
 
+    /***************************************************************************//**
+     * \fn void printVectorMap
+     * \brief Print metadata stored in scalar map.
+     ******************************************************************************/
     void printScalarMap() const
     {
         if(mScalars.empty())
@@ -1315,22 +1398,41 @@ private:
         }
     }
 };
+// struct Variables
 
 // struct Variables
 typedef Variables Dual;   /*!< variant name used for the Variables structure to identify quantities associated with the dual problem in optimization */
 typedef Variables Primal; /*!< variant name used for the Variables structure to identify quantities associated with the primal problem in optimization */
 
+
+/***************************************************************************//**
+ * \struct FieldTags
+ *
+ * \brief Holds string identifiers linked to field data tags. Field data is defined
+ *   as the field data saved on the finite element mesh metadata structure.
+ ******************************************************************************/
 struct FieldTags
 {
 private:
-    std::unordered_map<std::string, std::string> mFields;
+    std::unordered_map<std::string, std::string> mFields; /*!< map from field data tag to field data identifier */
 
 public:
-    void set(const std::string& aTag, const std::string& aName)
+    /***************************************************************************//**
+     * \fn void set
+     * \brief Set field data tag and associated identifier.
+     * \param [in] aTag field data tag
+     * \param [in] aID  field data identifier
+     ******************************************************************************/
+    void set(const std::string& aTag, const std::string& aID)
     {
-        mFields[aTag] = aName;
+        mFields[aTag] = aID;
     }
 
+    /***************************************************************************//**
+     * \fn void tags
+     * \brief Return list of field data tags.
+     * \return list of field data tags
+     ******************************************************************************/
     std::vector<std::string> tags() const
     {
         std::vector<std::string> tTags;
@@ -1341,7 +1443,13 @@ public:
         return tTags;
     }
 
-    std::string name(const std::string& aTag) const
+    /***************************************************************************//**
+     * \fn void name
+     * \brief Return field data identifier.
+     * \param [in] aTag field data tag
+     * \return field data identifier
+     ******************************************************************************/
+    std::string id(const std::string& aTag) const
     {
         auto tItr = mFields.find(aTag);
         if(tItr == mFields.end())
@@ -1351,7 +1459,19 @@ public:
         return tItr->second;
     }
 };
+// struct FieldTags
 
+/***************************************************************************//**
+ * \tparam EntityDim Oemga_h entity dimension
+ * \fn inline void read_fields
+ * \brief Read field data from vtk file.
+ *
+ * \param [in] aMesh      mesh metadata
+ * \param [in] aPath      path to vtk file
+ * \param [in] aFieldTags map from field data tag to identifier
+ *
+ * \param [in/out] aVariables map holding simulation metadata
+ ******************************************************************************/
 template<Omega_h::LO EntityDim>
 inline void
 read_fields
@@ -1366,10 +1486,11 @@ read_fields
     for(auto& tTag : tTags)
     {
         auto tData = Plato::omega_h::read_metadata_from_mesh(tReadMesh, EntityDim, tTag);
-        auto tFieldName = aFieldTags.name(tTag);
+        auto tFieldName = aFieldTags.id(tTag);
         aVariables.vector(tFieldName, tData);
     }
 }
+// function read_fields
 
 namespace Fluids
 {
@@ -2588,7 +2709,7 @@ build_vector_function_worksets
 
 
 /***************************************************************************//**
- * \tparam PhysicsT    Plato physics type
+ * \tparam PhysicsT    physics type
  * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
  *
  * \class AbstractScalarFunction
@@ -2618,10 +2739,10 @@ public:
  *
  * \class AverageSurfacePressure
  *
- * \brief Includes functionalities to evaluate the average surface pressure
- *   along a set of user-provided surfaces.
+ * \brief Class responsible for the evaluation of the average surface pressure
+ *   along the user-specified entity sets (e.g. side sets).
  *
- *                  \f[ \int_{\Gamma} p^n d\Gamma \f],
+ *                  \f[ \int_{\Gamma_e} p^n d\Gamma_e \f],
  *
  * where \f$ n \f$ denotes the current time step and \f$ p \f$ denotes pressure.
  ******************************************************************************/
@@ -2777,8 +2898,8 @@ public:
  *
  * \class AverageSurfaceTemperature
  *
- * \brief Includes functionalities to evaluate the average surface temperature
- *   along a set of user-provided surfaces.
+ * \brief Class responsible for the evaluation of the average surface temperature
+ *   along the user-specified entity sets (e.g. side sets).
  *
  *                  \f[ \int_{\Gamma} T^n d\Gamma \f],
  *
@@ -2791,11 +2912,11 @@ private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
-    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of temperature dofs per node */
+    static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of temperature dofs per node */
 
-    using ResultT = typename EvaluationT::ResultScalarType;        /*!< result FAD type */
-    using ConfigT = typename EvaluationT::ConfigScalarType;        /*!< configuration FAD type */
-    using CurrentTempT = typename EvaluationT::CurrentEnergyScalarType; /*!< temperature FAD type */
+    using ResultT = typename EvaluationT::ResultScalarType; /*!< result FAD type */
+    using ConfigT = typename EvaluationT::ConfigScalarType; /*!< configuration FAD type */
+    using CurrentTempT = typename EvaluationT::CurrentEnergyScalarType; /*!< current temperature FAD type */
 
     // set local typenames
     using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>; /*!< local short name for cubature rule class */
@@ -2849,7 +2970,10 @@ public:
      * \param [in] aWorkSets holds state work sets initialize with correct FAD types
      * \param [in] aResult   1D output work set of size number of cells
      ******************************************************************************/
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarVectorT<ResultT> & aResult)
+    const override
     { return; }
 
     /***************************************************************************//**
@@ -2858,7 +2982,10 @@ public:
      * \param [in] aWorkSets holds state work sets initialize with correct FAD types
      * \param [in] aResult   1D output work set of size number of cells
      ******************************************************************************/
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
+    void evaluateBoundary
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarVectorT<ResultT> & aResult)
+    const override
     {
         // set face to element graph
         auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
@@ -2933,7 +3060,7 @@ public:
 
 /***************************************************************************//**
  * \tparam NumNodesPerCell number of nodes per cell (integer)
- * \tparam ControlT control work set Forward Automatic Differentiation (FAD) type
+ * \tparam ControlT        control work set Forward Automatic Differentiation (FAD) type
  *
  * \fn DEVICE_TYPE inline ControlT brinkman_penalization
  *
@@ -2952,7 +3079,9 @@ public:
  *
  * \return penalized physical parameter
  ******************************************************************************/
-template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
+template
+<Plato::OrdinalType NumNodesPerCell,
+typename ControlT>
 DEVICE_TYPE inline ControlT
 brinkman_penalization
 (const Plato::OrdinalType & aCellOrdinal,
@@ -2989,11 +3118,12 @@ brinkman_penalization
  * \param [in] aGradient    3D view with shape function's derivatives
  * \param [in] aStrainRate  3D view with element strain rate
  ******************************************************************************/
-template<Plato::OrdinalType NumNodesPerCell,
-         Plato::OrdinalType NumSpaceDim,
-         typename AViewTypeT,
-         typename BViewTypeT,
-         typename CViewTypeT>
+template
+<Plato::OrdinalType NumNodesPerCell,
+ Plato::OrdinalType NumSpaceDim,
+ typename AViewTypeT,
+ typename BViewTypeT,
+ typename CViewTypeT>
 DEVICE_TYPE inline void
 strain_rate
 (const Plato::OrdinalType & aCellOrdinal,
@@ -3020,6 +3150,16 @@ strain_rate
 }
 // function strain_rate
 
+/***************************************************************************//**
+ * \fn inline bool is_impermeability_defined
+ *
+ * \brief Return true if dimensionless impermeability number is defined; return
+ *   false if it is not defined.
+ *
+ * \param [in] aInputs input file metadata
+ *
+ * \return boolean (true or false)
+ ******************************************************************************/
 inline bool
 is_impermeability_defined
 (Teuchos::ParameterList & aInputs)
@@ -3032,7 +3172,7 @@ is_impermeability_defined
     auto tSublist = tHyperbolic.sublist("Dimensionless Properties");
     return (tSublist.isParameter("Impermeability Number"));
 }
-
+// function is_impermeability_defined
 
 
 
@@ -3185,43 +3325,102 @@ private:
 /***************************************************************************//**
  * \class CriterionBase
  *
- * This pure virtual class defines the template for scalar functions in the form:
+ * This pure virtual class provides the template for a scalar functions of the form:
  *
  *    \f[ J = J(\phi, U^k, P^k, T^k, X) \f]
  *
- * It manages the evaluation of the function and corresponding derivatives with
- * respect to control \f$\phi\f$, momentum state \f$ U^k \f$, mass state \f$ P^k \f$,
- * energy state \f$ T^k \f$, and configuration \f$ X \f$ variables.
+ * Derived class are responsible for the evaluation of the function and its
+ * corresponding derivatives with respect to control \f$\phi\f$, momentum
+ * state \f$ U^k \f$, mass state \f$ P^k \f$, energy state \f$ T^k \f$, and
+ * configuration \f$ X \f$ variables.
  ******************************************************************************/
 class CriterionBase
 {
 public:
     virtual ~CriterionBase(){}
+
+    /***************************************************************************//**
+     * \fn std::string name
+     * \brief Return scalar function name.
+     * \return scalar function name
+     ******************************************************************************/
     virtual std::string name() const = 0;
 
+    /***************************************************************************//**
+     * \fn Plato::Scalar value
+     * \brief Return scalar function value.
+     * \param [in] aControls control variables workset
+     * \param [in] aPrimal   primal state metadata
+     * \return scalar function value
+     ******************************************************************************/
     virtual Plato::Scalar value
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const = 0;
+     const Plato::Primal & aPrimal) const = 0;
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientConfig
+     * \brief Return scalar function derivative with respect to the configuration variables.
+     *
+     * \param [in] aControls control variables workset
+     * \param [in] aPrimal   primal state metadata
+     *
+     * \return scalar function derivative with respect to the configuration variables
+     ******************************************************************************/
     virtual Plato::ScalarVector gradientConfig
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const = 0;
+     const Plato::Primal & aPrimal) const = 0;
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientControl
+     * \brief Return scalar function derivative with respect to the control variables.
+     *
+     * \param [in] aControls control variables workset
+     * \param [in] aPrimal   primal state metadata
+     *
+     * \return scalar function derivative with respect to the control variables
+     ******************************************************************************/
     virtual Plato::ScalarVector gradientControl
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const = 0;
+     const Plato::Primal & aPrimal) const = 0;
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentPress
+     * \brief Return scalar function derivative with respect to the current pressure.
+     *
+     * \param [in] aControls control variables workset
+     * \param [in] aPrimal   primal state metadata
+     *
+     * \return scalar function derivative with respect to the current pressure
+     ******************************************************************************/
     virtual Plato::ScalarVector gradientCurrentPress
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const = 0;
+     const Plato::Primal & aPrimal) const = 0;
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentTemp
+     * \brief Return scalar function derivative with respect to the current temperature.
+     *
+     * \param [in] aControls control variables workset
+     * \param [in] aPrimal   primal state metadata
+     *
+     * \return scalar function derivative with respect to the current temperature
+     ******************************************************************************/
     virtual Plato::ScalarVector gradientCurrentTemp
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const = 0;
+     const Plato::Primal & aPrimal) const = 0;
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentVel
+     * \brief Return scalar function derivative with respect to the current velocity.
+     *
+     * \param [in] aControls control variables workset
+     * \param [in] aPrimal   primal state metadata
+     *
+     * \return scalar function derivative with respect to the current velocity
+     ******************************************************************************/
     virtual Plato::ScalarVector gradientCurrentVel
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const = 0;
+     const Plato::Primal & aPrimal) const = 0;
 };
 // class CriterionBase
 
@@ -3231,13 +3430,13 @@ public:
  *
  * \class ScalarFunction
  *
- * This class manages the evaluation of scalar functions in the form:
+ * Class manages the evaluation of a scalar functions in the form:
  *
  *                  \f[ J(\phi, U^k, P^k, T^k, X) \f]
  *
- * and respective partial derivatives with respect to control \f$\phi\f$,
- * momentum state \f$ U^k \f$, mass state \f$ P^k \f$, energy state \f$ T^k \f$,
- * and configuration \f$ X \f$.
+ * Responsabilities include evaluation of the partial derivatives with respect
+ * to control \f$\phi\f$, momentum state \f$ U^k \f$, mass state \f$ P^k \f$,
+ * energy state \f$ T^k \f$ and configuration \f$ X \f$.
  ******************************************************************************/
 template<typename PhysicsT>
 class ScalarFunction : public Plato::Fluids::CriterionBase
@@ -3673,12 +3872,12 @@ private:
 
 
 /***************************************************************************//**
- * \tparam PhysicsT    Plato physics type
+ * \tparam PhysicsT    Physics type
  * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
  *
  * \class AbstractVectorFunction
  *
- * \brief Pure virtual base class for Plato vector functions.
+ * \brief Pure virtual base class for vector functions.
  ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class AbstractVectorFunction
@@ -3690,10 +3889,25 @@ public:
     AbstractVectorFunction(){}
     virtual ~AbstractVectorFunction(){}
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate vector function within the domain.
+     *
+     * \param [in] aWorkSets holds state and control worksets
+     * \param [in] aResult   result workset
+     ******************************************************************************/
     virtual void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
+
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate vector function on non-prescribed boundaries.
+     *
+     * \param [in] aWorkSets holds state and control worksets
+     * \param [in] aResult   result workset
+     ******************************************************************************/
     virtual void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
