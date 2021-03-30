@@ -9,6 +9,8 @@
 #include "Projection.hpp"
 #include "ElasticWorkCriterion.hpp"
 #include "PlasticWorkCriterion.hpp"
+#include "TotalWorkCriterion.hpp"
+#include "ThermoplasticityThermalEnergyCriterion.hpp"
 #include "InfinitesimalStrainThermoPlasticityResidual.hpp"
 #include "ThermoPlasticity.hpp"
 
@@ -97,8 +99,22 @@ struct FunctionFactory
                     (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
         }
         else
+        if(aFuncType == "Total Work")
         {
-            const auto tError = std::string("Unknown Scalar Function with local path-dependent states. '")
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return ( std::make_shared<Plato::TotalWorkCriterion<EvaluationType, Plato::SimplexThermoPlasticity<tSpaceDim>>>
+                    (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
+        }
+        else
+        if(aFuncType == "Thermal Energy")
+        {
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return ( std::make_shared<Plato::ThermoplasticityThermalEnergyCriterion<EvaluationType, Plato::SimplexThermoPlasticity<tSpaceDim>>>
+                    (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
+        }
+        else
+        {
+            const auto tError = std::string("Unknown Scalar Function with local path-dependent states. ")
                     + "User specified '" + aFuncType + "'.  This Scalar Function is not supported in PLATO.";
             THROWERR(tError)
         }

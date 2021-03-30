@@ -68,6 +68,8 @@ if(PLASTICITY)
     InfinitesimalStrainThermoPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp
+    TotalWorkCriterion.cpp
+    ThermoplasticityThermalEnergyCriterion.cpp
   )
 endif()
 

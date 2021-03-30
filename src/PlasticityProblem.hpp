@@ -38,8 +38,8 @@ class PlasticityProblem : public Plato::AbstractProblem
 // private member data
 private:
 
-    using Criterion       = std::shared_ptr<Plato::LocalScalarFunctionInc>;
-    using Criteria        = std::map<std::string, Criterion>;
+    using Criterion = std::shared_ptr<Plato::LocalScalarFunctionInc>;
+    using Criteria  = std::map<std::string, Criterion>;
 
     static constexpr auto mSpaceDim                = PhysicsT::mSpaceDim;             /*!< spatial dimensions*/
     static constexpr auto mNumNodesPerCell         = PhysicsT::mNumNodesPerCell;      /*!< number of nodes per cell*/
@@ -71,12 +71,14 @@ private:
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mPressureScaling;               /*!< pressure term scaling */
     Plato::Scalar mTemperatureScaling;            /*!< temperature term scaling */
+    Plato::Scalar mReferenceTemperature;          /*!< reference temperature */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
     Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
     Plato::Scalar mPseudoTimeStepMultiplier;      /*!< dynamically increases number of pseudo time steps if Newton solver did not converge */
 
     Plato::ScalarVector mPressure;                /*!< projected pressure field */
+    Plato::ScalarVector mControl;                 /*!< control variables for output */
     Plato::ScalarMultiVector mLocalStates;        /*!< local state variables */
     Plato::ScalarMultiVector mGlobalStates;       /*!< global state variables */
     Plato::ScalarMultiVector mReactionForce;      /*!< reaction */
@@ -123,6 +125,7 @@ public:
       mPseudoTimeStep(mEndTime/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
       mPressureScaling(1.0),
       mTemperatureScaling(1.0),
+      mReferenceTemperature(1.0),
       mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
       mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
       mCurrentPseudoTimeStep(0.0),
@@ -730,6 +733,42 @@ private:
 
         mPressureScaling    = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
         mTemperatureScaling = tMaterialsInputs.get<Plato::Scalar>("Temperature Scaling", 1.0);
+
+        // Get the reference temperature and make sure all materials have an identical reference temperature
+        if (mTemperatureDofOffset > 0)
+        {
+            std::vector<Plato::Scalar> tReferenceTemperatures;
+            for(Teuchos::ParameterList::ConstIterator tIndex =  tMaterialsInputs.begin(); 
+                                                      tIndex != tMaterialsInputs.end(); ++tIndex)
+            {
+                const Teuchos::ParameterEntry & tEntry = tMaterialsInputs.entry(tIndex);
+                if (!tEntry.isList()) continue;
+
+                std::string tName = tMaterialsInputs.name(tIndex);
+                Teuchos::ParameterList tMaterialList = tMaterialsInputs.sublist(tName);
+
+                if (!tMaterialList.isSublist("Isotropic Linear Thermoelastic")) continue;
+                auto tThermoelasticSubList = tMaterialList.sublist("Isotropic Linear Thermoelastic");
+                auto tReferenceTemperature = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
+                tReferenceTemperatures.push_back(tReferenceTemperature);
+            }
+            if (tReferenceTemperatures.empty())
+            {
+                THROWERR("Reference temperature should be set for at least one material.")
+            }
+            else if (tReferenceTemperatures.size() == 1)
+            {
+                mReferenceTemperature = tReferenceTemperatures[0];
+            }
+            else
+            {
+                mReferenceTemperature = tReferenceTemperatures[0];
+                for (Plato::OrdinalType tIndex = 0; tIndex < tReferenceTemperatures.size(); ++tIndex)
+                    if (std::abs(mReferenceTemperature - tReferenceTemperatures[tIndex]) > 5.0e-7)
+                        THROWERR("All materials must have the same reference temperature.")
+            }
+        }
+
     }
 
     /***************************************************************************//**
@@ -838,6 +877,8 @@ private:
             this->updateProjectedPressureGradient(aControls, tCurrentState);
         }
         tForwardProblemSolved = true;
+        // mControl = aControls;
+        // this->saveStates("PlasticityOutput");
         return tForwardProblemSolved;
     }
 
@@ -913,10 +954,33 @@ private:
         else
         {
             auto tLength = aStates.extent(1);
-            aOutput = Plato::ScalarVector("Local State t=i-1", tLength);
+            aOutput = Plato::ScalarVector("State t=i-1", tLength);
             Plato::blas1::fill(0.0, aOutput);
         }
     }
+
+    /***************************************************************************//**
+     * \brief Set initial temperature field
+     * \param [in]     aCurrentStepIndex    current time step index
+     * \param [in/out] aPreviousGlobalState previous global state
+    *******************************************************************************/
+    void setInitialTemperature(const Plato::OrdinalType & aCurrentStepIndex,
+                               const Plato::ScalarVector & aPreviousGlobalState) const
+    {
+        if (aCurrentStepIndex != 0) return;
+        if (mTemperatureDofOffset > 0)
+        {
+            auto tNumVerts = mSpatialModel.Mesh.nverts();
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumVerts),
+                                    LAMBDA_EXPRESSION(const Plato::OrdinalType &aVertexOrdinal)
+            {
+                Plato::OrdinalType tIndex = aVertexOrdinal * mNumGlobalDofsPerNode + mTemperatureDofOffset;
+                aPreviousGlobalState(tIndex) = mReferenceTemperature / mTemperatureScaling;
+            }, "set temperature to reference");
+        }
+    }
+
+    
 
     /***************************************************************************//**
      * \brief Evaluate criterion
@@ -944,6 +1008,7 @@ private:
             // SET PREVIOUS AND FUTURE STATES
             this->getPreviousState(tCurrentStepIndex, aLocalState, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, aGlobalState, tPreviousGlobalState);
+            this->setInitialTemperature(tCurrentStepIndex, tPreviousGlobalState);
 
             tOutput += aCriterion.value(tCurrentGlobalState, tPreviousGlobalState,
                                         tCurrentLocalState, tPreviousLocalState,
@@ -974,6 +1039,7 @@ private:
             // SET PREVIOUS STATES
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
+            this->setInitialTemperature(tCurrentStepIndex, tPreviousGlobalState);
 
             auto tDfDz = aCriterion.gradient_z(tCurrentGlobalState, tPreviousGlobalState,
                                                tCurrentLocalState, tPreviousLocalState,
@@ -1003,6 +1069,7 @@ private:
             // SET PREVIOUS AND FUTURE LOCAL STATES
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
+            this->setInitialTemperature(tCurrentStepIndex, tPreviousGlobalState);
 
             auto tDfDX = aCriterion.gradient_x(tCurrentGlobalState, tPreviousGlobalState,
                                                tCurrentLocalState, tPreviousLocalState,
@@ -1104,6 +1171,7 @@ private:
         // GET PREVIOUS STATE.
         this->getPreviousState(aStateData.mCurrentStepIndex, mLocalStates, aStateData.mPreviousLocalState);
         this->getPreviousState(aStateData.mCurrentStepIndex, mGlobalStates, aStateData.mPreviousGlobalState);
+        this->setInitialTemperature(aStateData.mCurrentStepIndex, aStateData.mPreviousGlobalState);
     }
 
     /***************************************************************************//**

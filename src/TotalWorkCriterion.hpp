@@ -1,7 +1,7 @@
 /*
- * ElasticWorkCriterion.hpp
+ * TotalWorkCriterion.hpp
  *
- *  Created on: Mar 7, 2020
+ *  Created on: Mar 22, 2021
  */
 
 #pragma once
@@ -29,17 +29,8 @@ namespace Plato
 {
 
 /***************************************************************************//**
- * \brief Evaluate the elastic work criterion. The elastic work criterion is given by:
+ * \brief Evaluate the total work criterion.
  *
- *  \f$ f(\phi,u_{n},c_{n}) =
- *          \mu\epsilon_{ij}^{d}\epsilon_{ij}^{d} + \kappa\epsilon_{kk}^{2}  \f$
- *
- * where \f$ \phi \f$ are the control variables, \f$ u \f$ are the global state
- * variables, \f$ c \f$ are the local state variables, \f$ \mu \f$ is the shear
- * modulus, \f$ \epsilon_{ij}^d \f$ is the deviatoric strain tensor, \f$ \kappa \f$
- * is the bulk modulus, and \f$ \epsilon_{kk} \f$ is the volumetric strain.  The
- * \f$ n-th \f$ index denotes the time stpe index and \f$ \{i,j,k\}\in(0,D) \f$,
- * where \f$ D \f$ is the spatial dimension.
  *
  * \tparam EvaluationType      evaluation type for scalar function, determines
  *                             which AD type is active
@@ -47,7 +38,7 @@ namespace Plato
  *                             physics-based static parameters
 *******************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class ElasticWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
+class TotalWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
 {
 // private member data
 private:
@@ -88,14 +79,14 @@ private:
 // public access functions
 public:
     /***************************************************************************//**
-     * \brief Constructor for elastic work criterion
+     * \brief Constructor for total work criterion
      *
      * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap     PLATO Analyze output data map side sets database
      * \param [in] aInputParams input parameters from XML file
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    ElasticWorkCriterion(
+    TotalWorkCriterion(
         const Plato::SpatialDomain   & aSpatialDomain,
               Plato::DataMap         & aDataMap,
               Teuchos::ParameterList & aInputParams,
@@ -104,7 +95,6 @@ public:
         FunctionBaseType(aSpatialDomain, aDataMap, aName),
         mBulkModulus(-1.0),
         mShearModulus(-1.0),
-        mPressureScaling(1.0),
         mThermalExpansionCoefficient(0.0),
         mReferenceTemperature(0.0),
         mTemperatureScaling(1.0),
@@ -119,13 +109,13 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Constructor for elastic work criterion
+     * \brief Constructor for total work criterion
      *
      * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap     PLATO Analyze output data map side sets database
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    ElasticWorkCriterion(
+    TotalWorkCriterion(
         const Plato::SpatialDomain & aSpatialDomain,
               Plato::DataMap       & aDataMap,
               std::string            aName = ""
@@ -144,11 +134,11 @@ public:
     /***************************************************************************//**
      * \brief Destructor of maximize total work criterion
     *******************************************************************************/
-    virtual ~ElasticWorkCriterion(){}
+    virtual ~TotalWorkCriterion(){}
 
 
     /***************************************************************************//**
-     * \brief Evaluates elastic work criterion. FAD type determines output/result value.
+     * \brief Evaluates total work criterion. FAD type determines output/result value.
      *
      * \param [in] aCurrentGlobalState  current global states
      * \param [in] aPreviousGlobalState previous global states
@@ -202,7 +192,7 @@ public:
         Plato::ScalarMultiVectorT<ResultT>        tAverageCauchyStress("average cauchy stress", tNumCells, mNumStressTerms);
 
         Plato::ScalarVectorT<ConfigT>             tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT>        tElasticStrainMisfit("elastic strain misfit", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<ResultT>        tTotalStrainMisfit("total strain misfit", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT>            tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
         auto tNumStressTerms = mNumStressTerms;
@@ -224,18 +214,18 @@ public:
             tPreviousPressure(aCellOrdinal) *= tPressureScaling;
             tCurrentPressure(aCellOrdinal) *= tPressureScaling;
 
-            // compute previous elastic strain
+            // compute previous strain
             tComputeTotalStrain(aCellOrdinal, tPreviousTotalStrain, aPreviousGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aPreviousGlobalState, aPreviousLocalState,
                                                         tBasisFunctions, tPreviousTotalStrain, tPreviousElasticStrain);
-
-            // compute current elastic strain
+if (tPreviousElasticStrain(aCellOrdinal, 0) != 0.0) std::cout << tPreviousElasticStrain(aCellOrdinal, 0) << std::endl;
+            // compute current strain
             tComputeTotalStrain(aCellOrdinal, tCurrentTotalStrain, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
                                                         tBasisFunctions, tCurrentTotalStrain, tCurrentElasticStrain);
                                                     
             for (Plato::OrdinalType tIndex = 0; tIndex < tNumStressTerms; ++tIndex)
-                tElasticStrainMisfit(aCellOrdinal, tIndex) = tCurrentElasticStrain(aCellOrdinal, tIndex) - tPreviousElasticStrain(aCellOrdinal, tIndex);
+                tTotalStrainMisfit(aCellOrdinal, tIndex) = tCurrentTotalStrain(aCellOrdinal, tIndex) - tPreviousTotalStrain(aCellOrdinal, tIndex);
 
             // compute cell penalty and penalized elastic properties
             ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
@@ -255,9 +245,9 @@ public:
             // Compute elastic work (strain tensor shear terms already have factor of 2)
             aResult(aCellOrdinal) = 0.0;
             for (Plato::OrdinalType tIndex = 0; tIndex < tNumStressTerms; ++tIndex)
-                aResult(aCellOrdinal) += tAverageCauchyStress(aCellOrdinal, tIndex) * tElasticStrainMisfit(aCellOrdinal, tIndex);
+               aResult(aCellOrdinal) += tAverageCauchyStress(aCellOrdinal, tIndex) * tTotalStrainMisfit(aCellOrdinal, tIndex);
             aResult(aCellOrdinal) *= tCellVolume(aCellOrdinal);
-        }, "elastic work criterion");
+        }, "total work criterion");
     }
 
     /******************************************************************************//**
@@ -274,7 +264,7 @@ public:
         auto tSuggestedPenaltySIMP = tPreviousPenaltySIMP + mAdditiveContinuationParam;
         mPenaltySIMP = tSuggestedPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mUpperBoundOnPenaltySIMP : tSuggestedPenaltySIMP;
         std::ostringstream tMsg;
-        tMsg << "Elastic Work Criterion: New penalty parameter is set to '" << mPenaltySIMP
+        tMsg << "Total Work Criterion: New penalty parameter is set to '" << mPenaltySIMP
                 << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
         REPORT(tMsg.str().c_str())
     }
@@ -357,16 +347,16 @@ private:
         }
     }
 };
-// class ElasticWorkCriterion
+// class TotalWorkCriterion
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC_INC_VMS(Plato::ElasticWorkCriterion, Plato::SimplexPlasticity, 2)
-PLATO_EXPL_DEC_INC_VMS(Plato::ElasticWorkCriterion, Plato::SimplexThermoPlasticity, 2)
+PLATO_EXPL_DEC_INC_VMS(Plato::TotalWorkCriterion, Plato::SimplexPlasticity, 2)
+PLATO_EXPL_DEC_INC_VMS(Plato::TotalWorkCriterion, Plato::SimplexThermoPlasticity, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC_INC_VMS(Plato::ElasticWorkCriterion, Plato::SimplexPlasticity, 3)
-PLATO_EXPL_DEC_INC_VMS(Plato::ElasticWorkCriterion, Plato::SimplexThermoPlasticity, 3)
+PLATO_EXPL_DEC_INC_VMS(Plato::TotalWorkCriterion, Plato::SimplexPlasticity, 3)
+PLATO_EXPL_DEC_INC_VMS(Plato::TotalWorkCriterion, Plato::SimplexThermoPlasticity, 3)
 #endif
 
 }

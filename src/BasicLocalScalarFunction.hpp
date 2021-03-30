@@ -11,6 +11,7 @@
 #include "SimplexFadTypes.hpp"
 #include "LocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 #include "AbstractLocalScalarFunctionInc.hpp"
 
 namespace Plato
@@ -733,14 +734,12 @@ private:
 }
 // namespace Plato
 
-#ifdef PLATOANALYZE_1D
-extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<1>>;
-#endif
-
 #ifdef PLATOANALYZE_2D
 extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif

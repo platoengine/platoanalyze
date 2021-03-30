@@ -18,7 +18,7 @@
 #include "StrainDivergence.hpp"
 #include "SimplexThermoPlasticity.hpp"
 #include "PressureDivergence.hpp"
-#include "ComputeCauchyStress.hpp"
+#include "ComputeStabilizedCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "InterpolateGradientFromScalarNodal.hpp"
@@ -440,7 +440,7 @@ public:
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
+        Plato::ComputeStabilizedCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
@@ -541,7 +541,7 @@ public:
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
-            Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
+            //Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
 
             // compute the thermal flux
             ControlT tPenalizedThermalConductivityCoefficient = tElasticPropertiesPenalty * tThermalConductivityCoefficient;
@@ -557,7 +557,7 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
 
             // prepare output data
-            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
+            tComputeCauchyStress(aCellOrdinal, tPressure, tDeviatoricStress, tCauchyStress);
             tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
             tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, aCurrentLocalState, tPlasticStrain);

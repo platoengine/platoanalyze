@@ -764,13 +764,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_2D)
     TEST_FLOATING_EQUALITY(tCriterionValue, -1.97983, tTolerance);
 
     auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {  7.02629e+00, 4.44479e+00, 5.82549e+00, 1.13367e+01, 6.91908e+00, 
-                                          2.72906e+00, 4.30011e+00, 3.96795e-01, 3.91183e-01,-3.26192e-02,
-                                          -2.61451e-01,-1.40926e-01,-4.16051e-03,-1.29614e-02, 3.61951e-03,
-                                          -3.90057e-04, 3.30483e-03, 5.23860e-04, 1.92148e-05, 3.02747e-04, 
-                                          1.95888e-04, 1.35198e-04, 8.02857e-05,-3.27478e-06,-8.49115e-06,
-                                          -6.07621e-06, 2.21267e-05, 6.33451e-07,-1.21281e-05,-5.43216e-06, 
-                                          1.97717e-07, 1.65348e-06, 6.28811e-07};
+    std::vector<Plato::Scalar> tGold = {  7.79752e+00, 5.60363e+00, 6.28221e+00, 1.29293e+01, 7.76341e+00, 
+                                          3.04540e+00, 4.78934e+00, 5.16835e-01, 9.36347e-01,-2.90131e-02,
+                                          -1.93664e-01, 1.55728e-03,-5.07596e-03,-1.34851e-02, 1.09473e-02,
+                                          -5.70991e-04, 2.41109e-03,-4.15956e-04,-6.16690e-05, 2.12617e-04, 
+                                          1.71787e-04, 1.09343e-04, 7.57489e-05,-1.70775e-06,-6.68193e-06,
+                                          -4.98039e-06, 2.13624e-05, 6.22086e-07,-1.08766e-05,-5.07546e-06,
+                                          -1.24006e-08, 1.63240e-06, 6.29494e-07};
     auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
     Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
@@ -998,12 +998,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
       "        <Parameter  name='Youngs Modulus' type='double' value='75.0e3'/>                 \n"
       "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
       "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
-      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='100.0'/>           \n"
       "      </ParameterList>                                                                   \n"
       "      <ParameterList name='Plasticity Model'>                                               \n"
       "        <ParameterList name='J2 Plasticity'>                                                \n"
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>        \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='344.0'/>             \n"
       "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
       "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
@@ -1062,7 +1062,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
       "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
       "      <Parameter  name='Index'    type='int'    value='2'/>                              \n"
       "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
-      "       <Parameter  name='Function'    type='string' value='0.0'/>                        \n"
+      "       <Parameter  name='Function'    type='string' value='200.0'/>                        \n"
       "     </ParameterList>                                                                    \n"
       "     <ParameterList  name='Y Applied Displacement Boundary Condition'>                     \n"
       "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                    \n"
