@@ -3894,25 +3894,31 @@ public:
      * \brief Evaluate vector function within the domain.
      *
      * \param [in] aWorkSets holds state and control worksets
-     * \param [in] aResult   result workset
+     * \param [in/out] aResult   result workset
      ******************************************************************************/
     virtual void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
-
     /***************************************************************************//**
-     * \fn void evaluate
+     * \fn void evaluateBoundary
      * \brief Evaluate vector function on non-prescribed boundaries.
      *
      * \param [in] aWorkSets holds state and control worksets
-     * \param [in] aResult   result workset
+     * \param [in/out] aResult   result workset
      ******************************************************************************/
     virtual void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
+    /***************************************************************************//**
+     * \fn void evaluatePrescribed
+     * \brief Evaluate vector function on prescribed boundaries.
+     *
+     * \param [in] aWorkSets holds state and control worksets
+     * \param [in/out] aResult   result workset
+     ******************************************************************************/
     virtual void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
@@ -3932,12 +3938,17 @@ public:
  *
  * \brief Calculate advection momentum forces, defined as
  *
- * \f[
- *   \alpha\frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n + \bar{u}_j^n \frac{\partial \bar{u}_i^n}{\partial\bar{x}_j}
- * \f]
+ * \f[ \alpha\bar{u}_j^n \frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \f]
  *
  * where \f$\alpha\f$ is a scalar multiplier, \f$ u_i \f$ is the i-th velocity
- * field, \f$ x_i \f$ is the i-th coordinate.
+ * component and \f$ x_i \f$ is the i-th coordinate.
+ *
+ * \param [in] aCellOrdinal cell/element ordinal
+ * \param [in] aGradient    spatial gradient workset
+ * \param [in] aPrevVelWS   previous velocity workset
+ * \param [in] aPrevVelGP   previous velocity evaluated at Gauss points
+ * \param [in] aMultiplier  scalar multiplier (default = 1.0)
+ * \param [in/out] aResult  result/output workset
  *
  ******************************************************************************/
 template
@@ -3980,14 +3991,20 @@ calculate_advected_momentum_forces
  *
  * \fn device_type inline void integrate_viscous_forces
  *
- * \brief Integrate viscous forces, which are defined as
+ * \brief Integrate element viscous forces, defined as
  *
- * \f[
- * \alpha\int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
- * \f]
+ * \f[ \alpha\int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega \f]
  *
- * where the deviatoric stress tensor \f$\bar\tau_{ij}^n\f$ and \f$\alpha\f$
- * denotes a scalar multiplier.
+ * where \f$\bar\tau_{ij}^n\f$ is the deviatoric stress tensor and \f$\alpha\f$
+ * is a scalar multiplier.
+ *
+ * \param [in] aCellOrdinal   cell/element ordinal
+ * \param [in] aPrandtlNumber dimensionless Prandtl number
+ * \param [in] aCellVolume    cell/element volume workset
+ * \param [in] aGradient      spatial gradient workset
+ * \param [in] aStrainRate    strain workset
+ * \param [in] aMultiplier    scalar multiplier (default = 1.0)
+ * \param [in/out] aResult    result/output workset
  *
  ******************************************************************************/
 template
@@ -4030,13 +4047,20 @@ integrate_viscous_forces
  *
  * \fn device_type inline void calculate_natural_convective_forces
  *
- * \brief Calculate natural convective forces, which are defined as
+ * \brief Calculate natural convective forces, defined as
  *
- * \f[
- * \alpha Gr_i Pr^2\bar{T}^n
- * \f]
+ * \f[ \alpha Gr_i Pr^2\bar{T}^n \f]
  *
- * where \f$\alpha\f$ denotes a scalar multiplier.
+ * where \f$\alpha\f$ denotes a scalar multiplier, \f$ Gr_i \f$ is the Grashof
+ * number, \f$ Pr \f$ is the Prandtl number and \f$ T^n \f$ is the temperature
+ * field at time step n.
+ *
+ * \param [in] aCellOrdinal   cell/element ordinal
+ * \param [in] aPrTimesPr     Prandtl number squared
+ * \param [in] aGrashofNum    Grashof number
+ * \param [in] aPrevTempGP    previous temperature at Gauss points
+ * \param [in] aMultiplier    scalar multiplier (default = 1.0)
+ * \param [in/out] aResult    result/output workset
  *
  ******************************************************************************/
 template
@@ -4071,13 +4095,17 @@ calculate_natural_convective_forces
  *
  * \brief Calculate Brinkmann forces, defined as
  *
- * \f[
- * \alpha\frac{Pr}{Da} u^{n-1}_i
- * \f]
+ * \f[ \alpha\beta u^{n}_i \f]
  *
- * where \f$\alpha\f$ is a scalar multiplier, \f$Pr\f$ is the Prandtl number,
- * \f$Da\f$ is the Darcy number, and \f$u_i^{n-1}\f$ is i-th component of the
- * previous velocity field.
+ * where \f$\alpha\f$ is a scalar multiplier, \f$ \beta \f$ is the dimensionless
+ * impermeability constant and \f$u_i^{n}\f$ is i-th component of the velocity
+ * field at time step n.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aImpermeability impermeability constant
+ * \param [in] aPrevTempGP     previous velocity at Gauss points
+ * \param [in] aMultiplier     scalar multiplier (default = 1.0)
+ * \param [in/out] aResult     result/output workset
  *
  ******************************************************************************/
 template
@@ -4088,14 +4116,14 @@ template
 DEVICE_TYPE inline void
 calculate_brinkman_forces
 (const Plato::OrdinalType & aCellOrdinal,
- const ControlT & aPenalizedBrinkmanCoeff,
+ const ControlT & aImpermeability,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
  Plato::Scalar aMultiplier = 1.0)
 {
     for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
     {
-        aResult(aCellOrdinal, tDim) += aMultiplier * aPenalizedBrinkmanCoeff * aPrevVelGP(aCellOrdinal, tDim);
+        aResult(aCellOrdinal, tDim) += aMultiplier * aImpermeability * aPrevVelGP(aCellOrdinal, tDim);
     }
 }
 // function calculate_brinkman_forces
@@ -4104,21 +4132,30 @@ calculate_brinkman_forces
 /***************************************************************************//**
  * \tparam NumNodes number of nodes in cell/element (integer)
  * \tparam SpaceDim   spatial dimensions (integer)
- * \tparam ResultT    output work set Forward Automatic Differentiation (FAD) type
- * \tparam ConfigT    configuration work set FAD type
- * \tparam PrevVelT   previous velocity work set FAD type
- * \tparam StabilityT stabilizing force work set at quadrature points FAD type
+ * \tparam ResultT    output Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT    configuration FAD type
+ * \tparam PrevVelT   previous velocity FAD type
+ * \tparam StabilityT stabilizing force FAD type
  *
  * \fn device_type inline void integrate_stabilizing_vector_force
  *
  * \brief Integrate stabilizing momentum forces, defined as
  *
  * \f[
- *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k \right) \hat{R}^n_{\bar{u}_i}\, d\Omega
+ *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k \right) \hat{S}^n_{\bar{u}_i}\, d\Omega
  * \f]
  *
- * where \f$\alpha\f$ denotes a scalar multiplier and \f$\hat{R}^n_{\bar{u}_i}\f$
- * is the stabilizing residual.
+ * where \f$\alpha\f$ denotes a scalar multiplier, \f$ u_k^n \f$ is the k-th
+ * component of the velocity field at time step n, \f$ x_i \f$ is the i-th
+ * coordinate and \f$\hat{S}^n_{\bar{u}_i}\f$ is the stabilizing force.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aCellVolume     cell/element volume workset
+ * \param [in] aGradient       spatial gradient workset
+ * \param [in] aPrevVelGP      previous velocity at Gauss points
+ * \param [in] aStabilization  stabilization forces
+ * \param [in] aMultiplier     scalar multiplier (default = 1.0)
+ * \param [in/out] aResult     result/output workset
  *
  ******************************************************************************/
 template
@@ -4154,62 +4191,6 @@ integrate_stabilizing_vector_force
 // function integrate_stabilizing_vector_force
 
 /***************************************************************************//**
- * \tparam NumNodes number of nodes in cell/element (integer)
- * \tparam SpaceDim spatial dimensions (integer)
- * \tparam ResultT  output work set Forward Automatic Differentiation (FAD) type
- * \tparam ConfigT  configuration work set FAD type
- * \tparam PredVelT previous velocity work set FAD type
- * \tparam PrevVelT predicted velocity work set FAD type
- *
- * \fn device_type inline void integrate_momentum_inertial_forces
- *
- * \brief Integrate momentum inertial forces, defined as
- *
- * Predictor Step:
- * \f[
- *   \alpha\int_{\Omega} w_i^h\left(\bar{u}^{\ast}_i - \bar{u}_i^{n}\right) d\Omega
- * \f]
- *
- * or
- *
- * Corrector Step:
- * \f[
- *   \alpha\int_{\Omega} w_i^h\left(\bar{u}_i^{n+1} - \bar{u}^{\ast}_i\right) d\Omega
- * \f]
- *
- * where \f$\alpha\f$ denotes a scalar multiplier.
- *
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename ResultT,
- typename ConfigT,
- typename PredVelT,
- typename PrevVelT>
-DEVICE_TYPE inline void
-integrate_momentum_inertial_forces
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
- const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<PredVelT> & aVecA_GP,
- const Plato::ScalarMultiVectorT<PrevVelT> & aVecB_GP,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
-{
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
-        {
-            auto tDofIndex = (SpaceDim * tNode) + tDimI;
-            aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) *
-                ( aVecB_GP(aCellOrdinal, tDimI) );
-                //( aVecA_GP(aCellOrdinal, tDimI) - aVecB_GP(aCellOrdinal, tDimI) );
-        }
-    }
-}
-// function integrate_momentum_inertial_forces
-
-/***************************************************************************//**
  * \tparam NumNodesPerCell number of nodes in cell/element (integer)
  * \tparam NumDofsPerNode  number of degrees of freedom per node (integer)
  * \tparam ResultT         output work set Forward Automatic Differentiation (FAD) type
@@ -4220,11 +4201,17 @@ integrate_momentum_inertial_forces
  *
  * \brief Integrate vector field, defined as
  *
- * \f[
- *   \alpha\int_{\Omega} w_i^h f_i d\Omega
- * \f]
+ * \f[ \alpha\int_{\Omega} w_i^h f_i d\Omega \f]
  *
  * where \f$\alpha\f$ denotes a scalar multiplier.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aBasisFunctions cell/element basis functions
+ * \param [in] aCellVolume     cell/element volume workset
+ * \param [in] aGradient       spatial gradient workset
+ * \param [in] aField          vector field
+ * \param [in] aMultiplier     scalar multiplier (default = 1.0)
+ * \param [in/out] aResult     result/output workset
  *
  ******************************************************************************/
 template
@@ -4287,14 +4274,14 @@ inline bool is_dimensionless_parameter_defined
 
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar dimensionless_reynolds_number
+ * \fn inline Plato::Scalar reynolds_number
  *
  * \brief Parse Reynolds number from input file.
  * \param [in] aInputs input file metadata
  * \return Reynolds number
  ******************************************************************************/
 inline Plato::Scalar
-dimensionless_reynolds_number
+reynolds_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -4305,17 +4292,17 @@ dimensionless_reynolds_number
     auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
     return tReNum;
 }
-// function dimensionless_reynolds_number
+// function reynolds_number
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar dimensionless_prandtl_number
+ * \fn inline Plato::Scalar prandtl_number
  *
  * \brief Parse Prandtl number from input file.
  * \param [in] aInputs input file metadata
  * \return Prandtl number
  ******************************************************************************/
 inline Plato::Scalar
-dimensionless_prandtl_number
+prandtl_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -4326,7 +4313,7 @@ dimensionless_prandtl_number
     auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
     return tPrNum;
 }
-// function dimensionless_prandtl_number
+// function prandtl_number
 
 /***************************************************************************//**
  * \fn inline bool calculate_brinkman_forces
@@ -4378,7 +4365,7 @@ inline std::string heat_transfer_tag
 /***************************************************************************//**
  * \fn inline bool calculate_heat_transfer
  *
- * \brief Returns true if buoyancy forces are part of the calculations, else, returns false.
+ * \brief Returns true if energy equation is enabled, else, returns false.
  * \param [in] aInputs input file metadata
  * \return boolean (true or false)
  ******************************************************************************/
@@ -4392,8 +4379,15 @@ inline bool calculate_heat_transfer
 // function calculate_heat_transfer
 
 
+/***************************************************************************//**
+ * \fn inline bool calculate_effective_conductivity
+ *
+ * \brief Calculate effective conductivity based on the heat transfer mechanism requested.
+ * \param [in] aInputs input file metadata
+ * \return effective conductivity
+ ******************************************************************************/
 inline Plato::Scalar
-dimensionless_effective_conductivity
+calculate_effective_conductivity
 (Teuchos::ParameterList & aInputs)
 {
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
@@ -4417,30 +4411,33 @@ dimensionless_effective_conductivity
     }
     return tOutput;
 }
+// function calculate_effective_conductivity
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar dimensionless_viscosity_constant
+ * \fn inline Plato::Scalar calculate_viscosity_constant
  *
- * \brief Parse dimensionless viscocity \f$ \nu f\$, where \f$ \nu=\frac{1}{Re} f\$
- * if forced convection dominates and \f$ \nu=Pr \f$ is natural convection dominates.
+ * \brief Calculate dimensionless viscocity \f$ \nu f\$ constant. The dimensionless
+ * viscocity is given by \f$ \nu=\frac{1}{Re} f\$ if forced convection dominates or
+ * by \f$ \nu=Pr \f$ is natural convection dominates.
  *
  * \param [in] aInputs input file metadata
+ *
  * \return dimensionless viscocity
  ******************************************************************************/
 inline Plato::Scalar
-dimensionless_viscosity_constant
+calculate_viscosity_constant
 (Teuchos::ParameterList & aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced" || tHeatTransfer == "mixed" || tHeatTransfer == "none")
     {
-        auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
+        auto tReNum = Plato::Fluids::reynolds_number(aInputs);
         auto tViscocity = static_cast<Plato::Scalar>(1) / tReNum;
         return tViscocity;
     }
     else if(tHeatTransfer == "natural")
     {
-        auto tViscocity = Plato::Fluids::dimensionless_prandtl_number(aInputs);
+        auto tViscocity = Plato::Fluids::prandtl_number(aInputs);
         return tViscocity;
     }
     else
@@ -4448,23 +4445,23 @@ dimensionless_viscosity_constant
         THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
     }
 }
-// function dimensionless_viscosity_constant
+// function calculate_viscosity_constant
 
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar dimensionless_natural_convection_buoyancy_constant
+ * \fn inline Plato::Scalar buoyancy_constant_natural_convection_problems
  *
- * \brief Parse buoyancy constant for natural convection problems.
+ * \brief Calculate buoyancy constant for natural convection problems.
  *
  * \param [in] aInputs input file metadata
  *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
-dimensionless_natural_convection_buoyancy_constant
+buoyancy_constant_natural_convection_problems
 (Teuchos::ParameterList & aInputs)
 {
-    auto tPrNum = Plato::Fluids::dimensionless_prandtl_number(aInputs);
+    auto tPrNum = Plato::Fluids::prandtl_number(aInputs);
     if(Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs))
     {
         auto tBuoyancy = tPrNum;
@@ -4480,20 +4477,20 @@ dimensionless_natural_convection_buoyancy_constant
         THROWERR("Natural convection properties are not defined. One of these two options should be provided: 'Grashof Number' or 'Rayleigh Number'")
     }
 }
-// function dimensionless_natural_convection_buoyancy_constant
+// function buoyancy_constant_natural_convection_problems
 
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar dimensionless_mixed_convection_buoyancy_constant
+ * \fn inline Plato::Scalar buoyancy_constant_mixed_convection_problems
  *
- * \brief Parse buoyancy constant for mixed convection problems.
+ * \brief Calculate buoyancy constant for mixed convection problems.
  *
  * \param [in] aInputs input file metadata
  *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
-dimensionless_mixed_convection_buoyancy_constant
+buoyancy_constant_mixed_convection_problems
 (Teuchos::ParameterList & aInputs)
 {
     if(Plato::Fluids::is_dimensionless_parameter_defined("Richardson Number", aInputs))
@@ -4502,7 +4499,7 @@ dimensionless_mixed_convection_buoyancy_constant
     }
     else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
     {
-        auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
+        auto tReNum = Plato::Fluids::reynolds_number(aInputs);
         auto tBuoyancy = static_cast<Plato::Scalar>(1.0) / (tReNum * tReNum);
         return tBuoyancy;
     }
@@ -4511,23 +4508,23 @@ dimensionless_mixed_convection_buoyancy_constant
         THROWERR("Mixed convection properties are not defined. One of these two options should be provided: 'Grashof Number' or 'Richardson Number'")
     }
 }
-// function dimensionless_mixed_convection_buoyancy_constant
+// function buoyancy_constant_mixed_convection_problems
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar dimensionless_buoyancy_constant
+ * \fn inline Plato::Scalar calculate_buoyancy_constant
  *
- * \brief Parse dimensionless buoyancy constant \f$ \beta f\$, where \f$ \beta=
- * \frac{1}{Re^2} f\$ if forced convection dominates. The buoyancy constant for
- * natural convection dominated problems is given by \f$ \nu=Pr^2 \f$ or \f$ \nu=Pr \f$
- * based on the dimensionless convective constant (i.e. Rayleigh or Grashof number)
- * provided by the user.
+ * \brief Calculate dimensionless buoyancy constant \f$ \beta f\$. The buoyancy
+ * constant is defined by \f$ \beta=\frac{1}{Re^2} f\$ if forced convection dominates.
+ * In contrast, the buoyancy constant for natural convection dominated problems
+ * is given by \f$ \nu=Pr^2 \f$ or \f$ \nu=Pr \f$ depending on which dimensionless
+ * convective constant was provided by the user (e.g. Rayleigh or Grashof number).
  *
  * \param [in] aInputs input file metadata
  *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
-dimensionless_buoyancy_constant
+calculate_buoyancy_constant
 (Teuchos::ParameterList & aInputs)
 {
     Plato::Scalar tBuoyancy = 0.0; // heat transfer calculations inactive if buoyancy = 0.0
@@ -4535,11 +4532,11 @@ dimensionless_buoyancy_constant
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "mixed")
     {
-        tBuoyancy = Plato::Fluids::dimensionless_mixed_convection_buoyancy_constant(aInputs);
+        tBuoyancy = Plato::Fluids::buoyancy_constant_mixed_convection_problems(aInputs);
     }
     else if(tHeatTransfer == "natural")
     {
-        tBuoyancy = Plato::Fluids::dimensionless_natural_convection_buoyancy_constant(aInputs);
+        tBuoyancy = Plato::Fluids::buoyancy_constant_natural_convection_problems(aInputs);
     }
     else if(tHeatTransfer == "forced" || tHeatTransfer == "none")
     {
@@ -4552,22 +4549,23 @@ dimensionless_buoyancy_constant
 
     return tBuoyancy;
 }
-// function dimensionless_buoyancy_constant
+// function calculate_buoyancy_constant
 
 
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
  *
- * \fn inline Plato::ScalarVector dimensionless_rayleigh_number
+ * \fn inline Plato::ScalarVector rayleigh_number
  *
- * \brief Parse array of dimensionless Rayleigh constants.
+ * \brief Parse dimensionless Rayleigh constants.
  *
  * \param [in] aInputs input file metadata
+ *
  * \return Rayleigh constants
  ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
-dimensionless_rayleigh_number
+rayleigh_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -4605,21 +4603,22 @@ dimensionless_rayleigh_number
 
     return tOuput;
 }
-// function dimensionless_rayleigh_number
+// function rayleigh_number
 
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
  *
- * \fn inline Plato::ScalarVector dimensionless_grashof_number
+ * \fn inline Plato::ScalarVector grashof_number
  *
- * \brief Parse array of dimensionless Grashof constants.
+ * \brief Parse dimensionless Grashof constants.
  *
  * \param [in] aInputs input file metadata
+ *
  * \return Grashof constants
  ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
-dimensionless_grashof_number
+grashof_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -4657,21 +4656,22 @@ dimensionless_grashof_number
 
     return tOuput;
 }
-// function dimensionless_grashof_number
+// function grashof_number
 
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
  *
- * \fn inline Plato::ScalarVector dimensionless_richardson_number
+ * \fn inline Plato::ScalarVector richardson_number
  *
- * \brief Parse array of dimensionless Richardson constants.
+ * \brief Parse dimensionless Richardson constants.
  *
  * \param [in] aInputs input file metadata
+ *
  * \return Richardson constants
  ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
-dimensionless_richardson_number
+richardson_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -4709,16 +4709,15 @@ dimensionless_richardson_number
 
     return tOuput;
 }
-// function dimensionless_richardson_number
+// function richardson_number
 
 
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
  *
- * \fn inline Plato::ScalarVector dimensionless_natural_convection_number
+ * \fn inline Plato::ScalarVector parse_natural_convection_number
  *
- * \brief Parse array with dimensionless natural convection constants (e.g.
- * Rayleigh or Grashof number).
+ * \brief Parse dimensionless natural convection constants (e.g. Rayleigh or Grashof number).
  *
  * \param [in] aInputs input file metadata
  *
@@ -4726,24 +4725,24 @@ dimensionless_richardson_number
  ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
-dimensionless_natural_convection_number
+parse_natural_convection_number
 (Teuchos::ParameterList & aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if( Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs) &&
             (tHeatTransfer == "natural") )
     {
-        return (Plato::Fluids::dimensionless_rayleigh_number<SpaceDim>(aInputs));
+        return (Plato::Fluids::rayleigh_number<SpaceDim>(aInputs));
     }
     else if( Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs) &&
             (tHeatTransfer == "natural" || tHeatTransfer == "mixed") )
     {
-        return (Plato::Fluids::dimensionless_grashof_number<SpaceDim>(aInputs));
+        return (Plato::Fluids::grashof_number<SpaceDim>(aInputs));
     }
     else if( Plato::Fluids::is_dimensionless_parameter_defined("Richardson Number", aInputs) &&
             (tHeatTransfer == "mixed") )
     {
-        return (Plato::Fluids::dimensionless_richardson_number<SpaceDim>(aInputs));
+        return (Plato::Fluids::richardson_number<SpaceDim>(aInputs));
     }
     else
     {
@@ -4752,8 +4751,18 @@ dimensionless_natural_convection_number
                  "'Rayleigh Number' (for natural convection problems), or 'Richardson Number' (for mixed convection problems).")
     }
 }
-// function dimensionless_natural_convection_number
+// function parse_natural_convection_number
 
+/***************************************************************************//**
+ * \fn inline Plato::Scalar stabilization_constant
+ *
+ * \brief Parse stabilization force scalar multiplier.
+ *
+ * \param [in] aSublistName parameter sublist name
+ * \param [in] aInputs      input file metadata
+ *
+ * \return scalar multiplier
+ ******************************************************************************/
 inline Plato::Scalar 
 stabilization_constant
 (const std::string & aSublistName,
@@ -4773,13 +4782,28 @@ stabilization_constant
     }
     return tOutput;
 }
+// function stabilization_constant
 
 
 
 
 
-
-
+/***************************************************************************//**
+ * \tparam PhysicsT    Physics Type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) Evaluation Type
+ *
+ * \class ThermalBuoyancy
+ *
+ * \brief Class responsible for evaluating thermal buoyancy forces, including
+ *   stabilization forces associated with the thermal buoyancy forces.
+ *
+ * Thermal Buoyancy Force:
+ *   \[ \Delta{t}*Bu*Gr_i \int_{\Omega_e} w T^n d\Omega_e \]
+ *
+ * Stabilized Buoyancy Force:
+ *   \[ \frac{\Delta{t}^2}{2}*Bu*Gr_i \int_{\Omega_e} (\frac{\partial w}{\partial x_k} u_k^n ) T^n d\Omega_e \]
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class ThermalBuoyancy
 {
@@ -4805,6 +4829,12 @@ private:
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
 
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aDomain  spatial domain metadata
+     * \param [in] aDataMap output data map
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
     ThermalBuoyancy
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
@@ -4814,13 +4844,21 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setAritificalDamping(aInputs);
-        mBuoyancyConst = Plato::Fluids::dimensionless_buoyancy_constant(aInputs);
+        mBuoyancyConst = Plato::Fluids::calculate_buoyancy_constant(aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
-        mNaturalConvectionNum = Plato::Fluids::dimensionless_natural_convection_number<mNumSpatialDims>(aInputs);
+        mNaturalConvectionNum = Plato::Fluids::parse_natural_convection_number<mNumSpatialDims>(aInputs);
     }
 
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
     ~ThermalBuoyancy(){}
 
+    /***************************************************************************//**
+     * \brief Evaluate thermal buoyancy forces, including stabilized forces if enabled.
+     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
+     * \param [in/out] aResultWS result/output workset
+     ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResultWS) const
@@ -4900,6 +4938,7 @@ private:
         }
     }
 };
+// class ThermalBuoyancy
 
 
 
@@ -4907,7 +4946,27 @@ private:
 
 
 
-
+/***************************************************************************//**
+ * \tparam PhysicsT    Physics Type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) Evaluation Type
+ *
+ * \class BrinkmanForces
+ *
+ * \brief Class responsible for the evaluation of the Brinkman forces (i.e.
+ *   fictitious material model), including the stabilization forces associated
+ *   with the Brinkman forces.
+ *
+ * Thermal Buoyancy Force:
+ *   \[ \Delta{t}\gamma \int_{\Omega_e} w_i u_i^n d\Omega_e \]
+ *
+ * Stabilized Buoyancy Force:
+ *   \[ \frac{\Delta{t}^2}{2}*\gamma \int_{\Omega_e} (\frac{\partial w_i}{\partial x_k} u_k^n ) u_i^n d\Omega_e \]
+ *
+ * where \f$ \gamma \f$ is the impermeability constant, \f$ \Delta{t} \f$ is the
+ * current time step, \f$ u_i^n \f$ is the i-th component of the previous velocity
+ * field and \f$ x_i \f$ is the i-th coordinate.
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class BrinkmanForces
 {
@@ -4933,6 +4992,12 @@ private:
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
 
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aDomain  spatial domain metadata
+     * \param [in] aDataMap output data map
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
     BrinkmanForces
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
@@ -4945,8 +5010,16 @@ public:
         mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
     }
 
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
     ~BrinkmanForces(){}
 
+    /***************************************************************************//**
+     * \brief Evaluate Brinkman forces, including stabilized forces if enabled.
+     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
+     * \param [in/out] aResultWS result/output workset
+     ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResultWS) const 
@@ -4998,7 +5071,7 @@ public:
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, aResultWS, tMultiplier);
 
-            // 2. add stabilizing brinkman force to residual, R += (\frac{\Delta{t}^2}{2}\gamma) M u_n
+            // 2. add stabilizing brinkman force to residual, R += (\frac{\Delta{t}^2}{2}\gamma) M_u u_n
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tBrinkman, aResultWS, tMultiplier);
@@ -5006,6 +5079,10 @@ public:
     }
 
 private:
+    /***************************************************************************//**
+     * \brief Set impermeability constant.
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
     void setImpermeability
     (Teuchos::ParameterList & aInputs)
     {
@@ -5023,7 +5100,7 @@ private:
 	}
     }
 };
-
+// class BrinkmanForces
 
 
 
@@ -5305,7 +5382,7 @@ private:
    {
        this->setAritificalDamping(aInputs);
        this->setNaturalBoundaryConditions(aInputs);
-       mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
+       mViscocity = Plato::Fluids::calculate_viscosity_constant(aInputs);
        mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
 
        this->setBrinkmanForces(aDomain, aDataMap, aInputs);
@@ -5367,484 +5444,6 @@ private:
    }
 };
 // class VelocityPredictorResidual
-
-// todo: predictor equation - to
-namespace Brinkman
-{
-
-/***************************************************************************//**
- * \class VelocityPredictorResidual
- *
- * \tparam PhysicsT    physics type
- * \tparam EvaluationT forward automatic differentiation evaluation type
- *
- * \brief Calculate the momentum predictor residual, which is defined as
- *
- * \f[
- *   \mathcal{R}^n_i(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) - E_i^n(w^h_i) = 0.
- * \f]
- *
- * Inertial Forces:
- *
- * \f[
- *   I^n_i(w^h_i) =
- *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
- * \f]
- *
- * Internal Forces:
- *
- * \f[
- *   F^n_i(w^h_i) =
- *     - \int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
- *     + \bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
- *     - \int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
- *     + \int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
- *     + \int_\Omega w^h_i\left(\pi^{Br}(\theta)\bar{u}_i^n\right)\,d\Omega
- * \f]
- *
- * Stabilizing Forces:
- *
- * \f[
- *   S_i^n(w^h_i) =
- *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
- *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
- *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
- * \f]
- *
- * where
- *
- * \f[
- *   \hat{F}^n_{\bar{u}_i} =
- *     -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
- *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j}
- *     + Gr_i Pr^2\bar{T}^n + \pi^{Br}(\theta)\bar{u}_i^n
- * \f]
- *
- * External Forces:
- *
- * \f[
- *   E_i^n(w^h_i) =
- *     \int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
- *     + \int_{\Gamma_t}w_i^h\left( t_i+\bar{p}^{n}n_i \right)\,d\Gamma
- * \f]
- *
- ******************************************************************************/
-template<typename PhysicsT, typename EvaluationT>
-class VelocityPredictorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
-{
-private:
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
-    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
-
-    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
-    static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
-    static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
-    static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell;   /*!< number of configuration degrees of freedom per cell */
-
-    // set local ad types
-    using ResultT   = typename EvaluationT::ResultScalarType;
-    using ConfigT   = typename EvaluationT::ConfigScalarType;
-    using ControlT  = typename EvaluationT::ControlScalarType;
-    using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
-    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
-    using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
-    using StrainT   = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
-
-    Plato::DataMap& mDataMap; /*!< output database */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
-    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
-
-    // set member scalar data
-    Plato::Scalar mBuoyancy = 1.0; /*!< buoyancy dimensionless number */
-    Plato::Scalar mViscocity = 1.0; /*!< viscocity dimensionless number */
-    Plato::Scalar mPermeability = 1.0; /*!< viscocity dimensionless number */
-    Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
-    Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
-
-public:
-    VelocityPredictorResidual
-    (const Plato::SpatialDomain & aDomain,
-     Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs) :
-         mDataMap(aDataMap),
-         mSpatialDomain(aDomain),
-         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
-         mGrNum("grashof number", mNumSpatialDims)
-    {
-        this->setParameters(aInputs);
-        this->setNaturalBoundaryConditions(aInputs);
-    }
-
-    virtual ~VelocityPredictorResidual(){}
-
-    /***************************************************************************//**
-     * \fn void evaluate
-     * \brief Evaluate the total internal forces, which are given by the sum of the
-     *   inertial, internal, and stabilizing forces. The penalized internal and
-     *   stabilizing forces for density-based topology optimization are respectively
-     *   calculated as:
-     *
-     * Inertial:
-     *
-     * \f[
-     *   I^n_i(w^h_i) =
-     *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
-     * \f]
-     *
-     * Internal:
-     *
-     * \f[
-     *   F^n_i(w^h_i) =
-     *     - \int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
-     *     + \bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
-     *     - \int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
-     *     + \int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
-     *     + \int_\Omega w^h_i\left(\pi^{Br}(\theta)\bar{u}_i^n\right)\,d\Omega
-     * \f]
-     *
-     * Stabilizing:
-     *
-     * \f[
-     *   S_i^n(w^h_i) =
-     *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
-     *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
-     *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
-     * \f]
-     *
-     * where
-     *
-     * \f[
-     *   \hat{F}^n_{\bar{u}_i} =
-     *     -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
-     *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j}
-     *     + Gr_i Pr^2\bar{T}^n + \pi^{Br}(\theta)\bar{u}_i^n
-     * \f]
-     *
-     * Finally, the internal momentum corrector residual is given by
-     *
-     * \f[
-     *   \hat{R}_i^n(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) = 0.
-     * \f]
-     *
-     * In the equations presented above \f$ \alpha \f$ denotes a scalar multiplier,
-     * \f$ w_i^h \f$ are the test functions, \f$ \Delta\bar{t} \f$ denotes the current
-     * time step, \f$ \bar{\tau}^n_{ij} \f$ is the second order deviatoric stress tensor,
-     * \f$ \theta \f$ denotes the physical design variables (i.e. density field), and
-     * \f$ n_i \f$ is the unit normal vector.
-     *
-     ******************************************************************************/
-    void evaluate
-    (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
-    const override
-    {
-        auto tNumCells = mSpatialDomain.numCells();
-        if( tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
-        {
-            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
-                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
-                + "' elements and output workset has '" + std::to_string(aResultWS.extent(0)) + "' elements.")
-        }
-
-        Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
-        Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
-
-        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
-
-        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity", tNumCells, mNumSpatialDims);
-
-        Plato::ScalarMultiVectorT<ResultT>  tBrinkman("brinkman", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>  tAdvection("advection", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>  tStabilization("stabilization", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>  tNaturalConvection("natural convection", tNumCells, mNumSpatialDims);
-
-        Plato::ScalarMultiVectorT<ResultT>  tStabForces("stabilizing forces", tNumCells, mNumDofsPerCell);
-        Plato::ScalarMultiVectorT<ResultT>  tInternalForces("internal forces", tNumCells, mNumDofsPerCell);
-
-        // set local functors
-        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumTempDofsPerNode> tIntrplScalarField;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
-
-        // set input state worksets
-        auto tControlWS   = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
-        auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPrevVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-        auto tPrevTempWS  = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
-        auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
-        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
-
-        // transfer member data to device
-        auto tGrNum = mGrNum;
-        auto tBuoyancy = mBuoyancy;
-        auto tViscocity = mViscocity;
-        auto tPermeability = mPermeability;
-        auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
-
-        auto tCubWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tCubWeight;
-
-            // 1. calculate internal force contribution
-            Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
-            Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, tInternalForces, -1.0);
-
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::Fluids::calculate_advected_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tAdvection);
-            Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tAdvection, tInternalForces, -1.0);
-
-            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
-            Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
-                (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tNaturalConvection);
-            Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tNaturalConvection, tInternalForces);
-
-            ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPermeability, tBrinkmanConvexityParam, tControlWS);
-            Plato::Fluids::calculate_brinkman_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, tBrinkman);
-            Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, tInternalForces);
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tStabilization);
-
-            // 2. calculate stabilization term
-            Plato::blas1::update<mNumSpatialDims>(aCellOrdinal, -1.0, tAdvection, 1.0, tStabilization);
-            Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tBrinkman , 1.0, tStabilization);
-            Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
-            Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tMultiplier, tStabilization);
-
-            // 3. calculate residual
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredVelGP);
-            Plato::Fluids::integrate_momentum_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPredVelGP, tPrevVelGP, aResultWS);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tStabForces, 1.0, aResultWS);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, 1.0, aResultWS);
-        }, "predictor residual");
-    }
-
-    /***************************************************************************//**
-     * \fn void evaluateBoundary
-     * \brief Evaluate deviatoric traction forces on non-traction boundary, which
-     * are defined as
-     *
-     * \f[
-     *   \alpha\Delta\bar{t}\int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
-     * \f]
-     *
-     * where \f$ \alpha \f$ denotes a scalar multiplier, \f$ w_i^h \f$ are the
-     * test functions, \f$ \Delta\bar{t} \f$ denotes the current time step,
-     * \f$ \bar{\tau}^n_{ij} \f$ is the second order deviatoric stress tensor,
-     * and \f$ n_i \f$ is the unit normal vector.
-     *
-     ******************************************************************************/
-   void evaluateBoundary
-   (const Plato::SpatialModel & aSpatialModel,
-    const Plato::WorkSets & aWorkSets,
-    Plato::ScalarMultiVectorT<ResultT> & aResult)
-   const override
-   { return; }
-
-   /***************************************************************************//**
-    * \fn void evaluatePrescribed
-    * \brief Evaluate prescribed deviatoric traction forces, which are defined as
-    *
-    * \f[
-    *   \alpha\Delta\bar{t}\int_{\Gamma_t}w_i^h\left( t_i+\bar{p}^{n}n_i \right)\,d\Gamma
-    * \f]
-    *
-    * where \f$\alpha\f$ denotes a scalar multiplier, \f$\Delta\bar{t}\f$ denotes
-    * the current time step, \f${t}_i\f$ is the i-th component of the prescribed
-    * traction force, \f${p}^{n}\f$ is the previous pressure, and \f${n}_{i}\f$
-    * is the unit normal vector.
-    *
-    ******************************************************************************/
-   void evaluatePrescribed
-   (const Plato::SpatialModel & aSpatialModel,
-    const Plato::WorkSets & aWorkSets,
-    Plato::ScalarMultiVectorT<ResultT> & aResultWS)
-   const override
-   {
-       if( mPrescribedBCs != nullptr )
-       {
-           // set input worksets
-           auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
-           auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-           auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-
-           // 1. add prescribed deviatoric traction forces
-           auto tNumCells = aResultWS.extent(0);
-           Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
-           mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tResultWS); // prescribed traction forces
-
-           // 3. multiply force vector by the corresponding nodal time steps
-           auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
-           Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-           {
-               Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
-               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResultWS);
-           }, "prescribed traction forces");
-       }
-   }
-
-private:
-   void setParameters
-   (Teuchos::ParameterList & aInputs)
-   {
-       if(aInputs.isSublist("Hyperbolic") == false)
-       {
-           THROWERR("'Hyperbolic' Parameter List is not defined.")
-       }
-       this->setDimensionlessProperties(aInputs);
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       if(tHyperbolic.isSublist("Momentum Conservation"))
-       {
-           auto tMomentumParamList = tHyperbolic.sublist("Momentum Conservation");
-           this->setPenaltyModel(tMomentumParamList);
-       }
-   }
-
-   void setPenaltyModel
-   (Teuchos::ParameterList & aInputs)
-   {
-        if (aInputs.isSublist("Penalty Function"))
-        {
-            auto tPenaltyFuncList = aInputs.sublist("Penalty Function");
-            mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
-        }
-   }
-
-   void setPermeability
-   (Teuchos::ParameterList & aInputs)
-   {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
-       auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-       mPermeability = tPrNum / tDaNum;
-   }
-
-   void setViscosity
-   (Teuchos::ParameterList & aInputs)
-   {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-       auto tHeatTransfer = Plato::tolower(tTag);
-
-       if(tHeatTransfer == "forced" || tHeatTransfer == "none")
-       {
-           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-           mViscocity = static_cast<Plato::Scalar>(1) / tReNum;
-       }
-       else if(tHeatTransfer == "natural")
-       {
-           mViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-       }
-       else
-       {
-           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
-       }
-   }
-
-   void setGrashofNumber
-   (Teuchos::ParameterList & aInputs)
-   {
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-        auto tHeatTransfer = Plato::tolower(tTag);
-        auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
-
-        if(tCalculateHeatTransfer)
-        {
-            auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
-            if(tGrNum.size() != mNumSpatialDims)
-            {
-                THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
-                    + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
-                    + std::to_string(mNumSpatialDims) + "'.")
-            }
-
-            auto tLength = mGrNum.size();
-            auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-            for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
-            {
-                tHostGrNum(tDim) = tGrNum[tDim];
-            }
-            Kokkos::deep_copy(mGrNum, tHostGrNum);
-        }
-        else
-        {
-            Plato::blas1::fill(0.0, mGrNum);
-        }
-   }
-
-   void setBuoyancyConstant
-   (Teuchos::ParameterList & aInputs)
-   {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-       auto tHeatTransfer = Plato::tolower(tTag);
-
-       if(tHeatTransfer == "forced")
-       {
-           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-           mBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
-       }
-       else if(tHeatTransfer == "natural")
-       {
-           auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-           mBuoyancy = tPrNum*tPrNum;
-       }
-       else if(tHeatTransfer == "none")
-       {
-           mBuoyancy = 0;
-       }
-       else
-       {
-           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
-       }
-   }
-
-   void setDimensionlessProperties
-   (Teuchos::ParameterList & aInputs)
-   {
-       if(aInputs.isSublist("Hyperbolic") == false)
-       {
-           THROWERR("'Hyperbolic' Parameter List is not defined.")
-       }
-       this->setViscosity(aInputs);
-       this->setPermeability(aInputs);
-       this->setGrashofNumber(aInputs);
-       this->setBuoyancyConstant(aInputs);
-   }
-
-    void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
-        {
-            auto tInputsNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
-            mPrescribedBCs = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tInputsNaturalBCs);
-        }
-    }
-};
-// class VelocityPredictorResidual
-
-}
-// namespace Brinkman
 
 /***************************************************************************//**
  * \fn device_type void calculate_pressure_gradient
@@ -6042,7 +5641,7 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setAritificalPressureDamping(aInputs);
-        //mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
+        //mViscocity = Plato::Fluids::calculate_viscosity_constant(aInputs);
     }
 
     virtual ~VelocityCorrectorResidual(){}
@@ -6589,7 +6188,7 @@ public:
         this->setPenaltyModelParameters(aInputs);
         this->setThermalDiffusivityRatio(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
-	mEffectiveConductivity = Plato::Fluids::dimensionless_effective_conductivity(aInputs);
+	mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
@@ -6835,7 +6434,7 @@ public:
     {
         this->setSourceTerm(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
-	mEffectiveConductivity = Plato::Fluids::dimensionless_effective_conductivity(aInputs);
+	mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
