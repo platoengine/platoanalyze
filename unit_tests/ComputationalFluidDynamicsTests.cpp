@@ -7405,86 +7405,109 @@ private:
     static constexpr auto mNumConfigDofsPerNode = PhysicsT::SimplexT::mNumConfigDofsPerNode; /*!< number of configuration degrees of freedom per cell */
     static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell; /*!< number of configuration degrees of freedom per cell */
 
-    // forward automatic differentiation evaluation types
-    using ResidualEvalT      = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using GradConfigEvalT    = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
-    using GradControlEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradControl;
-    using GradCurVelEvalT    = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum;
-    using GradPrevVelEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPrevMomentum;
-    using GradCurTempEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurEnergy;
-    using GradPrevTempEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPrevEnergy;
-    using GradCurPressEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;
-    using GradPrevPressEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPrevMass;
-    using GradPredictorEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPredictor;
+    // forward automatic differentiation (FAD) evaluation types
+    using ResidualEvalT      = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::Residual; /*!< residual FAD evaluation type */
+    using GradConfigEvalT    = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradConfig; /*!< gradient wrt configuration FAD evaluation type */
+    using GradControlEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradControl; /*!< gradient wrt control FAD evaluation type */
+    using GradCurVelEvalT    = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum; /*!< gradient wrt current momentum FAD evaluation type */
+    using GradPrevVelEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPrevMomentum; /*!< gradient wrt previous momentum FAD evaluation type */
+    using GradCurTempEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurEnergy; /*!< gradient wrt current energy FAD evaluation type */
+    using GradPrevTempEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPrevEnergy; /*!< gradient wrt previous energy FAD evaluation type */
+    using GradCurPressEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMass; /*!< gradient wrt current mass FAD evaluation type */
+    using GradPrevPressEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPrevMass; /*!< gradient wrt previous mass FAD evaluation type */
+    using GradPredictorEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradPredictor; /*!< gradient wrt momentum predictor FAD evaluation type */
 
     // element residual vector function types
-    using ResidualFuncT      = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, ResidualEvalT>>;
-    using GradConfigFuncT    = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradConfigEvalT>>;
-    using GradControlFuncT   = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradControlEvalT>>;
-    using GradCurVelFuncT    = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradCurVelEvalT>>;
-    using GradPrevVelFuncT   = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPrevVelEvalT>>;
-    using GradCurTempFuncT   = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradCurTempEvalT>>;
-    using GradPrevTempFuncT  = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPrevTempEvalT>>;
-    using GradCurPressFuncT  = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradCurPressEvalT>>;
-    using GradPrevPressFuncT = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPrevPressEvalT>>;
-    using GradPredictorFuncT = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPredictorEvalT>>;
+    using ResidualFuncT      = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, ResidualEvalT>>; /*!< vector function of type residual */
+    using GradConfigFuncT    = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradConfigEvalT>>; /*!< vector function of type gradient wrt configuration */
+    using GradControlFuncT   = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradControlEvalT>>; /*!< vector function of type gradient wrt control */
+    using GradCurVelFuncT    = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradCurVelEvalT>>; /*!< vector function of type gradient wrt current velocity */
+    using GradPrevVelFuncT   = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPrevVelEvalT>>; /*!< vector function of type gradient wrt previous velocity */
+    using GradCurTempFuncT   = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradCurTempEvalT>>; /*!< vector function of type gradient wrt current temperature */
+    using GradPrevTempFuncT  = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPrevTempEvalT>>; /*!< vector function of type gradient wrt previous temperature */
+    using GradCurPressFuncT  = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradCurPressEvalT>>; /*!< vector function of type gradient wrt current pressure */
+    using GradPrevPressFuncT = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPrevPressEvalT>>; /*!< vector function of type gradient wrt previous pressure */
+    using GradPredictorFuncT = std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, GradPredictorEvalT>>; /*!< vector function of type gradient wrt velocity predictor */
 
     // element vector functions per element block, i.e. domain
-    std::unordered_map<std::string, ResidualFuncT>      mResidualFuncs;
-    std::unordered_map<std::string, GradConfigFuncT>    mGradConfigFuncs;
-    std::unordered_map<std::string, GradControlFuncT>   mGradControlFuncs;
-    std::unordered_map<std::string, GradCurVelFuncT>    mGradCurVelFuncs;
-    std::unordered_map<std::string, GradPrevVelFuncT>   mGradPrevVelFuncs;
-    std::unordered_map<std::string, GradCurTempFuncT>   mGradCurTempFuncs;
-    std::unordered_map<std::string, GradPrevTempFuncT>  mGradPrevTempFuncs;
-    std::unordered_map<std::string, GradCurPressFuncT>  mGradCurPressFuncs;
-    std::unordered_map<std::string, GradPrevPressFuncT> mGradPrevPressFuncs;
-    std::unordered_map<std::string, GradPredictorFuncT> mGradPredictorFuncs;
+    std::unordered_map<std::string, ResidualFuncT>      mResidualFuncs; /*!< vector function list of type residual */
+    std::unordered_map<std::string, GradConfigFuncT>    mGradConfigFuncs; /*!< vector function list of type gradient wrt configuration */
+    std::unordered_map<std::string, GradControlFuncT>   mGradControlFuncs; /*!< vector function list of type gradient wrt control */
+    std::unordered_map<std::string, GradCurVelFuncT>    mGradCurVelFuncs; /*!< vector function list of type gradient wrt current velocity */
+    std::unordered_map<std::string, GradPrevVelFuncT>   mGradPrevVelFuncs; /*!< vector function list of type gradient wrt previous velocity */
+    std::unordered_map<std::string, GradCurTempFuncT>   mGradCurTempFuncs; /*!< vector function list of type gradient wrt current temperature */
+    std::unordered_map<std::string, GradPrevTempFuncT>  mGradPrevTempFuncs; /*!< vector function list of type gradient wrt previous temperature */
+    std::unordered_map<std::string, GradCurPressFuncT>  mGradCurPressFuncs; /*!< vector function list of type gradient wrt current pressure */
+    std::unordered_map<std::string, GradPrevPressFuncT> mGradPrevPressFuncs; /*!< vector function list of type gradient wrt previous pressure */
+    std::unordered_map<std::string, GradPredictorFuncT> mGradPredictorFuncs; /*!< vector function list of type gradient wrt velocity predictor */
 
-    Plato::DataMap& mDataMap;
-    const Plato::SpatialModel& mSpatialModel;
-    Plato::LocalOrdinalMaps<PhysicsT> mLocalOrdinalMaps;
-    Plato::VectorEntryOrdinal<mNumSpatialDims,mNumDofsPerNode> mStateOrdinalsMap;
+    Plato::DataMap& mDataMap; /*!< output database */
+    const Plato::SpatialModel& mSpatialModel; /*!< spatial model metadata - owns mesh metadata for all the domains, i.e. element blocks */
+    Plato::LocalOrdinalMaps<PhysicsT> mLocalOrdinalMaps; /*!< local-to-global ordinal maps */
+    Plato::VectorEntryOrdinal<mNumSpatialDims,mNumDofsPerNode> mStateOrdinalsMap; /*!< local-to-global ordinal vector field map */
 
 public:
     /**************************************************************************//**
     * \brief Constructor
-    * \param [in] aSpatialModel struct that contains the mesh, meshsets, domains, etc.
-    * \param [in] aDataMap      problem-specific data map
-    * \param [in] aInputs       Teuchos parameter list with input data
-    * \param [in] aProblemType  problem type
+    * \param [in] aTag     vector function tag/type
+    * \param [in] aModel   struct that contains the mesh, meshsets, domains, etc.
+    * \param [in] aDataMap output database
+    * \param [in] aInputs  input file metadata
     ******************************************************************************/
     VectorFunction
-    (const std::string            & aName,
-     const Plato::SpatialModel    & aSpatialModel,
+    (const std::string            & aTag,
+     const Plato::SpatialModel    & aModel,
            Plato::DataMap         & aDataMap,
            Teuchos::ParameterList & aInputs) :
-        mSpatialModel(aSpatialModel),
+        mSpatialModel(aModel),
         mDataMap(aDataMap),
-        mLocalOrdinalMaps(aSpatialModel.Mesh),
-        mStateOrdinalsMap(&aSpatialModel.Mesh)
+        mLocalOrdinalMaps(aModel.Mesh),
+        mStateOrdinalsMap(&aModel.Mesh)
     {
-        this->initialize(aName, aDataMap, aInputs);
+        this->initialize(aTag, aDataMap, aInputs);
     }
 
+    /**************************************************************************//**
+    * \fn integer getNumSpatialDims
+    * \brief Return number of spatial dimensions.
+    * \return number of spatial dimensions (integer)
+    ******************************************************************************/
     decltype(mNumSpatialDims) getNumSpatialDims() const
     {
         return mNumSpatialDims;
     }
 
+    /**************************************************************************//**
+    * \fn integer getNumDofsPerCell
+    * \brief Return number of degrees of freedom per cell.
+    * \return degrees of freedom per cell (integer)
+    ******************************************************************************/
     decltype(mNumDofsPerCell) getNumDofsPerCell() const
     {
         return mNumDofsPerCell;
     }
 
+    /**************************************************************************//**
+    * \fn integer getNumDofsPerNode
+    * \brief Return number of degrees of freedom per node.
+    * \return degrees of freedom per node (integer)
+    ******************************************************************************/
     decltype(mNumDofsPerNode) getNumDofsPerNode() const
     {
         return mNumDofsPerNode;
     }
 
+    /**************************************************************************//**
+    * \fn Plato::ScalarVector value
+    * \brief Return vector function residual.
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return vector function residual
+    ******************************************************************************/
     Plato::ScalarVector value
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal       & aVariables) const
+     const Plato::Primal       & aPrimal)
+    const
     {
         using ResultScalarT = typename ResidualEvalT::ResultScalarType;
 
@@ -7497,7 +7520,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             Plato::Fluids::build_vector_function_worksets<ResidualEvalT>
-                (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tDomain, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
             auto tNumCells = tDomain.numCells();
@@ -7512,7 +7535,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
             Plato::Fluids::build_vector_function_worksets<ResidualEvalT>
-                (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tNumCells, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
@@ -7528,10 +7551,18 @@ public:
         return tReturnValue;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientConfig
+    * \brief Return gradient of residual with respet to (wrt) configuration variables (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt configuration
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientConfig
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal       & aVariables) const
+     const Plato::Primal       & aPrimal)
+    const
     {
         using ResultScalarT = typename GradConfigEvalT::ResultScalarType;
 
@@ -7546,7 +7577,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
             Plato::Fluids::build_vector_function_worksets<GradConfigEvalT>
-                (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tDomain, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
             auto tName = tDomain.getDomainName();
@@ -7563,7 +7594,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
             Plato::Fluids::build_vector_function_worksets<GradConfigEvalT>
-                (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tNumCells, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
@@ -7583,10 +7614,18 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientControl
+    * \brief Return gradient of residual with respet to (wrt) control variables (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt control
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientControl
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal       & aVariables) const
+     const Plato::Primal       & aVariables)
+    const
     {
         using ResultScalarT = typename GradControlEvalT::ResultScalarType;
 
@@ -7638,10 +7677,18 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientPredictor
+    * \brief Return gradient of residual with respet to (wrt) predictor (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt predictor
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientPredictor
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal       & aVariables) const
+     const Plato::Primal       & aPrimal)
+    const
     {
         using ResultScalarT = typename GradPredictorEvalT::ResultScalarType;
 
@@ -7656,7 +7703,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
             Plato::Fluids::build_vector_function_worksets<GradPredictorEvalT>
-                (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tDomain, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
             auto tName = tDomain.getDomainName();
@@ -7673,7 +7720,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
             Plato::Fluids::build_vector_function_worksets<GradPredictorEvalT>
-                (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tNumCells, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
@@ -7693,10 +7740,18 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientPreviousVel
+    * \brief Return gradient of residual with respet to (wrt) previous velocity (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt previous velocity
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientPreviousVel
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal       & aVariables) const
+     const Plato::Primal       & aPrimal)
+    const
     {
         using ResultScalarT = typename GradPrevVelEvalT::ResultScalarType;
 
@@ -7711,7 +7766,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
             Plato::Fluids::build_vector_function_worksets<GradPrevVelEvalT>
-                (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tDomain, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
             auto tName = tDomain.getDomainName();
@@ -7728,7 +7783,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
             Plato::Fluids::build_vector_function_worksets<GradPrevVelEvalT>
-                (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tNumCells, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
@@ -7748,10 +7803,18 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientPreviousPress
+    * \brief Return gradient of residual with respet to (wrt) previous pressure (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt previous pressure
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientPreviousPress
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal       & aVariables) const
+     const Plato::Primal       & aPrimal)
+    const
     {
         using ResultScalarT = typename GradPrevPressEvalT::ResultScalarType;
 
@@ -7766,7 +7829,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
             Plato::Fluids::build_vector_function_worksets<GradPrevPressEvalT>
-                (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tDomain, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
             auto tName = tDomain.getDomainName();
@@ -7783,7 +7846,7 @@ public:
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
             Plato::Fluids::build_vector_function_worksets<GradPrevPressEvalT>
-                (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
+                (tNumCells, aControls, aPrimal, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
@@ -7803,6 +7866,13 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientPreviousTemp
+    * \brief Return gradient of residual with respet to (wrt) previous temperature (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt previous temperature
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientPreviousTemp
     (const Plato::ScalarVector & aControls,
@@ -7858,6 +7928,13 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientCurrentVel
+    * \brief Return gradient of residual with respet to (wrt) current velocity (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt current velocity
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientCurrentVel
     (const Plato::ScalarVector & aControls,
@@ -7913,6 +7990,13 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientCurrentPress
+    * \brief Return gradient of residual with respet to (wrt) current pressure (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt current pressure
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientCurrentPress
     (const Plato::ScalarVector & aControls,
@@ -7968,6 +8052,13 @@ public:
         return tJacobian;
     }
 
+    /**************************************************************************//**
+    * \fn Teuchos::RCP<Plato::CrsMatrixType> gradientCurrentTemp
+    * \brief Return gradient of residual with respet to (wrt) current temperature (i.e. Jacobian).
+    * \param [in] aControls control variables
+    * \param [in] aPrimal   primal state database
+    * \return Jacobian wrt current temperature
+    ******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradientCurrentTemp
     (const Plato::ScalarVector & aControls,
@@ -8024,8 +8115,14 @@ public:
     }
 
 private:
+    /**************************************************************************//**
+    * \brief Initialize member metadata.
+    * \param [in] aTag     vector function tag/type
+    * \param [in] aDataMap output database
+    * \param [in] aInputs  input file metadata
+    ******************************************************************************/
     void initialize
-    (const std::string      & aName,
+    (const std::string      & aTag,
      Plato::DataMap         & aDataMap,
      Teuchos::ParameterList & aInputs)
     {
@@ -8035,44 +8132,65 @@ private:
             auto tName = tDomain.getDomainName();
 
             mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<PhysicsT, ResidualEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradControlEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradConfigFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradConfigEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradCurPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradCurPressEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradPrevPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPrevPressEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradCurTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradCurTempEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradPrevTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPrevTempEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradCurVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradCurVelEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradPrevVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPrevVelEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
 
             mGradPredictorFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPredictorEvalT>
-                (aName, tDomain, aDataMap, aInputs);
+                (aTag, tDomain, aDataMap, aInputs);
         }
     }
 };
 // class VectorFunction
 
 
+/**************************************************************************//**
+* \struct Vector and scalar function factory.
+*
+* \brief Responsible for the construction of vector and scalar functions.
+******************************************************************************/
 struct FunctionFactory
 {
 public:
-    template <typename PhysicsT, typename EvaluationT>
+    /**************************************************************************//**
+    * \fn shared_ptr<AbstractVectorFunction> createVectorFunction
+    * \tparam PhysicsT    physics type
+    * \tparam EvaluationT Forward Automatic Differentiation evaluation type
+    *
+    * \brief Responsible for the construction of vector functions.
+    *
+    * \param [in] aTag     vector function tag/type
+    * \param [in] aModel   struct that contains the mesh, meshsets, domains, etc.
+    * \param [in] aDataMap output database
+    * \param [in] aInputs  input file metadata
+    *
+    * \return shared pointer to an abtract vector function
+    ******************************************************************************/
+    template
+    <typename PhysicsT,
+     typename EvaluationT>
     std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>>
     createVectorFunction
     (const std::string          & aTag,
@@ -8104,10 +8222,26 @@ public:
         }
     }
 
-    template <typename PhysicsT, typename EvaluationT>
+    /**************************************************************************//**
+    * \fn shared_ptr<AbstractScalarFunction> createScalarFunction
+    * \tparam PhysicsT    physics type
+    * \tparam EvaluationT Forward Automatic Differentiation evaluation type
+    *
+    * \brief Responsible for the construction of vector functions.
+    *
+    * \param [in] aTag     vector function tag/type
+    * \param [in] aModel   struct that contains the mesh, meshsets, domains, etc.
+    * \param [in] aDataMap output database
+    * \param [in] aInputs  input file metadata
+    *
+    * \return shared pointer to an abtract scalar function
+    ******************************************************************************/
+    template
+    <typename PhysicsT,
+     typename EvaluationT>
     std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>>
     createScalarFunction
-    (const std::string          & aName,
+    (const std::string          & aTag,
      const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs)
@@ -8117,15 +8251,15 @@ public:
             THROWERR("'Criteria' block is not defined.")
         }
         auto tCriteriaList = aInputs.sublist("Criteria");
-        if( !tCriteriaList.isSublist(aName) )
+        if( !tCriteriaList.isSublist(aTag) )
         {
-            THROWERR(std::string("Criteria Block with name '") + aName + "' is not defined.")
+            THROWERR(std::string("Criteria Block with name '") + aTag + "' is not defined.")
         }
-        auto tCriterion = tCriteriaList.sublist(aName);
+        auto tCriterion = tCriteriaList.sublist(aTag);
 
         if(!tCriterion.isParameter("Scalar Function Type"))
         {
-            THROWERR(std::string("'Scalar Function Type' keyword is not defined in Criterion with name '") + aName + "'.")
+            THROWERR(std::string("'Scalar Function Type' keyword is not defined in Criterion with name '") + aTag + "'.")
         }
 
         auto tFlowTag = tCriterion.get<std::string>("Flow", "Not Defined");
@@ -8136,12 +8270,12 @@ public:
         if( tCriterionLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::Fluids::AverageSurfacePressure<PhysicsT, EvaluationT>>
-                (aName, aDomain, aDataMap, aInputs) );
+                (aTag, aDomain, aDataMap, aInputs) );
         }
         else if( tCriterionLowerTag == "average surface temperature" )
         {
             return ( std::make_shared<Plato::Fluids::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
-                (aName, aDomain, aDataMap, aInputs) );
+                (aTag, aDomain, aDataMap, aInputs) );
         }
 	/*
         else if( tCriterionLowerTag == "internal dissipation energy" && tFlowLowerTag == "incompressible")
@@ -8153,19 +8287,25 @@ public:
         else
         {
             THROWERR(std::string("'Scalar Function Type' with tag '") + tCriterionTag
-                + "' in Criterion Block '" + aName + "' is not supported.")
+                + "' in Criterion Block '" + aTag + "' is not supported.")
         }
     }
 };
 // struct FunctionFactory
 
 
-// todo: criterion factory
+
+
+/**************************************************************************//**
+* \struct CriterionFactory
+*
+* \brief Responsible for the construction of Plato criteria.
+******************************************************************************/
 template<typename PhysicsT>
 class CriterionFactory
 {
 private:
-    using ScalarFunctionType = std::shared_ptr<Plato::Fluids::CriterionBase>;
+    using ScalarFunctionType = std::shared_ptr<Plato::Fluids::CriterionBase>; /*!< local scalar function type */
 
 public:
     /******************************************************************************//**
@@ -8179,20 +8319,20 @@ public:
     ~CriterionFactory() {}
 
     /******************************************************************************//**
-     * \brief Creates criterion interface, which allows evaluations.
-     * \param [in] aSpatialModel  C++ structure with volume and surface mesh databases
-     * \param [in] aDataMap       Plato Analyze data map
-     * \param [in] aInputs        input parameters from Analyze's input file
-     * \param [in] aName          scalar function name
+     * \brief Create criterion interface.
+     * \param [in] aModel   computational model metadata
+     * \param [in] aDataMap output database
+     * \param [in] aInputs  input file metadata
+     * \param [in] aTag    scalar function tag
      **********************************************************************************/
     ScalarFunctionType
     createCriterion
-    (Plato::SpatialModel & aSpatialModel,
-     Plato::DataMap & aDataMap,
+    (Plato::SpatialModel    & aModel,
+     Plato::DataMap         & aDataMap,
      Teuchos::ParameterList & aInputs,
-     std::string & aName)
+     std::string            & aTag)
      {
-        auto tFunctionTag = aInputs.sublist("Criteria").sublist(aName);
+        auto tFunctionTag = aInputs.sublist("Criteria").sublist(aTag);
         auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");
         auto tLowerType = Plato::tolower(tType);
 
@@ -8200,7 +8340,7 @@ public:
         {
             auto tCriterion =
                 std::make_shared<Plato::Fluids::ScalarFunction<PhysicsT>>
-                    (aSpatialModel, aDataMap, aInputs, aName);
+                    (aModel, aDataMap, aInputs, aTag);
             return tCriterion;
         }
         /*else if(tLowerType == "weighted sum")
@@ -8219,13 +8359,26 @@ public:
         }*/
         else
         {
-            THROWERR(std::string("Scalar function in block '") + aName + "' with Type '" + tType + "' is not supported.")
+            THROWERR(std::string("Scalar function in block '") + aTag + "' with Type '" + tType + "' is not supported.")
         }
      }
 };
+// class CriterionFactory
 
 
-// todo: weighted scalar function
+/**************************************************************************//**
+* \struct WeightedScalarFunction
+*
+* \brief Responsible for the evaluation of a weighted scalar function.
+*
+* \f[
+*   W(u(z),z) = \sum_{i=1}^{N_{f}}\alpha_i f_i(u(z),z)
+* \f]
+*
+* where \f$\alpha_i\f$ is the i-th weight, \f$ f_i \f$ is the i-th scalar function,
+* \f$ u(z) \f$ denotes the states, \f$ z \f$ denotes controls and \f$ N_f \f$ is
+* the total number of scalar functions.
+******************************************************************************/
 template<typename PhysicsT>
 class WeightedScalarFunction : public Plato::Fluids::CriterionBase
 {
@@ -8238,65 +8391,91 @@ private:
     static constexpr auto mNumControlDofsPerNode = PhysicsT::SimplexT::mNumControlDofsPerNode;  /*!< number of design variables per node */
 
     // set local typenames
-    using Criterion    = std::shared_ptr<Plato::Fluids::CriterionBase>;
+    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>; /*!< local criterion type */
 
-    bool mDiagnostics; /*!< write diagnostics to terminal */
+    bool mDiagnostics = false; /*!< write diagnostics to terminal */
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialModel& mSpatialModel; /*!< mesh database */
 
-    std::string mFuncName; /*!< weighted scalar function name */
-
-    std::vector<Criterion>     mCriteria;         /*!< list of scalar function criteria */
-    std::vector<std::string>   mCriterionNames;   /*!< list of criterion names */
+    std::string mFuncTag; /*!< weighted scalar function tag */
+    std::vector<Criterion>     mCriteria; /*!< list of scalar function criteria */
+    std::vector<std::string>   mCriterionNames; /*!< list of criterion tags/names */
     std::vector<Plato::Scalar> mCriterionWeights; /*!< list of criterion weights */
 
 public:
+    /******************************************************************************//**
+     * \brief Constructor
+     * \param [in] aModel   computational model metadata
+     * \param [in] aDataMap output database
+     * \param [in] aInputs  input file metadata
+     * \param [in] aTag    scalar function tag
+     **********************************************************************************/
     WeightedScalarFunction
-    (const Plato::SpatialModel & aSpatialModel,
-     Plato::DataMap & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string & aName) :
-         mDiagnostics(false),
-         mDataMap     (aDataMap),
-         mSpatialModel(aSpatialModel),
-         mFuncName    (aName)
+    (const Plato::SpatialModel    & aModel,
+           Plato::DataMap         & aDataMap,
+           Teuchos::ParameterList & aInputs,
+           std::string            & aTag) :
+         mDataMap(aDataMap),
+         mSpatialModel(aModel),
+         mFuncTag(aTag)
     {
         this->initialize(aInputs);
     }
 
+    /******************************************************************************//**
+     * \brief Destructor
+     **********************************************************************************/
     virtual ~WeightedScalarFunction(){}
 
+    /******************************************************************************//**
+     * \brief Append scalar criterion to list.
+     * \param [in] aFunc   scalar criterion
+     * \param [in] aTag    scalar criterion tag/name
+     * \param [in] aWeight scalar criterion weight (default = 1.0)
+     **********************************************************************************/
     void append
     (const Criterion     & aFunc,
-     const std::string   & aName,
+     const std::string   & aTag,
            Plato::Scalar   aWeight = 1.0)
     {
         mCriteria.push_back(aFunc);
-        mCriterionNames.push_back(aName);
+        mCriterionNames.push_back(aTag);
         mCriterionWeights.push_back(aWeight);
     }
 
+    /******************************************************************************//**
+     * \fn std::string name
+     * \brief Return scalar criterion name/tag.
+     * \return scalar criterion name/tag
+     **********************************************************************************/
     std::string name() const override
     {
-        return mFuncName;
+        return mFuncTag;
     }
 
-    Plato::Scalar
-    value
+    /******************************************************************************//**
+     * \fn Plato::Scalar value
+     * \brief Evaluate scalar function.
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return scalar criterion value
+     **********************************************************************************/
+    Plato::Scalar value
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal       & aPrimal)
+    const override
     {
         Plato::Scalar tResult = 0.0;
         for (auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
-            const auto tValue = tCriterion->value(aControls, aVariables);
+            const auto tValue = tCriterion->value(aControls, aPrimal);
             const auto tFuncWeight = mCriterionWeights[tIndex];
             const auto tFuncValue = tFuncWeight * tValue;
+            tResult += tFuncValue;
 
             const auto tFuncName = mCriterionNames[tIndex];
             mDataMap.mScalarValues[tFuncName] = tFuncValue;
-            tResult += tFuncValue;
 
             if(mDiagnostics)
             {
@@ -8306,30 +8485,46 @@ public:
 
         if(mDiagnostics)
         {
-            printf("Weighted Sum Name = %s \t Value = %f\n", mFuncName.c_str(), tResult);
+            printf("Weighted Sum Name = %s \t Value = %f\n", mFuncTag.c_str(), tResult);
         }
         return tResult;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientConfig
+     * \brief Evaluate scalar function gradient with respect to configuration (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to configuration
+     **********************************************************************************/
     Plato::ScalarVector gradientConfig
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal       & aPrimal)
+    const override
     {
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tTotalDerivative("total derivative", mNumSpatialDims * tNumNodes);
         for (auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
-            auto tGradient = tCriterion->gradientConfig(aControls, aVariables);
+            auto tGradient = tCriterion->gradientConfig(aControls, aPrimal);
             const auto tFuncWeight = mCriterionWeights[tIndex];
             Plato::blas1::update(tFuncWeight, tGradient, static_cast<Plato::Scalar>(1.0), tTotalDerivative);
         }
         return tTotalDerivative;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientControl
+     * \brief Evaluate scalar function gradient with respect to control (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to control
+     **********************************************************************************/
     Plato::ScalarVector gradientControl
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aVariables)
+    const override
     {
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tTotalDerivative("total derivative", mNumControlDofsPerNode * tNumNodes);
@@ -8343,6 +8538,13 @@ public:
         return tTotalDerivative;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentPress
+     * \brief Evaluate scalar function gradient with respect to current pressure (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to current pressure
+     **********************************************************************************/
     Plato::ScalarVector gradientCurrentPress
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const override
@@ -8359,6 +8561,13 @@ public:
         return tTotalDerivative;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentTemp
+     * \brief Evaluate scalar function gradient with respect to current temperature (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to current temperature
+     **********************************************************************************/
     Plato::ScalarVector gradientCurrentTemp
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const override
@@ -8375,6 +8584,13 @@ public:
         return tTotalDerivative;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentVel
+     * \brief Evaluate scalar function gradient with respect to current velocity (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to current velocity
+     **********************************************************************************/
     Plato::ScalarVector gradientCurrentVel
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const override
@@ -8392,24 +8608,33 @@ public:
     }
 
 private:
+    /******************************************************************************//**
+     * \fn void checkInputs
+     * \brief Check the total number of required criterion inputs match the number of functions
+     **********************************************************************************/
     void checkInputs()
     {
         if (mCriterionNames.size() != mCriterionWeights.size())
         {
             THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
-                     "Check scalar function with name '" + mFuncName + "'.")
+                     "Check scalar function with name '" + mFuncTag + "'.")
         }
     }
 
+    /******************************************************************************//**
+     * \fn void initialize
+     * \brief Initialize member metadata
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
     void initialize(Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.sublist("Criteria").isSublist(mFuncName) == false)
+        if(aInputs.sublist("Criteria").isSublist(mFuncTag) == false)
         {
-            THROWERR(std::string("Scalar function with tag '") + mFuncName + "' is not defined in the input file.")
+            THROWERR(std::string("Scalar function with tag '") + mFuncTag + "' is not defined in the input file.")
         }
 
-        auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
-        this->parseFunctions(tCriteriaInputs);
+        auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncTag);
+        this->parseTags(tCriteriaInputs);
         this->parseWeights(tCriteriaInputs);
         this->checkInputs();
 
@@ -8421,23 +8646,38 @@ private:
         }
     }
 
-    void parseFunctions(Teuchos::ParameterList & aInputs)
+    /******************************************************************************//**
+     * \fn void parseFunction
+     * \brief Parse scalar function tags
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
+    void parseTags(Teuchos::ParameterList & aInputs)
     {
         mCriterionNames = Plato::parse_array<std::string>("Functions", aInputs);
         if(mCriterionNames.empty())
         {
-            THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncName
-                + "'. User must define 'functions' used in a 'Weighted Sum' criterion.")
+            THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncTag
+                + "'. User must define the 'Functions' keyword to use the 'Weighted Sum' criterion.")
         }
     }
 
+    /******************************************************************************//**
+     * \fn void parseWeights
+     * \brief Parse scalar function weights
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
     void parseWeights(Teuchos::ParameterList & aInputs)
     {
         mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", aInputs);
-        if(mCriterionNames.empty())
+        if(mCriterionWeights.empty())
         {
-            THROWERR(std::string("'Weights' keyword was not defined in function block with name '") + mFuncName
-                + "'. User must define 'weights' used in a 'Weighted Sum' criterion.")
+            if(mCriterionNames.empty())
+            {
+                THROWERR(std::string("Criterion names were not parsed. ")
+                    + "Users must define the 'Functions' keyword to use the 'Weighted Sum' criterion.")
+            }
+            mCriterionWeights.resize(mCriterionNames.size());
+            std::fill(mCriterionWeights.begin(), mCriterionWeights.end(), 1.0);
         }
     }
 };
@@ -8447,7 +8687,19 @@ private:
 
 
 
-// todo: least squares scalar function
+/**************************************************************************//**
+* \struct WeightedScalarFunction
+*
+* \brief Responsible for the evaluation of a least squared scalar function.
+*
+* \f[
+*   W(u(z),z) = \sum_{i=1}^{N_{f}}\alpha_i f_i(u(z),z)
+* \f]
+*
+* where \f$\alpha_i\f$ is the i-th weight, \f$ f_i \f$ is the i-th scalar function,
+* \f$ u(z) \f$ denotes the states, \f$ z \f$ denotes controls and \f$ N_f \f$ is
+* the total number of scalar functions.
+******************************************************************************/
 template<typename PhysicsT>
 class LeastSquaresScalarFunction : public Plato::Fluids::CriterionBase
 {
@@ -8461,7 +8713,7 @@ private:
     static constexpr auto mNumConfigDofsPerNode  = PhysicsT::SimplexT::mNumConfigDofsPerNode;   /*!< number of configuration dofs per node */
 
     // set local typenames
-    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>;
+    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>; /*!< local criterion type */
 
     bool mDiagnostics; /*!< write diagnostics to terminal */
     Plato::DataMap& mDataMap; /*!< output database */
@@ -8469,51 +8721,82 @@ private:
 
     std::string mFuncName; /*!< weighted scalar function name */
 
-    std::vector<Criterion>     mCriteria;                /*!< list of scalar function criteria */
-    std::vector<std::string>   mCriterionNames;          /*!< list of criterion names */
-    std::vector<Plato::Scalar> mCriterionWeights;        /*!< list of criterion weights */
+    std::vector<Criterion>     mCriteria; /*!< list of scalar function criteria */
+    std::vector<std::string>   mCriterionNames; /*!< list of criterion names */
+    std::vector<Plato::Scalar> mCriterionTarget; /*!< list of criterion gold/target values */
+    std::vector<Plato::Scalar> mCriterionWeights; /*!< list of criterion weights */
     std::vector<Plato::Scalar> mCriterionNormalizations; /*!< list of criterion normalization */
 
 public:
+    /******************************************************************************//**
+     * \brief Constructor
+     * \param [in] aModel   computational model metadata
+     * \param [in] aDataMap output database
+     * \param [in] aInputs  input file metadata
+     * \param [in] aTag    scalar function tag
+     **********************************************************************************/
     LeastSquaresScalarFunction
-    (const Plato::SpatialModel & aSpatialModel,
-     Plato::DataMap & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string & aName) :
-         mDiagnostics(false),
-         mDataMap     (aDataMap),
-         mSpatialModel(aSpatialModel),
-         mFuncName    (aName)
+    (const Plato::SpatialModel    & aModel,
+           Plato::DataMap         & aDataMap,
+           Teuchos::ParameterList & aInputs,
+           std::string            & aTag) :
+        mDiagnostics(false),
+        mDataMap(aDataMap),
+        mSpatialModel(aModel),
+        mFuncName(aTag)
     {
         this->initialize(aInputs);
     }
 
+    /******************************************************************************//**
+     * \fn std::string name
+     * \brief Return scalar criterion name/tag.
+     * \return scalar criterion name/tag
+     **********************************************************************************/
     std::string name() const override
     {
         return mFuncName;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar value
+     * \brief Evaluate scalar function.
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return scalar criterion value
+     **********************************************************************************/
     Plato::Scalar value
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aPrimal)
+    const override
     {
         Plato::Scalar tResult = 0.0;
         for(auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tGold = mCriterionTarget[tIndex];
             const auto tWeight = mCriterionWeights[tIndex];
             const auto tNormalization = mCriterionNormalizations[tIndex];
-            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+            auto tCriterionValue = tCriterion->value(aControls, aPrimal);
 
-            auto tValue = tCriterionValue / tNormalization;
-            tResult += tWeight * (tValue * tValue);
+            auto tNormalizedMisfit = (tCriterionValue - tGold) / tNormalization;
+            auto tValue = tNormalizedMisfit * tNormalizedMisfit;
+            tResult += tWeight * tValue * tValue;
         }
         return tResult;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientConfig
+     * \brief Evaluate scalar function gradient with respect to configuration (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to configuration
+     **********************************************************************************/
     Plato::ScalarVector gradientConfig
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aPrimal)
+    const override
     {
         const auto tNumDofs = mNumConfigDofsPerNode * mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradConfig("gradient configuration", tNumDofs);
@@ -8521,21 +8804,30 @@ public:
         for(auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tGold = mCriterionTarget[tIndex];
             const auto tWeight = mCriterionWeights[tIndex];
             const auto tNormalization = mCriterionNormalizations[tIndex];
-            auto tCriterionValue = tCriterion->value(aControls, aVariables);
-            auto tCriterionGrad  = tCriterion->gradientConfig(aControls, aVariables);
+            auto tCriterionValue = tCriterion->value(aControls, aPrimal);
+            auto tCriterionGrad  = tCriterion->gradientConfig(aControls, aPrimal);
 
-            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
-                               / ( tNormalization * tNormalization );
+            auto tMisfit = tCriterionValue - tGold;
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tMisfit )
+                / ( tNormalization * tNormalization );
             Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradConfig);
         }
         return tGradConfig;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientControl
+     * \brief Evaluate scalar function gradient with respect to control (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to control
+     **********************************************************************************/
     Plato::ScalarVector gradientControl
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aPrimal) const override
     {
         const auto tNumDofs = mNumControlDofsPerNode * mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradControl("gradient control", tNumDofs);
@@ -8543,21 +8835,30 @@ public:
         for(auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tGold = mCriterionTarget[tIndex];
             const auto tWeight = mCriterionWeights[tIndex];
             const auto tNormalization = mCriterionNormalizations[tIndex];
-            auto tCriterionValue = tCriterion->value(aControls, aVariables);
-            auto tCriterionGrad  = tCriterion->gradientControl(aControls, aVariables);
+            auto tCriterionValue = tCriterion->value(aControls, aPrimal);
+            auto tCriterionGrad  = tCriterion->gradientControl(aControls, aPrimal);
 
-            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
-                               / ( tNormalization * tNormalization );
+            auto tMisfit = tCriterionValue - tGold;
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tMisfit )
+                / ( tNormalization * tNormalization );
             Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradControl);
         }
         return tGradControl;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentPress
+     * \brief Evaluate scalar function gradient with respect to curren pressure (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to curren pressure
+     **********************************************************************************/
     Plato::ScalarVector gradientCurrentPress
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aPrimal) const override
     {
         const auto tNumDofs = mNumPressDofsPerNode * mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradCurPress("gradient current pressure", tNumDofs);
@@ -8565,21 +8866,30 @@ public:
         for(auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tGold = mCriterionTarget[tIndex];
             const auto tWeight = mCriterionWeights[tIndex];
             const auto tNormalization = mCriterionNormalizations[tIndex];
-            auto tCriterionValue = tCriterion->value(aControls, aVariables);
-            auto tCriterionGrad  = tCriterion->gradientCurrentPress(aControls, aVariables);
+            auto tCriterionValue = tCriterion->value(aControls, aPrimal);
+            auto tCriterionGrad  = tCriterion->gradientCurrentPress(aControls, aPrimal);
 
-            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
-                               / ( tNormalization * tNormalization );
+            auto tMisfit = tCriterionValue - tGold;
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tMisfit )
+                / ( tNormalization * tNormalization );
             Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradCurPress);
         }
         return tGradCurPress;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentTemp
+     * \brief Evaluate scalar function gradient with respect to curren temperature (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to curren temperature
+     **********************************************************************************/
     Plato::ScalarVector gradientCurrentTemp
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aPrimal) const override
     {
         const auto tNumDofs = mNumTempDofsPerNode * mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradCurTemp("gradient current temperature", tNumDofs);
@@ -8587,21 +8897,30 @@ public:
         for(auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tGold = mCriterionTarget[tIndex];
             const auto tWeight = mCriterionWeights[tIndex];
             const auto tNormalization = mCriterionNormalizations[tIndex];
-            auto tCriterionValue = tCriterion->value(aControls, aVariables);
-            auto tCriterionGrad  = tCriterion->gradientCurrentTemp(aControls, aVariables);
+            auto tCriterionValue = tCriterion->value(aControls, aPrimal);
+            auto tCriterionGrad  = tCriterion->gradientCurrentTemp(aControls, aPrimal);
 
-            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
-                               / ( tNormalization * tNormalization );
+            auto tMisfit = tCriterionValue - tGold;
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tMisfit )
+                / ( tNormalization * tNormalization );
             Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradCurTemp);
         }
         return tGradCurTemp;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentVel
+     * \brief Evaluate scalar function gradient with respect to curren velocity (Jacobian).
+     * \param [in] aControls control variables
+     * \param [in] aPrimal   primal state database
+     * \return Jacobian with respect to curren velocity
+     **********************************************************************************/
     Plato::ScalarVector gradientCurrentVel
     (const Plato::ScalarVector & aControls,
-     const Plato::Primal & aVariables) const override
+     const Plato::Primal & aPrimal) const override
     {
         const auto tNumDofs = mNumVelDofsPerNode * mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradCurVel("gradient current velocity", tNumDofs);
@@ -8609,34 +8928,51 @@ public:
         for(auto& tCriterion : mCriteria)
         {
             auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tGold = mCriterionTarget[tIndex];
             const auto tWeight = mCriterionWeights[tIndex];
             const auto tNormalization = mCriterionNormalizations[tIndex];
-            auto tCriterionValue = tCriterion->value(aControls, aVariables);
-            auto tCriterionGrad  = tCriterion->gradientCurrentVel(aControls, aVariables);
+            auto tCriterionValue = tCriterion->value(aControls, aPrimal);
+            auto tCriterionGrad  = tCriterion->gradientCurrentVel(aControls, aPrimal);
 
-            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
-                               / ( tNormalization * tNormalization );
+            auto tMisfit = tCriterionValue - tGold;
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tMisfit )
+                / ( tNormalization * tNormalization );
             Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradCurVel);
         }
         return tGradCurVel;
     }
 
 private:
+    /******************************************************************************//**
+     * \fn void checkInputs
+     * \brief Check the total number of required criterion inputs match the number of functions
+     **********************************************************************************/
     void checkInputs()
     {
         if (mCriterionNames.size() != mCriterionWeights.size())
         {
             THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
-                     "Check scalar function with name '" + mFuncName + "'.")
+                     "Check inputs for scalar function with name '" + mFuncName + "'.")
         }
 
         if(mCriterionNames.size() != mCriterionNormalizations.size())
         {
             THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Normalizations' do not match. ") +
-                     "Check scalar function with name '" + mFuncName + "'.")
+                     "Check inputs for scalar function with name '" + mFuncName + "'.")
+        }
+
+        if(mCriterionNames.size() != mCriterionTarget.size())
+        {
+            THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Gold/Target' values do not match. ") +
+                     "Check inputs for scalar function with name '" + mFuncName + "'.")
         }
     }
 
+    /******************************************************************************//**
+     * \fn void initialize
+     * \brief Initialize member metadata
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
     void initialize(Teuchos::ParameterList & aInputs)
     {
         if(aInputs.sublist("Criteria").isSublist(mFuncName) == false)
@@ -8645,7 +8981,7 @@ private:
         }
 
         auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
-        this->parseFunctions(tCriteriaInputs);
+        this->parseNames(tCriteriaInputs);
         this->parseWeights(tCriteriaInputs);
         this->parseNormalization(tCriteriaInputs);
         this->checkInputs();
@@ -8658,31 +8994,70 @@ private:
         }
     }
 
-    void parseFunctions(Teuchos::ParameterList & aInputs)
+    /******************************************************************************//**
+     * \fn void parseTags
+     * \brief Parse the scalar functions defining the least squares criterion.
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
+    void parseNames(Teuchos::ParameterList & aInputs)
     {
         mCriterionNames = Plato::parse_array<std::string>("Functions", aInputs);
         if(mCriterionNames.empty())
         {
             THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncName
-                + "'. User must define 'functions' used in a 'Weighted Sum' criterion.")
+                + "'. Users must define the 'Functions' keyword to use the 'Least Squares' criterion.")
         }
     }
 
+    /******************************************************************************//**
+     * \fn void parseTargets
+     * \brief Parse target scalar values.
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
+    void parseTargets(Teuchos::ParameterList & aInputs)
+    {
+        mCriterionTarget = Plato::parse_array<std::string>("Targets", aInputs);
+        if(mCriterionTarget.empty())
+        {
+            THROWERR(std::string("'Targets' keyword was not defined in function block with name '") + mFuncName
+                + "'. User must define the 'Targets' keyword to use the 'Least Squares' criterion.")
+        }
+    }
+
+    /******************************************************************************//**
+     * \fn void parseWeights
+     * \brief Parse scalar weights. Set weights to 1.0 if these are not provided by the user.
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
     void parseWeights(Teuchos::ParameterList & aInputs)
     {
         mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", aInputs);
-        if(mCriterionNames.empty())
+        if(mCriterionWeights.empty())
         {
-            THROWERR(std::string("'Weights' keyword was not defined in function block with name '") + mFuncName
-                + "'. User must define 'weights' used in a 'Weighted Sum' criterion.")
+            if(mCriterionNames.empty())
+            {
+                THROWERR("Criterion names have not been parsed. Users must define the 'Functions' keyword to use the 'Least Squares' criterion.")
+            }
+            mCriterionWeights.resize(mCriterionNames.size());
+            std::fill(mCriterionWeights.begin(), mCriterionWeights.end(), 1.0);
         }
     }
 
+    /******************************************************************************//**
+     * \fn void parseNormalization
+     * \brief Parse normalization parameters. Set normalization values to 1.0 if these
+     *   are not provided by the user.
+     * \param [in] aInputs  input file metadata
+     **********************************************************************************/
     void parseNormalization(Teuchos::ParameterList & aInputs)
     {
         mCriterionNormalizations = Plato::parse_array<Plato::Scalar>("Normalizations", aInputs);
         if(mCriterionNormalizations.empty())
         {
+            if(mCriterionNames.empty())
+            {
+                THROWERR("Criterion names have not been parsed. Users must define the 'Functions' keyword to use the 'Least Squares' criterion.")
+            }
             mCriterionNormalizations.resize(mCriterionNames.size());
             std::fill(mCriterionNormalizations.begin(), mCriterionNormalizations.end(), 1.0);
         }
@@ -8694,58 +9069,104 @@ private:
 // namespace Fluids
 
 
-// todo: physics types
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+
+/******************************************************************************//**
+ * \class MomentumConservation
+ *
+ * \tparam SpaceDim    spatial dimensions (integer)
+ * \tparam NumControls number of control fields (integer) - e.g. number of design materials
+ *
+ * \brief Defines static parameters used to solve the momentum conservation equation.
+ *
+ **********************************************************************************/
+template
+<Plato::OrdinalType SpaceDim,
+ Plato::OrdinalType NumControls = 1>
 class MomentumConservation : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    typedef Plato::Fluids::FunctionFactory FunctionFactory;
-    using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>;
+    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
+    using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
-    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode;
-    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum degress of freedom per node */
+    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode; /*!< number of momentum degress of freedom per cell */
 };
+// class MomentumConservation
 
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+/******************************************************************************//**
+ * \class MassConservation
+ *
+ * \tparam SpaceDim    spatial dimensions (integer)
+ * \tparam NumControls number of control fields (integer) - e.g. number of design materials
+ *
+ * \brief Defines static parameters used to solve the mass conservation equation.
+ *
+ **********************************************************************************/
+template
+<Plato::OrdinalType SpaceDim,
+ Plato::OrdinalType NumControls = 1>
 class MassConservation : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    typedef Plato::Fluids::FunctionFactory FunctionFactory;
-    using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>;
+    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
+    using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
-    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMassDofsPerNode;
-    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMassDofsPerNode; /*!< number of mass degress of freedom per node */
+    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode; /*!< number of mass degress of freedom per cell */
 };
+// class MassConservation
 
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+/******************************************************************************//**
+ * \class EnergyConservation
+ *
+ * \tparam SpaceDim    spatial dimensions (integer)
+ * \tparam NumControls number of control fields (integer) - e.g. number of design materials
+ *
+ * \brief Defines static parameters used to solve the energy conservation equation.
+ *
+ **********************************************************************************/
+template
+<Plato::OrdinalType SpaceDim,
+ Plato::OrdinalType NumControls = 1>
 class EnergyConservation : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    typedef Plato::Fluids::FunctionFactory FunctionFactory;
-    using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>;
+    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
+    using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
-    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode;
-    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode; /*!< number of energy degress of freedom per node */
+    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode; /*!< number of energy degress of freedom per cell */
 };
+// class EnergyConservation
 
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+/******************************************************************************//**
+ * \class IncompressibleFluids
+ *
+ * \tparam SpaceDim    spatial dimensions (integer)
+ * \tparam NumControls number of control fields (integer) - e.g. number of design materials
+ *
+ * \brief Defines static parameters used to solve incompressible fluid flow problems.
+ *
+ **********************************************************************************/
+template
+<Plato::OrdinalType SpaceDim,
+ Plato::OrdinalType NumControls = 1>
 class IncompressibleFluids : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    static constexpr auto mNumSpatialDims = SpaceDim;
+    static constexpr auto mNumSpatialDims = SpaceDim; /*!< number of spatial dimensions */
 
-    typedef Plato::Fluids::FunctionFactory FunctionFactory;
-    using SimplexT = typename Plato::SimplexFluids<SpaceDim, NumControls>;
+    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
+    using SimplexT = typename Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
-    using MassPhysicsT     = typename Plato::MassConservation<SpaceDim, NumControls>;
-    using EnergyPhysicsT   = typename Plato::EnergyConservation<SpaceDim, NumControls>;
-    using MomentumPhysicsT = typename Plato::MomentumConservation<SpaceDim, NumControls>;
+    using MassPhysicsT     = typename Plato::MassConservation<SpaceDim, NumControls>; /*!< local mass conservation physics type */
+    using EnergyPhysicsT   = typename Plato::EnergyConservation<SpaceDim, NumControls>; /*!< local energy conservation physics type */
+    using MomentumPhysicsT = typename Plato::MomentumConservation<SpaceDim, NumControls>; /*!< local momentum conservation physics type */
 };
+// class IncompressibleFluids
 
 
 
-
-// todo: unit test inline functions
 namespace cbs
 {
 
@@ -9664,17 +10085,17 @@ private:
     }
 
     void printIteration
-    (const Plato::Primal & aVariables)
+    (const Plato::Primal & aPrimal)
     {
         if(Plato::Comm::rank(mMachine) == 0)
         {
             if(mPrintDiagnostics)
             {
                 std::stringstream tMsg;
-                auto tCriticalTimeStep = aVariables.vector("critical time step");
+                auto tCriticalTimeStep = aPrimal.vector("critical time step");
                 auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
                 Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
-                const Plato::OrdinalType tTimeStepIndex = aVariables.scalar("time step index");
+                const Plato::OrdinalType tTimeStepIndex = aPrimal.scalar("time step index");
                 tMsg << "*************************************************************************************\n";
                 tMsg << "* Critical Time Step: " << tHostCriticalTimeStep(0) << "\n";
                 tMsg << "* CFD Quasi-Implicit Solver Iteration: " << tTimeStepIndex << "\n";
@@ -9859,22 +10280,22 @@ private:
         }
     }
 
-    Plato::Scalar calculateVelocityMisfitNorm(const Plato::Primal & aVariables)
+    Plato::Scalar calculateVelocityMisfitNorm(const Plato::Primal & aPrimal)
     {
         auto tNumNodes = mSpatialModel.Mesh.nverts();
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        auto tCurrentVelocity = aPrimal.vector("current velocity");
+        auto tPreviousVelocity = aPrimal.vector("previous velocity");
         auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
         auto tCurrentVelNorm = Plato::blas1::norm(tCurrentVelocity);
         auto tOutput = tMisfitError / tCurrentVelNorm;
         return tOutput;
     }
 
-    Plato::Scalar calculatePressureMisfitNorm(const Plato::Primal & aVariables)
+    Plato::Scalar calculatePressureMisfitNorm(const Plato::Primal & aPrimal)
     {
         auto tNumNodes = mSpatialModel.Mesh.nverts();
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        auto tPreviousPressure = aVariables.vector("previous pressure");
+        auto tCurrentPressure = aPrimal.vector("current pressure");
+        auto tPreviousPressure = aPrimal.vector("previous pressure");
         auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm<mNumPressDofsPerNode>(tNumNodes, tCurrentPressure, tPreviousPressure);
         auto tCurrentNorm = Plato::blas1::norm(tCurrentPressure);
         auto tOutput = tMisfitError / tCurrentNorm;
@@ -9882,14 +10303,14 @@ private:
     }
 
     void printSteadyStateCriterion
-    (const Plato::Primal & aVariables)
+    (const Plato::Primal & aPrimal)
     {
         if(Plato::Comm::rank(mMachine) == 0)
         {
             if(mPrintDiagnostics)
             {
                 std::stringstream tMsg;
-                auto tCriterion = aVariables.scalar("current steady state criterion");
+                auto tCriterion = aPrimal.scalar("current steady state criterion");
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
                 tMsg << "-------------------------------------------------------------------------------------\n\n";
@@ -9899,9 +10320,9 @@ private:
     }
 
     bool isFluidSolverDiverging
-    (Plato::Primal & aVariables)
+    (Plato::Primal & aPrimal)
     {
-        auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
+        auto tCurrentCriterion = aPrimal.scalar("current steady state criterion");
         if(!std::isfinite(tCurrentCriterion) || std::isnan(tCurrentCriterion))
         {
             return true;
@@ -9910,13 +10331,13 @@ private:
     }
 
     bool checkStoppingCriteria
-    (Plato::Primal & aVariables)
+    (Plato::Primal & aPrimal)
     {
         bool tStop = false;
-        const Plato::OrdinalType tTimeStepIndex = aVariables.scalar("time step index");
-        const auto tCriterionValue = this->calculatePressureMisfitNorm(aVariables);
-        aVariables.scalar("current steady state criterion", tCriterionValue);
-        this->printSteadyStateCriterion(aVariables);
+        const Plato::OrdinalType tTimeStepIndex = aPrimal.scalar("time step index");
+        const auto tCriterionValue = this->calculatePressureMisfitNorm(aPrimal);
+        aPrimal.scalar("current steady state criterion", tCriterionValue);
+        this->printSteadyStateCriterion(aPrimal);
 
 
         if (tCriterionValue < mSteadyStateTolerance)
@@ -9927,28 +10348,28 @@ private:
         {
             tStop = true;
         }
-        else if(this->isFluidSolverDiverging(aVariables))
+        else if(this->isFluidSolverDiverging(aPrimal))
         {
             tStop = true;
         }
 
-        aVariables.scalar("previous steady state criterion", tCriterionValue);
+        aPrimal.scalar("previous steady state criterion", tCriterionValue);
 
         return tStop;
     }
 
-    void calculateElemCharacteristicSize(Plato::Primal & aVariables)
+    void calculateElemCharacteristicSize(Plato::Primal & aPrimal)
     {
         auto tElemCharSizes =
             Plato::cbs::calculate_element_characteristic_sizes<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
-        aVariables.vector("element characteristic size", tElemCharSizes);
+        aPrimal.vector("element characteristic size", tElemCharSizes);
     }
 
     Plato::Scalar calculateCriticalConvectiveTimeStep
-    (const Plato::Primal & aVariables,
+    (const Plato::Primal & aPrimal,
      const Plato::ScalarVector & aVelocity)
     {
-        auto tElemCharSize = aVariables.vector("element characteristic size");
+        auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tVelMag = Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, aVelocity);
         auto tCriticalTimeStep = Plato::cbs::calculate_critical_convective_time_step
             (mSpatialModel, tElemCharSize, tVelMag, mTimeStepSafetyFactor);
@@ -9956,11 +10377,11 @@ private:
     }
 
     Plato::Scalar calculateCriticalDiffusionTimeStep
-    (const Plato::Primal & aVariables)
+    (const Plato::Primal & aPrimal)
     {
-        auto tElemCharSize = aVariables.vector("element characteristic size");
-        auto tKinematicViscocity = aVariables.scalar("kinematic viscocity");
-        auto tThermalDiffusivity = aVariables.scalar("thermal diffusivity");
+        auto tElemCharSize = aPrimal.vector("element characteristic size");
+        auto tKinematicViscocity = aPrimal.scalar("kinematic viscocity");
+        auto tThermalDiffusivity = aPrimal.scalar("thermal diffusivity");
         auto tCriticalTimeStep = Plato::cbs::calculate_critical_diffusion_time_step
             (tKinematicViscocity, tThermalDiffusivity, tElemCharSize, mTimeStepSafetyFactor);
         return tCriticalTimeStep;
@@ -9968,30 +10389,30 @@ private:
 
     inline Plato::Scalar
     calculateCriticalTimeStepUpperBound
-    (const Plato::Primal & aVariables)
+    (const Plato::Primal & aPrimal)
     {
-        auto tElemCharSize = aVariables.vector("element characteristic size");
-        auto tVelLowerBound = aVariables.scalar("critical velocity lower bound");
+        auto tElemCharSize = aPrimal.vector("element characteristic size");
+        auto tVelLowerBound = aPrimal.scalar("critical velocity lower bound");
 	auto tOutput = Plato::cbs::calculate_time_step_upper_bound(tVelLowerBound, tElemCharSize);
 	return tOutput;
     }
 
     Plato::ScalarVector criticalTimeStep
-    (const Plato::Primal & aVariables,
+    (const Plato::Primal & aPrimal,
      const Plato::ScalarVector & aVelocity)
     {
         Plato::ScalarVector tCriticalTimeStep("critical time step", 1);
         auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
 
-        tHostCriticalTimeStep(0) = this->calculateCriticalConvectiveTimeStep(aVariables, aVelocity);
+        tHostCriticalTimeStep(0) = this->calculateCriticalConvectiveTimeStep(aPrimal, aVelocity);
         if(mCalculateHeatTransfer)
         {
-            auto tCriticalDiffusionTimeStep = this->calculateCriticalDiffusionTimeStep(aVariables);
+            auto tCriticalDiffusionTimeStep = this->calculateCriticalDiffusionTimeStep(aPrimal);
             auto tMinCriticalTimeStep = std::min(tCriticalDiffusionTimeStep, tHostCriticalTimeStep(0));
             tHostCriticalTimeStep(0) = tMinCriticalTimeStep;
         }
 
-	auto tCriticalTimeStepUpperBound = this->calculateCriticalTimeStepUpperBound(aVariables);
+	auto tCriticalTimeStepUpperBound = this->calculateCriticalTimeStepUpperBound(aPrimal);
         auto tMinCriticalTimeStep = std::min(tCriticalTimeStepUpperBound, tHostCriticalTimeStep(0));
         tHostCriticalTimeStep(0) = mTimeStepDamping * tMinCriticalTimeStep;
         mCriticalTimeStepHistory.push_back(tHostCriticalTimeStep(0));
@@ -10001,22 +10422,22 @@ private:
     }
 
     Plato::ScalarVector initialCriticalTimeStep
-    (const Plato::Primal & aVariables)
+    (const Plato::Primal & aPrimal)
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        auto tPreviousVelocity = aPrimal.vector("previous velocity");
         Plato::ScalarVector tInitialVelocity("initial velocity", tPreviousVelocity.size());
         Plato::blas1::update(1.0, tPreviousVelocity, 0.0, tInitialVelocity);
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tInitialVelocity);
-        auto tCriticalTimeStep = this->criticalTimeStep(aVariables, tInitialVelocity);
+        auto tCriticalTimeStep = this->criticalTimeStep(aPrimal, tInitialVelocity);
         return tCriticalTimeStep;
     }
 
-    void checkCriticalTimeStep(const Plato::Primal &aVariables)
+    void checkCriticalTimeStep(const Plato::Primal &aPrimal)
     {
-        auto tCriticalTimeStep = aVariables.vector("critical time step");
+        auto tCriticalTimeStep = aPrimal.vector("critical time step");
         auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
         Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
         if(tHostCriticalTimeStep(0) < std::numeric_limits<Plato::Scalar>::epsilon())
@@ -10028,19 +10449,19 @@ private:
         }
     }
 
-    void calculateCriticalTimeStep(Plato::Primal & aVariables)
+    void calculateCriticalTimeStep(Plato::Primal & aPrimal)
     {
-        auto tIteration = aVariables.scalar("time step index");
+        auto tIteration = aPrimal.scalar("time step index");
         if(tIteration > 1)
         {
-            auto tPreviousVelocity = aVariables.vector("previous velocity");
-            auto tCriticalTimeStep = this->criticalTimeStep(aVariables, tPreviousVelocity);
-            aVariables.vector("critical time step", tCriticalTimeStep);
+            auto tPreviousVelocity = aPrimal.vector("previous velocity");
+            auto tCriticalTimeStep = this->criticalTimeStep(aPrimal, tPreviousVelocity);
+            aPrimal.vector("critical time step", tCriticalTimeStep);
         }
         else
         {
-            auto tCriticalTimeStep = this->initialCriticalTimeStep(aVariables);
-            aVariables.vector("critical time step", tCriticalTimeStep);
+            auto tCriticalTimeStep = this->initialCriticalTimeStep(aPrimal);
+            aPrimal.vector("critical time step", tCriticalTimeStep);
         }
     }
 
@@ -10119,28 +10540,28 @@ private:
         }
     }
 
-    void setPrimal(Plato::Primal & aVariables)
+    void setPrimal(Plato::Primal & aPrimal)
     {
         constexpr Plato::OrdinalType tCurrentState = 1;
         auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentState, Kokkos::ALL());
         auto tCurrentPred  = Kokkos::subview(mPredictor, tCurrentState, Kokkos::ALL());
         auto tCurrentPress = Kokkos::subview(mPressure, tCurrentState, Kokkos::ALL());
-        aVariables.vector("current velocity", tCurrentVel);
-        aVariables.vector("current pressure", tCurrentPress);
-        aVariables.vector("current predictor", tCurrentPred);
+        aPrimal.vector("current velocity", tCurrentVel);
+        aPrimal.vector("current pressure", tCurrentPress);
+        aPrimal.vector("current predictor", tCurrentPred);
 
         constexpr auto tPrevState = tCurrentState - 1;
         auto tPreviouVel = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
         auto tPreviousPred = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
         auto tPreviousPress = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
-        aVariables.vector("previous velocity", tPreviouVel);
-        aVariables.vector("previous predictor", tPreviousPred);
-        aVariables.vector("previous pressure", tPreviousPress);
+        aPrimal.vector("previous velocity", tPreviouVel);
+        aPrimal.vector("previous predictor", tPreviousPred);
+        aPrimal.vector("previous pressure", tPreviousPress);
 
         auto tCurrentTemp = Kokkos::subview(mTemperature, tCurrentState, Kokkos::ALL());
-        aVariables.vector("current temperature", tCurrentTemp);
+        aPrimal.vector("current temperature", tCurrentTemp);
         auto tPreviousTemp = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
-        aVariables.vector("previous temperature", tPreviousTemp);
+        aPrimal.vector("previous temperature", tPreviousTemp);
     }
 
     void printCorrectorSolverHeader()
@@ -10247,16 +10668,16 @@ private:
     }
 
     void printNewtonDiagnostics
-    (Plato::Primal & aVariables)
+    (Plato::Primal & aPrimal)
     {
         if(Plato::Comm::rank(mMachine) == 0)
         {
             if(mPrintDiagnostics)
             {
                 std::stringstream tMsg;
-                auto tNormStep = aVariables.scalar("norm step");
-                auto tNormResidual = aVariables.scalar("norm residual");
-                Plato::OrdinalType tIteration = aVariables.scalar("newton iteration");
+                auto tNormStep = aPrimal.scalar("norm step");
+                auto tNormResidual = aPrimal.scalar("norm residual");
+                Plato::OrdinalType tIteration = aPrimal.scalar("newton iteration");
                 tMsg << tIteration << std::setw(24) << std::scientific << tNormStep << std::setw(18) << tNormResidual << "\n";
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
