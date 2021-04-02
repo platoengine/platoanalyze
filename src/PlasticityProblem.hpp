@@ -709,6 +709,32 @@ public:
         }, "reaction force");
     }
 
+    /***************************************************************************//**
+     * \brief Set initial temperature field
+     * \param [in]     aCurrentStepIndex    current time step index
+     * \param [in/out] aPreviousGlobalState previous global state
+    *******************************************************************************/
+    void setInitialTemperature(const Plato::OrdinalType & aCurrentStepIndex,
+                               const Plato::ScalarVector & aPreviousGlobalState) const
+    {
+        if (aCurrentStepIndex != 0) return;
+        auto tReferenceTemperature = mReferenceTemperature;
+        auto tTemperatureScaling   = mTemperatureScaling;
+        auto tNumGlobalDofsPerNode = mNumGlobalDofsPerNode;
+        auto tTemperatureDofOffset = mTemperatureDofOffset;
+        auto tNumVerts = mSpatialModel.Mesh.nverts();
+
+        if (tTemperatureDofOffset > 0)
+        {
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumVerts),
+                                    LAMBDA_EXPRESSION(const Plato::OrdinalType &aVertexOrdinal)
+            {
+                Plato::OrdinalType tIndex = aVertexOrdinal * tNumGlobalDofsPerNode + tTemperatureDofOffset;
+                aPreviousGlobalState(tIndex) = tReferenceTemperature / tTemperatureScaling;
+            }, "set temperature to reference");
+        }
+    }
+
 // private functions
 private:
     /***************************************************************************//**
@@ -958,28 +984,6 @@ private:
             Plato::blas1::fill(0.0, aOutput);
         }
     }
-
-    /***************************************************************************//**
-     * \brief Set initial temperature field
-     * \param [in]     aCurrentStepIndex    current time step index
-     * \param [in/out] aPreviousGlobalState previous global state
-    *******************************************************************************/
-    void setInitialTemperature(const Plato::OrdinalType & aCurrentStepIndex,
-                               const Plato::ScalarVector & aPreviousGlobalState) const
-    {
-        if (aCurrentStepIndex != 0) return;
-        if (mTemperatureDofOffset > 0)
-        {
-            auto tNumVerts = mSpatialModel.Mesh.nverts();
-            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumVerts),
-                                    LAMBDA_EXPRESSION(const Plato::OrdinalType &aVertexOrdinal)
-            {
-                Plato::OrdinalType tIndex = aVertexOrdinal * mNumGlobalDofsPerNode + mTemperatureDofOffset;
-                aPreviousGlobalState(tIndex) = mReferenceTemperature / mTemperatureScaling;
-            }, "set temperature to reference");
-        }
-    }
-
     
 
     /***************************************************************************//**

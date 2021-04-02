@@ -218,7 +218,6 @@ public:
             tComputeTotalStrain(aCellOrdinal, tPreviousTotalStrain, aPreviousGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aPreviousGlobalState, aPreviousLocalState,
                                                         tBasisFunctions, tPreviousTotalStrain, tPreviousElasticStrain);
-if (tPreviousElasticStrain(aCellOrdinal, 0) != 0.0) std::cout << tPreviousElasticStrain(aCellOrdinal, 0) << std::endl;
             // compute current strain
             tComputeTotalStrain(aCellOrdinal, tCurrentTotalStrain, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
