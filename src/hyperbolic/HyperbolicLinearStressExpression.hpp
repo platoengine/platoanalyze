@@ -165,7 +165,9 @@ public:
       Plato::ScalarVectorT<Plato::Scalar> tReferenceStrain
         ("Temporary Reference Strain", mNumVoigtTerms);
 
-      for(Plato::OrdinalType iIndex = 0; iIndex < mNumVoigtTerms; iIndex++)
+      Kokkos::parallel_for("Creating a local copy",
+                           Kokkos::RangePolicy<>(0, mNumVoigtTerms),
+                           LAMBDA_EXPRESSION(const Plato::OrdinalType & iIndex)
       {
         tReferenceStrain(iIndex) = this->mReferenceStrain(iIndex);
 
@@ -173,22 +175,25 @@ public:
         {
           tCellStiffness(iIndex, jIndex) = this->mCellStiffness(iIndex, jIndex);
         }
-      }
+      } );
 
       // The expression evaluator has a limited number of types so
-      // convert the VelGrad type to the Strain type.
-      Plato::ScalarMultiVectorT<StrainT>
-        tVelGrad("velocity gradient", tNumCells, mNumVoigtTerms);
+      // convert the VelGrad and the Strain to the result type. This
+      // conversion will often be redundant for one or both the
+      // variables. But it is the only way currently to assure both
+      // are the same type.
+      Plato::ScalarMultiVectorT<ResultT>
+        tVelGrad    (aVelGrad.label(),     tNumCells, mNumVoigtTerms),
+        tSmallStrain(aSmallStrain.label(), tNumCells, mNumVoigtTerms);
 
-      Kokkos::parallel_for("Compute temporary velocity grad",
-                           Kokkos::RangePolicy<>(0, tNumCells),
-                           LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+      Kokkos::parallel_for("Convert vel grad and strain to common state type",
+                           Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {tNumCells,mNumVoigtTerms}),
+                           LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal,
+                                             const Plato::OrdinalType & tVoigtIndex)
       {
-        // Convert the vel grad type to the strain type.
-        for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
-        {
-            tVelGrad(aCellOrdinal, tVoigtIndex_I) = aVelGrad(aCellOrdinal, tVoigtIndex_I);
-        }
+          // Convert the vel grad and strain to the common state type.
+          tVelGrad    (aCellOrdinal, tVoigtIndex) = aVelGrad    (aCellOrdinal, tVoigtIndex);
+          tSmallStrain(aCellOrdinal, tVoigtIndex) = aSmallStrain(aCellOrdinal, tVoigtIndex);
       } );
 
       // Indices for the equation variable mapping.
@@ -202,7 +207,7 @@ public:
       // Strings for mapping parameter labels to the equation
       // variables. The CellStiffness and ReferenceStrain are class
       // member variables and have fixed names whereas the
-      // SmallStrain is a required parameter.
+      // Velgrad and SmallStrain are a required parameters.
       std::vector< std::string > tParamLabels( tNumParamLabels );
 
       tParamLabels[cRayleighB]       = "RayleighB";
@@ -223,7 +228,7 @@ public:
 
       /*!< expression evaluator */
       ExpressionEvaluator< Plato::ScalarMultiVectorT<ResultT>,
-                           Plato::ScalarMultiVectorT<StrainT>,
+                           Plato::ScalarMultiVectorT<ResultT>,
                            Plato::ScalarVectorT<Plato::Scalar>,
                            // Omega_h::Vector<mNumVoigtTerms>,
                            Plato::Scalar > tExpEval;
@@ -349,20 +354,26 @@ public:
 
       // Input values which is a two-dimensional array. The first
       // index is over the cell index. The second index is over tVoigtIndex_J.
-      if( tVarMaps(cRayleighB).key )
-        tExpEval.set_variable( tVarMaps(cRayleighB).value, this->mRayleighB );
-
-      if( tVarMaps(cVelGrad).key )
-        tExpEval.set_variable( tVarMaps(cVelGrad).value, tVelGrad );
-
       if( tVarMaps(cSmallStrain).key )
-        tExpEval.set_variable( tVarMaps(cSmallStrain).value, aSmallStrain );
+      {
+          tExpEval.set_variable( tVarMaps(cSmallStrain).value, tSmallStrain );
+      }
+
+      // Additional input values also a two-dimensional arry.
+      if( tVarMaps(cVelGrad).key )
+      {
+          tExpEval.set_variable( tVarMaps(cVelGrad).value, tVelGrad );
+      }
 
       // The reference strain does not change.
       if( tVarMaps(cReferenceStrain).key )
       {
         tExpEval.set_variable( tVarMaps(cReferenceStrain).value, tReferenceStrain );
       }
+
+      // The RayleighB does not change.
+      if( tVarMaps(cRayleighB).key )
+        tExpEval.set_variable( tVarMaps(cRayleighB).value, this->mRayleighB );
 
       // Temporary memory for the stress that is returned from the
       // expression evaluation. The second index is over tVoigtIndex_J.
@@ -376,7 +387,10 @@ public:
                            Kokkos::RangePolicy<>(0, tNumCells),
                            LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
       {
-        // Compute the stress.
+        // Compute the stress.  This loop cannot be parallelized
+        // because the cell stiffness is set locally and is used by
+        // all threads. In other words the tCellStiffness[tVoigtIndex_I]
+        // is in shared memory and used by all threads
         for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
         {
             // Values that change based on the tVoigtIndex_I index.
