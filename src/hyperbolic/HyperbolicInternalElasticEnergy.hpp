@@ -135,25 +135,25 @@ class InternalElasticEnergy :
         {
             tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-            
+
             // compute strain
             //
             tComputeVoigtStrain(aCellOrdinal, tStrain, aState, tGradient);
-            
+
             // compute stress
             //
             tComputeVoigtStress(aCellOrdinal, tStress, tStrain);
-            
+
             // apply weighting
             //
             tApplyWeighting(aCellOrdinal, tStress, aControl);
-            
+
             // compute element internal energy (inner product of strain and weighted stress)
             //
             tComputeScalarProduct(aCellOrdinal, aResult, tStress, tStrain, tCellVolume);
-            
+
         },"energy gradient");
-        
+
         if( std::count(mPlottable.begin(),mPlottable.end(),"strain") )
             toMap(mDataMap, tStrain, "strain", mSpatialDomain);
         if( std::count(mPlottable.begin(),mPlottable.end(),"stress") )

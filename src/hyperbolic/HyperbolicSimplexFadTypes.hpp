@@ -99,11 +99,11 @@ struct Evaluation {
    using GradientU = GradientUTypes<SimplexPhysicsT>;
    using GradientV = GradientVTypes<SimplexPhysicsT>;
    using GradientA = GradientATypes<SimplexPhysicsT>;
-   using GradientZ = GradientZTypes<SimplexPhysicsT>;
    using GradientX = GradientXTypes<SimplexPhysicsT>;
+   using GradientZ = GradientZTypes<SimplexPhysicsT>;
 };
 
-}
+} // namespace Hyperbolic
   
 } // namespace Plato
 

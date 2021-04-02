@@ -135,6 +135,10 @@ endif()
 ## hyperbolic sources
 if(HYPERBOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    hyperbolic/HyperbolicAbstractLinearStress.cpp
+    hyperbolic/HyperbolicLinearStress.cpp
+    hyperbolic/HyperbolicLinearStressExpression.cpp
+    hyperbolic/HyperbolicLinearStressFactory.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
   )

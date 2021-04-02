@@ -1,40 +1,58 @@
-#ifndef PLATO_LINEAR_STRESS_HPP
-#define PLATO_LINEAR_STRESS_HPP
+#ifndef PLATO_HYPERBOLIC_LINEAR_STRESS_HPP
+#define PLATO_HYPERBOLIC_LINEAR_STRESS_HPP
 
-#include "AbstractLinearStress.hpp"
+#include "LinearStress.hpp"
+
+#include "hyperbolic/HyperbolicAbstractLinearStress.hpp"
 
 namespace Plato
 {
+
+namespace Hyperbolic
+{
+
 /******************************************************************************/
 /*! Stress functor.
 
  given a strain, compute the stress.
  stress tensor in Voigt notation = {s_xx, s_yy, s_zz, s_yz, s_xz, s_xy}
+
+ Note HyperbolicLinearStress has TWO parent classes.  By having
+ LinearStress as a parent the HyperbolicLinearStress can call the
+ original LinearStress operator (sans VelGrad) or the operator with
+ VelGrad as defined in HyperbolicAbstractLinearStress. That is the
+ HyperbolicLinearStress contains both operator interfaces.
+
  */
 /******************************************************************************/
 template< typename EvaluationType, typename SimplexPhysics >
-class LinearStress :
-    public Plato::AbstractLinearStress<EvaluationType, SimplexPhysics>
+class HyperbolicLinearStress :
+    public Plato::Hyperbolic::HyperbolicAbstractLinearStress<EvaluationType, SimplexPhysics>,
+    public Plato::LinearStress<EvaluationType, SimplexPhysics>
 {
 protected:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
     using StateT    = typename EvaluationType::StateScalarType;     /*!< state variables automatic differentiation type */
+    using StateDotT = typename EvaluationType::StateDotScalarType;
     using ConfigT   = typename EvaluationType::ConfigScalarType;    /*!< configuration variables automatic differentiation type */
     using ResultT   = typename EvaluationType::ResultScalarType;    /*!< result variables automatic differentiation type */
 
     using StrainT  = typename Plato::fad_type_t<SimplexPhysics, StateT,    ConfigT>; /*!<   strain variables automatic differentiation type */
+    using VelGradT = typename Plato::fad_type_t<SimplexPhysics, StateDotT, ConfigT>; /*!< vel grad variables automatic differentiation type */
 
     using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms;               /*!< number of stress/strain terms */
 
 public:
+
     /******************************************************************************//**
      * \brief Constructor
      * \param [in] aCellStiffness material element stiffness matrix
     **********************************************************************************/
-    LinearStress(const Omega_h::Matrix<mNumVoigtTerms,
+    HyperbolicLinearStress(const Omega_h::Matrix<mNumVoigtTerms,
                  mNumVoigtTerms> aCellStiffness) :
-      AbstractLinearStress< EvaluationType, SimplexPhysics >(aCellStiffness)
+      HyperbolicAbstractLinearStress< EvaluationType, SimplexPhysics >(aCellStiffness),
+      LinearStress< EvaluationType, SimplexPhysics >(aCellStiffness)
     {
     }
 
@@ -42,19 +60,28 @@ public:
      * \brief Constructor
      * \param [in] aMaterialModel material model interface
     **********************************************************************************/
-    LinearStress(const Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> aMaterialModel) :
-      AbstractLinearStress< EvaluationType, SimplexPhysics >(aMaterialModel)
+    HyperbolicLinearStress(const Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> aMaterialModel) :
+      HyperbolicAbstractLinearStress< EvaluationType, SimplexPhysics >(aMaterialModel),
+      LinearStress< EvaluationType, SimplexPhysics >(aMaterialModel)
     {
     }
+
+    // Make sure the original operator from LinearStress (sans
+    // aVelGrad) is still visible. That is the operator() is
+    // overloaded rather being overridden by the new method defined
+    // below that includes the velosity gradient (aVelGrad).
+    using LinearStress<EvaluationType, SimplexPhysics>::operator();
 
     /******************************************************************************//**
      * \brief Compute the Cauchy stress tensor
      * \param [out] aCauchyStress Cauchy stress tensor
      * \param [in]  aSmallStrain Infinitesimal strain tensor
+     * \param [in]  aVelGrad Velocity gradient tensor
     **********************************************************************************/
     void
-    operator()(Plato::ScalarMultiVectorT<ResultT> const& aCauchyStress,
-               Plato::ScalarMultiVectorT<StrainT> const& aSmallStrain) const override
+    operator()(Plato::ScalarMultiVectorT<ResultT > const& aCauchyStress,
+               Plato::ScalarMultiVectorT<StrainT > const& aSmallStrain,
+               Plato::ScalarMultiVectorT<VelGradT> const& aVelGrad) const override
   {
        // Method used to compute the stress with the factory and has
        // its own Kokkos parallel_for.
@@ -67,6 +94,7 @@ public:
        // with Kokkos 3.2). And using KOKKOS_CLASS_LAMBDA instead of
        // KOKKOS_EXPRESSION. Then the memeber data can be used
        // directly.
+      const auto tRayleighB       = this->mRayleighB;
       const auto tCellStiffness   = this->mCellStiffness;
       const auto tReferenceStrain = this->mReferenceStrain;
 
@@ -84,8 +112,8 @@ public:
           for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
           {
               aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
-                (aSmallStrain(aCellOrdinal, tVoigtIndex_J) -
-                  tReferenceStrain(tVoigtIndex_J)) *
+                ((aSmallStrain(aCellOrdinal, tVoigtIndex_J) - tReferenceStrain(tVoigtIndex_J)) +
+                 (aVelGrad(aCellOrdinal, tVoigtIndex_J) * tRayleighB)) *
                 tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
           }
       } );
@@ -96,10 +124,12 @@ public:
      * \param [in]  aCellOrdinal element ordinal
      * \param [out] aCauchyStress Cauchy stress tensor
      * \param [in]  aSmallStrain Infinitesimal strain tensor
+     * \param [in]  aVelGrad Velocity gradient tensor
     **********************************************************************************/
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
-                                       Plato::ScalarMultiVectorT<ResultT> const& aCauchyStress,
-                                       Plato::ScalarMultiVectorT<StrainT> const& aSmallStrain) const
+                                       Plato::ScalarMultiVectorT<ResultT > const& aCauchyStress,
+                                       Plato::ScalarMultiVectorT<StrainT > const& aSmallStrain,
+                                       Plato::ScalarMultiVectorT<VelGradT> const& aVelGrad) const
     {
         // Method used to compute the stress and called from within a
         // Kokkos parallel_for.
@@ -110,27 +140,29 @@ public:
             for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
             {
                 aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
-                  (aSmallStrain(aCellOrdinal, tVoigtIndex_J) -
-                   this->mReferenceStrain(tVoigtIndex_J)) *
+                  ((aSmallStrain(aCellOrdinal, tVoigtIndex_J) - this->mReferenceStrain(tVoigtIndex_J)) +
+                   (aVelGrad(aCellOrdinal, tVoigtIndex_J) * this->mRayleighB)) *
                   this->mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
             }
         }
     }
 };
-// class LinearStress
+// class HyperbolicLinearStress
+
+}// namespace Hyperbolic
 
 }// namespace Plato
+
 #endif
 
-
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC2(Plato::LinearStress, Plato::SimplexMechanics, 1)
+  PLATO_HYPERBOLIC_EXPL_DEC2(Plato::Hyperbolic::HyperbolicLinearStress, Plato::SimplexMechanics, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC2(Plato::LinearStress, Plato::SimplexMechanics, 2)
+  PLATO_HYPERBOLIC_EXPL_DEC2(Plato::Hyperbolic::HyperbolicLinearStress, Plato::SimplexMechanics, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC2(Plato::LinearStress, Plato::SimplexMechanics, 3)
+  PLATO_HYPERBOLIC_EXPL_DEC2(Plato::Hyperbolic::HyperbolicLinearStress, Plato::SimplexMechanics, 3)
 #endif

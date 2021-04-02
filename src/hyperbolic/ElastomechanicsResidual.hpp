@@ -1,5 +1,6 @@
 #ifndef HYPERBOLIC_ELASTOMECHANICS_RESIDUAL_HPP
 #define HYPERBOLIC_ELASTOMECHANICS_RESIDUAL_HPP
+
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "ToMap.hpp"
@@ -8,7 +9,6 @@
 #include "BodyLoads.hpp"
 #include "NaturalBCs.hpp"
 #include "Plato_Solve.hpp"
-#include "LinearStress.hpp"
 #include "ProjectToNode.hpp"
 #include "ApplyWeighting.hpp"
 #include "StressDivergence.hpp"
@@ -24,6 +24,7 @@
 #include "hyperbolic/Newmark.hpp"
 #include "hyperbolic/InertialContent.hpp"
 #include "hyperbolic/HyperbolicVectorFunction.hpp"
+#include "hyperbolic/HyperbolicLinearStress.hpp"
 
 /******************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
@@ -165,8 +166,15 @@ class TransientMechanicsResidual :
 
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tComputeVoigtStrain;
+      // Note one can use the HyperbolicLinearStress to call the
+      // original LinearStress operator (sans VelGrad) or the operator
+      // with VelGrad as below in evaluateWithDamping. That is the
+      // HyperbolicLinearStress contains both operator interfaces.
       Plato::LinearStress<EvaluationType,
                           SimplexPhysics>      tComputeVoigtStress(mMaterialModel);
+      // OR
+      // Plato::Hyperbolic::HyperbolicLinearStress
+      //          <EvaluationType, SimplexPhysics>     tComputeVoigtStress(mMaterialModel);
       Plato::StressDivergence<mSpaceDim>       tComputeStressDivergence;
       Plato::InertialContent<mSpaceDim>        tInertialContent(mMaterialModel);
 
@@ -259,8 +267,8 @@ class TransientMechanicsResidual :
 
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tComputeVoigtStrain;
-      Plato::LinearStress<EvaluationType,
-                          SimplexPhysics>      tComputeVoigtStress(mMaterialModel);
+      Plato::Hyperbolic::HyperbolicLinearStress
+          <EvaluationType, SimplexPhysics>     tComputeVoigtStress(mMaterialModel);
       Plato::StressDivergence<mSpaceDim>       tComputeStressDivergence;
       Plato::InertialContent<mSpaceDim>        tInertialContent(mMaterialModel);
 
