@@ -9170,17 +9170,31 @@ public:
 namespace cbs
 {
 
-template<Plato::OrdinalType NumSpatialDims,
-         Plato::OrdinalType NumNodesPerCell>
+
+/******************************************************************************//**
+ * \fn inline Plato::ScalarVector calculate_element_characteristic_sizes
+ *
+ * \tparam NumSpatialDims  spatial dimensions (integer)
+ * \tparam NumNodesPerCell number of nodes per cell (integer)
+ *
+ * \brief Calculate characteristic size for all the elements on the finite element mesh.
+ *
+ * \param [in] aModel spatial model database, holds such as mesh information.
+ * \return array of element characteristic size
+ *
+ **********************************************************************************/
+template
+<Plato::OrdinalType NumSpatialDims,
+ Plato::OrdinalType NumNodesPerCell>
 inline Plato::ScalarVector
 calculate_element_characteristic_sizes
-(const Plato::SpatialModel & aSpatialModel)
+(const Plato::SpatialModel & aModel)
 {
-    auto tCoords = aSpatialModel.Mesh.coords();
-    auto tCells2Nodes = aSpatialModel.Mesh.ask_elem_verts();
+    auto tCoords = aModel.Mesh.coords();
+    auto tCells2Nodes = aModel.Mesh.ask_elem_verts();
 
-    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
-    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
+    Plato::OrdinalType tNumCells = aModel.Mesh.nelems();
+    Plato::OrdinalType tNumNodes = aModel.Mesh.nverts();
     Plato::ScalarVector tElemCharSize("element characteristic size", tNumNodes);
     Plato::blas1::fill(std::numeric_limits<Plato::Scalar>::max(), tElemCharSize);
 
@@ -9196,17 +9210,31 @@ calculate_element_characteristic_sizes
 
     return tElemCharSize;
 }
+// function calculate_element_characteristic_sizes
 
+/******************************************************************************//**
+ * \fn inline Plato::ScalarVector calculate_convective_velocity_magnitude
+ *
+ * \tparam NodesPerCell number of nodes per cell (integer)
+ *
+ * \brief Calculate convective velocity magnitude at each node.
+ *
+ * \param [in] aModel    spatial model database, holds such as mesh information
+ * \param [in] aVelocity velocity field
+ *
+ * \return convective velocity magnitude at each node
+ *
+ **********************************************************************************/
 template<Plato::OrdinalType NodesPerCell>
 Plato::ScalarVector
 calculate_convective_velocity_magnitude
-(const Plato::SpatialModel & aSpatialModel,
- const Plato::ScalarVector & aVelocityField)
+(const Plato::SpatialModel & aModel,
+ const Plato::ScalarVector & aVelocity)
 {
-    auto tCell2Node = aSpatialModel.Mesh.ask_elem_verts();
-    Plato::OrdinalType tSpaceDim = aSpatialModel.Mesh.dim();
-    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
-    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
+    auto tCell2Node = aModel.Mesh.ask_elem_verts();
+    Plato::OrdinalType tSpaceDim = aModel.Mesh.dim();
+    Plato::OrdinalType tNumCells = aModel.Mesh.nelems();
+    Plato::OrdinalType tNumNodes = aModel.Mesh.nverts();
 
     Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
@@ -9218,7 +9246,7 @@ calculate_convective_velocity_magnitude
             for(Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
                 auto tDofIndex = tVertexIndex * tSpaceDim + tDim;
-                tSum += aVelocityField(tDofIndex) * aVelocityField(tDofIndex);
+                tSum += aVelocity(tDofIndex) * aVelocity(tDofIndex);
             }
             auto tMyValue = sqrt(tSum);
             tConvectiveVelocity(tVertexIndex) =
@@ -9228,121 +9256,35 @@ calculate_convective_velocity_magnitude
 
     return tConvectiveVelocity;
 }
+// function calculate_convective_velocity_magnitude
 
-template<Plato::OrdinalType NodesPerCell>
-Plato::ScalarVector
-calculate_diffusive_velocity_magnitude
-(const Plato::SpatialModel & aSpatialModel,
- const Plato::Scalar & aReynoldsNum,
- const Plato::ScalarVector & aCharElemSize)
-{
-    auto tCell2Node = aSpatialModel.Mesh.ask_elem_verts();
-    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
-    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
-
-    Plato::ScalarVector tDiffusiveVelocity("diffusive velocity", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
-        {
-            Plato::OrdinalType tVertexIndex = tCell2Node[aCellOrdinal*NodesPerCell + tNode];
-            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(tVertexIndex) * aReynoldsNum);
-            tDiffusiveVelocity(tVertexIndex) =
-                tMyValue >= tDiffusiveVelocity(tVertexIndex) ? tMyValue : tDiffusiveVelocity(tVertexIndex);
-        }
-    }, "calculate_diffusive_velocity_magnitude");
-
-    return tDiffusiveVelocity;
-}
-
-template<Plato::OrdinalType NodesPerCell>
-Plato::ScalarVector
-calculate_thermal_velocity_magnitude
-(const Plato::SpatialModel & aSpatialModel,
- const Plato::Scalar & aPrandtlNum,
- const Plato::Scalar & aReynoldsNum,
- const Plato::ScalarVector & aCharElemSize)
-{
-    auto tCell2Node = aSpatialModel.Mesh.ask_elem_verts();
-    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
-    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
-
-    Plato::ScalarVector tThermalVelocity("thermal velocity", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
-        {
-            Plato::OrdinalType tVertexIndex = tCell2Node[aCellOrdinal*NodesPerCell + tNode];
-            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(tVertexIndex) * aReynoldsNum * aPrandtlNum);
-            tThermalVelocity(tVertexIndex) =
-                tMyValue >= tThermalVelocity(tVertexIndex) ? tMyValue : tThermalVelocity(tVertexIndex);
-        }
-    }, "calculate_thermal_velocity_magnitude");
-
-    return tThermalVelocity;
-}
-
-/***************************************************************************//**
- *  \brief Calculate artificial compressibility for incompressible flow problems.
- *  The artificial compressibility is computed as follows:
- *  \f$ \beta=\max(\epsilon,u_{convective},u_{diffusive},u_{thermal}) \f$,
- *  where
- *  \f$ u_{convective} = \sqrt(u_iu_i),\quad\in\{1,\dots,\mbox{dim}\} \f$
- *  \f$ u_{diffusive}  = \frac{1.0}{h_e\mbox{Re}} \f$
- *  \f$ u_{thermal}    = \frac{1.0}{h_e\mbox{Re}\mbox{Pr}} \f$
- *  Here, $h_e$ is the $e$-th element characteristic length, Re is the Reynolds number,
- *  Pr is the Prandtl number
+/******************************************************************************//**
+ * \fn inline Plato::Scalar calculate_critical_diffusion_time_step
  *
- *  \param aStates                [in] metadata structure with current set of primal states
- *  \param aCritialCompresibility [in] artificial compressibility lower bound
+ * \brief Calculate critical diffusion time step.
  *
- ******************************************************************************/
-inline Plato::ScalarVector
-calculate_artificial_compressibility
-(const Plato::ScalarVector & aConvectiveVelocity,
- const Plato::ScalarVector & aDiffusiveVelocity,
- const Plato::ScalarVector & aThermalVelocity,
- Plato::Scalar aCritialCompresibility = 0.5)
-{
-    Plato::OrdinalType tNumNodes = aThermalVelocity.size();
-    Plato::ScalarVector tArtificialCompressibility("artificial compressibility", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
-    {
-        auto tMyArtificialCompressibility = (aConvectiveVelocity(aNode) >= aDiffusiveVelocity(aNode))
-            && (aConvectiveVelocity(aNode) >= aThermalVelocity(aNode))
-            && (aConvectiveVelocity(aNode) >= aCritialCompresibility) ?
-                aConvectiveVelocity(aNode) : aCritialCompresibility;
-
-        tMyArtificialCompressibility = (aDiffusiveVelocity(aNode) >= aConvectiveVelocity(aNode) )
-            && (aDiffusiveVelocity(aNode) >= aThermalVelocity(aNode))
-            && (aDiffusiveVelocity(aNode) >= aCritialCompresibility) ?
-                aDiffusiveVelocity(aNode) : tMyArtificialCompressibility;
-
-        tMyArtificialCompressibility = (aThermalVelocity(aNode) >= aConvectiveVelocity(aNode) )
-            && (aThermalVelocity(aNode) >= aDiffusiveVelocity(aNode))
-            && (aThermalVelocity(aNode) >= aCritialCompresibility) ?
-                aThermalVelocity(aNode) : tMyArtificialCompressibility;
-
-        tArtificialCompressibility(aNode) = tMyArtificialCompressibility;
-    }, "calculate_artificial_compressibility");
-
-    return tArtificialCompressibility;
-}
-
+ * \param [in] aKinematicViscocity kinematic viscocity
+ * \param [in] aThermalDiffusivity thermal diffusivity
+ * \param [in] aCharElemSize       characteristic element size
+ * \param [in] aSafetyFactor       safety factor
+ *
+ * \return critical diffusive time step scalar
+ *
+ **********************************************************************************/
 inline Plato::Scalar
 calculate_critical_diffusion_time_step
 (const Plato::Scalar aKinematicViscocity,
  const Plato::Scalar aThermalDiffusivity,
- const Plato::ScalarVector & aElemCharSize,
+ const Plato::ScalarVector & aCharElemSize,
  Plato::Scalar aSafetyFactor = 0.7)
 {
-    auto tNumNodes = aElemCharSize.size();
+    auto tNumNodes = aCharElemSize.size();
     Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        auto tKinematicStep = ( aSafetyFactor * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) ) /
+        auto tKinematicStep = ( aSafetyFactor * aCharElemSize(aNodeOrdinal) * aCharElemSize(aNodeOrdinal) ) /
                 ( static_cast<Plato::Scalar>(2) * aKinematicViscocity );
-        auto tDiffusivityStep = ( aSafetyFactor * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) ) /
+        auto tDiffusivityStep = ( aSafetyFactor * aCharElemSize(aNodeOrdinal) * aCharElemSize(aNodeOrdinal) ) /
                 ( static_cast<Plato::Scalar>(2) * aThermalDiffusivity );
         tLocalTimeStep(aNodeOrdinal) = tKinematicStep < tDiffusivityStep ? tKinematicStep : tDiffusivityStep;
     }, "calculate local critical time step");
@@ -9351,77 +9293,81 @@ calculate_critical_diffusion_time_step
     Plato::blas1::min(tLocalTimeStep, tMinValue);
     return tMinValue;
 }
+// function calculate_critical_diffusion_time_step
 
+/******************************************************************************//**
+ * \fn inline Plato::Scalar calculate_critical_time_step_upper_bound
+ *
+ * \brief Calculate critical time step upper bound.
+ *
+ * \param [in] aVelUpperBound critical velocity lower bound
+ * \param [in] aCharElemSize  characteristic element size
+ *
+ * \return critical time step upper bound (scalar)
+ *
+ **********************************************************************************/
 inline Plato::Scalar 
-calculate_time_step_upper_bound
+calculate_critical_time_step_upper_bound
 (const Plato::Scalar aVelUpperBound,
- const Plato::ScalarVector& aElemCharSize)
+ const Plato::ScalarVector& aCharElemSize)
 {
     Plato::Scalar tMinValue = 0.0;
-    Plato::blas1::min(aElemCharSize, tMinValue);
+    Plato::blas1::min(aCharElemSize, tMinValue);
     auto tOutput = tMinValue / aVelUpperBound;
     return tOutput;
 }
+// function calculate_critical_time_step_upper_bound
 
+
+/******************************************************************************//**
+ * \fn inline Plato::Scalar calculate_critical_convective_time_step
+ *
+ * \brief Calculate critical convective time step.
+ *
+ * \param [in] aModel spatial model metadata
+ * \param [in] aCharElemSize  characteristic element size
+ * \param [in] aVelocity      velocity field
+ * \param [in] aSafetyFactor  safety factor multiplier (default = 0.7)
+ *
+ * \return critical convective time step (scalar)
+ *
+ **********************************************************************************/
 inline Plato::Scalar
 calculate_critical_convective_time_step
-(const Plato::SpatialModel & aSpatialModel,
- const Plato::ScalarVector & aElemCharSize,
- const Plato::ScalarVector & aVelocityField,
+(const Plato::SpatialModel & aModel,
+ const Plato::ScalarVector & aCharElemSize,
+ const Plato::ScalarVector & aVelocity,
  Plato::Scalar aSafetyFactor = 0.7)
 {
-    auto tNorm = Plato::blas1::norm(aVelocityField);
+    auto tNorm = Plato::blas1::norm(aVelocity);
     if(tNorm <= std::numeric_limits<Plato::Scalar>::min())
     {
         return std::numeric_limits<Plato::Scalar>::max();
     }
 
-    auto tNumNodes = aSpatialModel.Mesh.nverts();
+    auto tNumNodes = aModel.Mesh.nverts();
     Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        tLocalTimeStep(aNodeOrdinal) = aSafetyFactor * ( aElemCharSize(aNodeOrdinal) / aVelocityField(aNodeOrdinal) );
+        tLocalTimeStep(aNodeOrdinal) = aSafetyFactor * ( aCharElemSize(aNodeOrdinal) / aVelocity(aNodeOrdinal) );
     }, "calculate local critical time step");
 
     Plato::Scalar tMinValue = 0;
     Plato::blas1::min(tLocalTimeStep, tMinValue);
     return tMinValue;
 }
+// function calculate_critical_convective_time_step
 
-inline Plato::Scalar
-calculate_critical_thermal_time_step
-(const Plato::ScalarVector & aElemCharSize,
- const Plato::Scalar & aPrNum,
- Plato::Scalar aSafetyFactor = 0.7)
-{
-    Plato::Scalar tMinValue = 0;
-    Plato::blas1::min(aElemCharSize, tMinValue);
-    auto tCriticalStep = aSafetyFactor * tMinValue * tMinValue *  static_cast<Plato::Scalar>(2) * aPrNum;
-    return tCriticalStep;
-}
-
-inline Plato::Scalar
-calculate_critical_diffusive_time_step
-(const Plato::SpatialModel & aSpatialModel,
- const Plato::ScalarVector & aElemCharSize,
- const Plato::Scalar & aReynoldsNumber,
- const Plato::Scalar & aPrandtlNumber,
- Plato::Scalar aSafetyFactor = 0.7)
-{
-    auto tNumNodes = aSpatialModel.Mesh.nverts();
-    Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
-    {
-        auto tOptionOne = aSafetyFactor * static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber;
-        auto tOptionTwo = aSafetyFactor * static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber * aPrandtlNumber;
-        tLocalTimeStep(aNodeOrdinal) = tOptionOne < tOptionTwo ? tOptionOne : tOptionTwo;
-    }, "calculate local critical time step");
-
-    Plato::Scalar tMinValue = 0;
-    Plato::blas1::min(tLocalTimeStep, tMinValue);
-    return tMinValue;
-}
-
+/******************************************************************************//**
+ * \fn inline void enforce_boundary_condition
+ *
+ * \brief Enforce boundary conditions.
+ *
+ * \param [in] aBcDofs    degrees of freedom associated with the boundary conditions
+ * \param [in] aBcValues  values enforced in boundary degrees of freedom
+ * \param [in/out] aState physical field
+ *
+ **********************************************************************************/
 inline void
 enforce_boundary_condition
 (const Plato::LocalOrdinalVector & aBcDofs,
@@ -9435,9 +9381,23 @@ enforce_boundary_condition
         aState(tDOF) = aBcValues(aOrdinal);
     }, "enforce boundary condition");
 }
+// function enforce_boundary_condition
 
-template
-<Plato::OrdinalType DofsPerNode>
+/******************************************************************************//**
+ * \fn inline Plato::ScalarVector calculate_field_misfit
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Calculate misfit between two fields per degree of freedom.
+ *
+ * \param [in] aNumNodes number of nodes in the mesh
+ * \param [in] aFieldOne physical field one
+ * \param [in] aFieldTwo physical field two
+ *
+ * \return misfit per degree of freedom
+ *
+ **********************************************************************************/
+template<Plato::OrdinalType DofsPerNode>
 inline Plato::ScalarVector
 calculate_field_misfit
 (const Plato::OrdinalType & aNumNodes,
@@ -9452,11 +9412,26 @@ calculate_field_misfit
             Plato::OrdinalType tLocalDof = aNode * DofsPerNode + tDof;
             tResidual(tLocalDof) = aFieldOne(tLocalDof) - aFieldTwo(tLocalDof);
         }
-    }, "calculate stopping criterion");
+    }, "calculate field misfit");
 
     return tResidual;
 }
+// function calculate_field_misfit
 
+/******************************************************************************//**
+ * \fn inline Plato::Scalar calculate_misfit_euclidean_norm
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Calculate euclidean norm of the misfit between two fields.
+ *
+ * \param [in] aNumNodes number of nodes in the mesh
+ * \param [in] aFieldOne physical field one
+ * \param [in] aFieldTwo physical field two
+ *
+ * \return euclidean norm scalar
+ *
+ **********************************************************************************/
 template
 <Plato::OrdinalType DofsPerNode>
 inline Plato::Scalar
@@ -9469,7 +9444,23 @@ calculate_misfit_euclidean_norm
     auto tValue = Plato::blas1::norm(tResidual);
     return tValue;
 }
+// function calculate_misfit_euclidean_norm
 
+
+/******************************************************************************//**
+ * \fn inline Plato::Scalar calculate_misfit_inf_norm
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Calculate infinite norm of the misfit between two fields.
+ *
+ * \param [in] aNumNodes number of nodes in the mesh
+ * \param [in] aFieldOne physical field one
+ * \param [in] aFieldTwo physical field two
+ *
+ * \return euclidean norm scalar
+ *
+ **********************************************************************************/
 template
 <Plato::OrdinalType DofsPerNode>
 inline Plato::Scalar
@@ -9486,28 +9477,55 @@ calculate_misfit_inf_norm
 
     return tOutput;
 }
+// function calculate_misfit_inf_norm
 
 }
 // namespace cbs
 
-template<Plato::OrdinalType NumDofsPerNode>
+
+/******************************************************************************//**
+ * \fn inline void apply_constraints
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Apply constraints to system of equations by modifying left and right hand sides.
+ *
+ * \param [in]     aBcDofs   degrees of freedom (dofs) associated with the boundary conditions
+ * \param [in]     aBcValues scalar values forced at the dofs where the boundary conditions are applied
+ * \param [in]     aScale    scalar multiplier
+ * \param [in/out] aMatrix   left-hand-side matrix
+ * \param [in/out] aRhs      right-hand-side vector
+ *
+ **********************************************************************************/
+template<Plato::OrdinalType DofsPerNode>
 inline void apply_constraints
-(const Plato::LocalOrdinalVector & aBcDofs,
- const Plato::ScalarVector & aBcValues,
+(const Plato::LocalOrdinalVector          & aBcDofs,
+ const Plato::ScalarVector                & aBcValues,
  const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
- Plato::ScalarVector & aRhs,
- Plato::Scalar aScale = 1.0)
+       Plato::ScalarVector                & aRhs,
+       Plato::Scalar                        aScale = 1.0)
 {
     if(aMatrix->isBlockMatrix())
     {
-        Plato::applyBlockConstraints<NumDofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
+        Plato::applyBlockConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
     }
     else
     {
-        Plato::applyConstraints<NumDofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
+        Plato::applyConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
     }
 }
+// function apply_constraints
 
+/******************************************************************************//**
+ * \fn inline void set_dofs_values
+ *
+ * \brief Set values at degrees of freedom to input scalar (default scalar = 0.0).
+ *
+ * \param [in]     aBcDofs list of degrees of freedom (dofs)
+ * \param [in]     aValue  scalar value (default = 0.0)
+ * \param [in/out] aOutput output vector
+ *
+ **********************************************************************************/
 inline void set_dofs_values
 (const Plato::LocalOrdinalVector & aBcDofs,
        Plato::ScalarVector & aOutput,
@@ -9518,7 +9536,18 @@ inline void set_dofs_values
         aOutput(aBcDofs(aOrdinal)) = aValue;
     }, "set values at bc dofs to zero");
 }
+// function set_dofs_values
 
+/******************************************************************************//**
+ * \fn inline void open_text_file
+ *
+ * \brief Open text file.
+ *
+ * \param [in]     aFileName filename
+ * \param [in]     aPrint    boolean flag (true = open file, false = do not open)
+ * \param [in/out] aTextFile text file macro
+ *
+ **********************************************************************************/
 inline void open_text_file
 (const std::string & aFileName,
  std::ofstream & aTextFile,
@@ -9530,7 +9559,17 @@ inline void open_text_file
     }
     aTextFile.open(aFileName);
 }
+// function open_text_file
 
+/******************************************************************************//**
+ * \fn inline void close_text_file
+ *
+ * \brief Close text file.
+ *
+ * \param [in]     aPrint    boolean flag (true = close file, false = do not close)
+ * \param [in/out] aTextFile text file macro
+ *
+ **********************************************************************************/
 inline void close_text_file
 (std::ofstream & aTextFile,
  bool aPrint = true)
@@ -9541,7 +9580,18 @@ inline void close_text_file
     }
     aTextFile.close();
 }
+// function close_text_file
 
+/******************************************************************************//**
+ * \fn inline void append_text_to_file
+ *
+ * \brief Append text to file.
+ *
+ * \param [in]     aMsg      text message to be appended to file
+ * \param [in]     aPrint    boolean flag (true = print message to file, false = do not print message)
+ * \param [in/out] aTextFile text file macro
+ *
+ **********************************************************************************/
 inline void append_text_to_file
 (const std::stringstream & aMsg,
  std::ofstream & aTextFile,
@@ -9553,23 +9603,93 @@ inline void append_text_to_file
     }
     aTextFile << aMsg.str().c_str() << std::flush;
 }
+// function append_text_to_file
 
 namespace Fluids
 {
 
+/******************************************************************************//**
+ * \class AbstractProblem
+ *
+ * \brief This pure virtual class provides blueprint for any derived class.
+ *   Derived classes define the main interface used to solve a Plato problem.
+ *
+ **********************************************************************************/
 class AbstractProblem
 {
 public:
     virtual ~AbstractProblem() {}
 
+    /******************************************************************************//**
+     * \fn void output
+     *
+     * \brief Output interface to permit output of quantities of interests to a visualization file.
+     *
+     * \param [in] aFilePath visualization file path
+     *
+     **********************************************************************************/
     virtual void output(std::string aFilePath) = 0;
+
+    /******************************************************************************//**
+     * \fn const Plato::DataMap& getDataMap
+     *
+     * \brief Return a constant reference to the Plato output database.
+     * \return constant reference to the Plato output database
+     *
+     **********************************************************************************/
     virtual const Plato::DataMap& getDataMap() const = 0;
+
+    /******************************************************************************//**
+     * \fn Plato::Solutions solution
+     *
+     * \brief Solve finite element simulation.
+     * \param [in] aControl vector of design/optimization variables
+     * \return Plato database with state solutions
+     *
+     **********************************************************************************/
     virtual Plato::Solutions solution(const Plato::ScalarVector& aControl) = 0;
+
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionValue
+     *
+     * \brief Evaluate criterion.
+     * \param [in] aControl vector of design/optimization variables
+     * \param [in] aName    criterion name/identifier
+     * \return criterion evaluation
+     *
+     **********************************************************************************/
     virtual Plato::Scalar criterionValue(const Plato::ScalarVector & aControl, const std::string& aName) = 0;
+
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionGradient
+     *
+     * \brief Evaluate criterion gradient with respect to design/optimization variables.
+     * \param [in] aControl vector of design/optimization variables
+     * \param [in] aName    criterion name/identifier
+     * \return criterion gradient with respect to design/optimization variables
+     *
+     **********************************************************************************/
     virtual Plato::ScalarVector criterionGradient(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
+
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionGradientX
+     *
+     * \brief Evaluate criterion gradient with respect to configuration variables.
+     * \param [in] aControl vector of design/optimization variables
+     * \param [in] aName    criterion name/identifier
+     * \return criterion gradient with respect to configuration variables
+     *
+     **********************************************************************************/
     virtual Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
 };
+// class AbstractProblem
 
+/******************************************************************************//**
+ * \class QuasiImplicit
+ *
+ * \brief Main interface for the steady-state solution of incompressible fluid flow problems.
+ *
+ **********************************************************************************/
 template<typename PhysicsT>
 class QuasiImplicit : public Plato::Fluids::AbstractProblem
 {
@@ -9841,37 +9961,6 @@ public:
         return (this->criterionGradient(aControl, aName));
     }
 
-    /*
-     * WORKING FOR ONLY ONE TIME STEP
-    Plato::ScalarVector criterionGradient
-    (const Plato::ScalarVector & aControl,
-     const std::string         & aName)
-    {
-        auto tItr = mCriteria.find(aName);
-        if (tItr == mCriteria.end())
-        {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
-        }
-
-        Plato::Dual tDual;
-        Plato::Primal tPrimal;
-        this->setDual(tDual);
-        this->setPrimal(tPrimal);
-        tDual.vector("critical time step", mCriticalTimeStep);
-        tPrimal.vector("critical time step", mCriticalTimeStep);
-
-        if(mCalculateHeatTransfer)
-        {
-            this->updateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
-        }
-        this->updateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
-        this->updatePressureAdjoint(aName, aControl, tPrimal, tDual);
-        this->updatePredictorAdjoint(aControl, tPrimal, tDual);
-        auto tTotalDerivative = this->updateTotalDerivativeWrtControl(aName, aControl, tPrimal, tDual);
-        return tTotalDerivative;
-    }
-    */
-
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
@@ -9964,17 +10053,15 @@ public:
     }
 
 private:
-    bool writeOutput
-    (const Plato::OrdinalType aIteration) 
-    const
+    bool writeOutput(const Plato::OrdinalType aIteration) const
     {
-	auto tWrite = false;
+        auto tWrite = false;
         if(mOutputFrequency > static_cast<Plato::OrdinalType>(0))
-	{
-	    auto tModulo = (aIteration + static_cast<Plato::OrdinalType>(1) ) % mOutputFrequency;
-	    tWrite = tModulo == static_cast<Plato::OrdinalType>(0) ? true : false;
-	}
-	return tWrite;
+        {
+            auto tModulo = (aIteration + static_cast<Plato::OrdinalType>(1)) % mOutputFrequency;
+            tWrite = tModulo == static_cast<Plato::OrdinalType>(0) ? true : false;
+        }
+        return tWrite;
     }
 
     void setCurrentFields
@@ -10393,7 +10480,7 @@ private:
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tVelLowerBound = aPrimal.scalar("critical velocity lower bound");
-	auto tOutput = Plato::cbs::calculate_time_step_upper_bound(tVelLowerBound, tElemCharSize);
+	auto tOutput = Plato::cbs::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
 	return tOutput;
     }
 
@@ -13104,77 +13191,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostResidual(tNode), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tResidual, "residual");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
-{
-    // build mesh and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
-
-    // set element characteristic size
-    auto tNumNodes = tMesh->nverts();
-    Plato::ScalarVector tElemCharSize("char elem size", tNumNodes);
-    auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
-    tHostElemCharSize(0) = 0.5;
-    tHostElemCharSize(1) = 0.5;
-    tHostElemCharSize(2) = 1.0;
-    tHostElemCharSize(3) = 1.0;
-    Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
-
-    // call function
-    auto tPrandtlNum = 1;
-    auto tReynoldsNum = 2;
-    constexpr auto tNumNodesPerCell = 3;
-    auto tThermalVelocity =
-        Plato::cbs::calculate_thermal_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tPrandtlNum, tReynoldsNum, tElemCharSize);
-
-    // test value
-    auto tTol = 1e-4;
-    auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
-    Kokkos::deep_copy(tHostThermalVelocity, tThermalVelocity);
-    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
-    for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tNode], tHostThermalVelocity(tNode), tTol);
-    }
-    //Plato::print(tThermalVelocity, "thermal velocity");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
-{
-    // build mesh and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
-
-    // set element characteristic size
-    auto tNumNodes = tMesh->nverts();
-    Plato::ScalarVector tElemCharSize("char elem size", tNumNodes);
-    auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
-    tHostElemCharSize(0) = 0.5;
-    tHostElemCharSize(1) = 0.5;
-    tHostElemCharSize(2) = 1.0;
-    tHostElemCharSize(3) = 1.0;
-    Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
-
-    // call function
-    auto tReynoldsNum = 2;
-    constexpr auto tNumNodesPerCell = 3;
-    auto tDiffusiveVelocity =
-        Plato::cbs::calculate_diffusive_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tReynoldsNum, tElemCharSize);
-
-    // test value
-    auto tTol = 1e-4;
-    auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
-    Kokkos::deep_copy(tHostDiffusiveVelocity, tDiffusiveVelocity);
-    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
-    for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tNode], tHostDiffusiveVelocity(tNode), tTol);
-    }
-    //Plato::print(tDiffusiveVelocity, "diffusive velocity");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
