@@ -97,7 +97,7 @@ private:
 
     std::vector<std::string> mPlotTable;           /*!< array of output element data identifiers*/
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                       /*!< body loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>> mBodyLoads;   /*!< body loads interface */
     std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
 
@@ -168,7 +168,7 @@ private:
         // Parse body loads
         if (aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
 
         // Parse Neumman loads

@@ -20,6 +20,7 @@
 #include "ApplyWeighting.hpp"
 #include "NaturalBCs.hpp"
 #include "SimplexFadTypes.hpp"
+#include "BodyLoads.hpp"
 
 #include "ExpInstMacros.hpp"
 
@@ -39,9 +40,11 @@ class ThermostaticResidual :
   private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
 
+    using PhysicsType = typename Plato::SimplexThermal<mSpaceDim>;
+
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
-    using Plato::SimplexThermal<mSpaceDim>::mNumDofsPerCell;
-    using Plato::SimplexThermal<mSpaceDim>::mNumDofsPerNode;
+    using PhysicsType::mNumDofsPerCell;
+    using PhysicsType::mNumDofsPerNode;
 
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
@@ -55,6 +58,8 @@ class ThermostaticResidual :
 
     IndicatorFunctionType mIndicatorFunction;
     ApplyWeighting<mSpaceDim,mSpaceDim,IndicatorFunctionType> mApplyWeighting;
+
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
@@ -75,18 +80,26 @@ class ThermostaticResidual :
         mIndicatorFunction(penaltyParams),
         mApplyWeighting(mIndicatorFunction),
         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        mBodyLoads(nullptr),
         mBoundaryLoads(nullptr)
     /**************************************************************************/
     {
         Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
         mMaterialModel = tMaterialFactory.create(aSpatialDomain.getMaterialName());
 
-      // parse boundary Conditions
-      // 
-      if(aProblemParams.isSublist("Natural Boundary Conditions"))
-      {
-          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
-      }
+        // parse body loads
+        // 
+        if(aProblemParams.isSublist("Body Loads"))
+        {
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aProblemParams.sublist("Body Loads"));
+        }
+
+        // parse boundary Conditions
+        // 
+        if(aProblemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+        }
 
         auto tResidualParams = aProblemParams.sublist("Elliptic");
         if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
@@ -166,8 +179,13 @@ class ThermostaticResidual :
         
       },"flux divergence");
 
-     if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad", mSpatialDomain);
-     if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" , mSpatialDomain);
+      if( mBodyLoads != nullptr )
+      {
+          mBodyLoads->get( mSpatialDomain, aState, aControl, aResult, -1.0 );
+      }
+
+      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad", mSpatialDomain);
+      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" , mSpatialDomain);
     }
 
     /**************************************************************************/

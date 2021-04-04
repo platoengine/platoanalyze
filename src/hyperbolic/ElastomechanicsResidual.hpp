@@ -34,10 +34,12 @@ class TransientMechanicsResidual :
 {
     static constexpr Plato::OrdinalType SpaceDim = EvaluationType::SpatialDim;
 
+    using PhysicsType = typename Plato::SimplexMechanics<SpaceDim>;
+
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
-    using Plato::SimplexMechanics<SpaceDim>::mNumVoigtTerms;
-    using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerCell;
-    using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerNode;
+    using PhysicsType::mNumVoigtTerms;
+    using PhysicsType::mNumDofsPerCell;
+    using PhysicsType::mNumDofsPerNode;
 
     using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mDataMap;
@@ -56,7 +58,7 @@ class TransientMechanicsResidual :
     Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
     Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyMassWeighting;
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads;
     std::shared_ptr<CubatureType> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>> mBoundaryLoads;
 
@@ -98,7 +100,7 @@ class TransientMechanicsResidual :
         //
         if(aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>
                          (aProblemParams.sublist("Body Loads"));
         }
 

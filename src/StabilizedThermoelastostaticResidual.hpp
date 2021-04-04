@@ -42,10 +42,12 @@ private:
     static constexpr int PDofOffset = SpaceDim;
     static constexpr int TDofOffset = SpaceDim+1;
 
+    using PhysicsType = typename Plato::SimplexStabilizedThermomechanics<SpaceDim>;
+
     using Plato::SimplexStabilizedThermomechanics<SpaceDim>::mNumVoigtTerms;
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
-    using Plato::SimplexStabilizedThermomechanics<SpaceDim>::mNumDofsPerNode;
-    using Plato::SimplexStabilizedThermomechanics<SpaceDim>::mNumDofsPerCell;
+    using PhysicsType::mNumDofsPerNode;
+    using PhysicsType::mNumDofsPerCell;
 
     using Plato::AbstractVectorFunctionVMS<EvaluationType>::mSpatialDomain;
     using Plato::AbstractVectorFunctionVMS<EvaluationType>::mDataMap;
@@ -64,7 +66,7 @@ private:
     Plato::ApplyWeighting<SpaceDim, SpaceDim,        IndicatorFunctionType> mApplyVectorWeighting;
     Plato::ApplyWeighting<SpaceDim, 1,               IndicatorFunctionType> mApplyScalarWeighting;
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads;
 
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>> mBoundaryLoads;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>> mBoundaryFluxes;
@@ -104,7 +106,7 @@ public:
         // 
         if(aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
   
         // parse mechanical boundary Conditions
