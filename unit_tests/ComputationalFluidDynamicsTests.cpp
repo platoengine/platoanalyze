@@ -3350,7 +3350,7 @@ public:
      * \fn Plato::Scalar value
      * \brief Return scalar function value.
      * \param [in] aControls control variables workset
-     * \param [in] aPrimal   primal state metadata
+     * \param [in] aPrimal   primal state database
      * \return scalar function value
      ******************************************************************************/
     virtual Plato::Scalar value
@@ -3362,7 +3362,7 @@ public:
      * \brief Return scalar function derivative with respect to the configuration variables.
      *
      * \param [in] aControls control variables workset
-     * \param [in] aPrimal   primal state metadata
+     * \param [in] aPrimal   primal state database
      *
      * \return scalar function derivative with respect to the configuration variables
      ******************************************************************************/
@@ -3375,7 +3375,7 @@ public:
      * \brief Return scalar function derivative with respect to the control variables.
      *
      * \param [in] aControls control variables workset
-     * \param [in] aPrimal   primal state metadata
+     * \param [in] aPrimal   primal state database
      *
      * \return scalar function derivative with respect to the control variables
      ******************************************************************************/
@@ -3388,7 +3388,7 @@ public:
      * \brief Return scalar function derivative with respect to the current pressure.
      *
      * \param [in] aControls control variables workset
-     * \param [in] aPrimal   primal state metadata
+     * \param [in] aPrimal   primal state database
      *
      * \return scalar function derivative with respect to the current pressure
      ******************************************************************************/
@@ -3401,7 +3401,7 @@ public:
      * \brief Return scalar function derivative with respect to the current temperature.
      *
      * \param [in] aControls control variables workset
-     * \param [in] aPrimal   primal state metadata
+     * \param [in] aPrimal   primal state database
      *
      * \return scalar function derivative with respect to the current temperature
      ******************************************************************************/
@@ -3414,7 +3414,7 @@ public:
      * \brief Return scalar function derivative with respect to the current velocity.
      *
      * \param [in] aControls control variables workset
-     * \param [in] aPrimal   primal state metadata
+     * \param [in] aPrimal   primal state database
      *
      * \return scalar function derivative with respect to the current velocity
      ******************************************************************************/
@@ -9701,28 +9701,28 @@ private:
     static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
 
     Plato::Comm::Machine& mMachine; /*!< parallel communication interface */
-    const Teuchos::ParameterList& mInputs; /*!< plato problem inputs */
+    const Teuchos::ParameterList& mInputs; /*!< input file metadata */
 
     Plato::DataMap mDataMap; /*!< static output fields metadata interface */
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
-    bool mPrintDiagnostics = true;
-    bool mCalculateHeatTransfer = false;
+    bool mPrintDiagnostics = true; /*!< boolean flag use to output solver diagnostics to file */
+    bool mCalculateHeatTransfer = false; /*!< boolean flag use to enable heat transfer calculations */
 
     std::ofstream mDiagnostics; /*!< output diagnostics */
 
-    Plato::Scalar mTimeStepDamping = 1.0;
-    Plato::Scalar mPressureTolerance = 1e-4;
-    Plato::Scalar mPredictorTolerance = 1e-4;
-    Plato::Scalar mCorrectorTolerance = 1e-4;
-    Plato::Scalar mTemperatureTolerance = 1e-2;
-    Plato::Scalar mSteadyStateTolerance = 1e-5;
+    Plato::Scalar mTimeStepDamping = 1.0; /*!< time step damping */
+    Plato::Scalar mPressureTolerance = 1e-4; /*!< pressure solver stopping tolerance */
+    Plato::Scalar mPredictorTolerance = 1e-4; /*!< velocity predictor solver stopping tolerance */
+    Plato::Scalar mCorrectorTolerance = 1e-4; /*!< velocity corrector solver stopping tolerance */
+    Plato::Scalar mTemperatureTolerance = 1e-2; /*!< temperature solver stopping tolerance */
+    Plato::Scalar mSteadyStateTolerance = 1e-5; /*!< steady-state stopping tolerance */
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
     Plato::Scalar mCriticalThermalDiffusivity = 1.0; /*!< fluid thermal diffusivity - used to calculate stable time step */
     Plato::Scalar mCriticalKinematicViscocity = 1.0; /*!< fluid kinematic viscocity - used to calculate stable time step */
     Plato::Scalar mCriticalVelocityLowerBound = 0.5; /*!< dimensionless critical convective velocity upper bound */
 
-    Plato::OrdinalType mOutputFrequency = 1e6; 
+    Plato::OrdinalType mOutputFrequency = 1e6; /*!< output frequency */
     Plato::OrdinalType mMaxPressureIterations = 5; /*!< maximum number of pressure solver iterations */
     Plato::OrdinalType mMaxPredictorIterations = 5; /*!< maximum number of predictor solver iterations */
     Plato::OrdinalType mMaxCorrectorIterations = 5; /*!< maximum number of corrector solver iterations */
@@ -9731,44 +9731,51 @@ private:
     Plato::OrdinalType mMaxSteadyStateIterations = 1000; /*!< maximum number of steady state iterations */
 
     // primal state containers 
-    Plato::ScalarMultiVector mPressure;
-    Plato::ScalarMultiVector mVelocity;
-    Plato::ScalarMultiVector mPredictor;
-    Plato::ScalarMultiVector mTemperature;
+    Plato::ScalarMultiVector mPressure; /*!< pressure solution at time step n and n-1 */
+    Plato::ScalarMultiVector mVelocity; /*!< velocity solution at time step n and n-1 */
+    Plato::ScalarMultiVector mPredictor; /*!< velocity predictor solution at time step n and n-1 */
+    Plato::ScalarMultiVector mTemperature; /*!< temperature solution at time step n and n-1 */
 
     // adjoint state containers
-    Plato::ScalarMultiVector mAdjointPressure;
-    Plato::ScalarMultiVector mAdjointVelocity;
-    Plato::ScalarMultiVector mAdjointPredictor;
-    Plato::ScalarMultiVector mAdjointTemperature;
+    Plato::ScalarMultiVector mAdjointPressure; /*!< adjoint pressure solution at time step n and n+1 */
+    Plato::ScalarMultiVector mAdjointVelocity; /*!< adjoint velocity solution at time step n and n+1 */
+    Plato::ScalarMultiVector mAdjointPredictor; /*!< adjoint velocity predictor solution at time step n and n+1 */
+    Plato::ScalarMultiVector mAdjointTemperature; /*!< adjoint temperature solution at time step n and n+1 */
 
     // critical time step container
-    std::vector<Plato::Scalar> mCriticalTimeStepHistory;
+    std::vector<Plato::Scalar> mCriticalTimeStepHistory; /*!< critical time step history */
 
     // vector functions
-    Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
-    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
-    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
+    Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual; /*!< pressure solver vector function interface */
+    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual; /*!< velocity predictor solver vector function interface */
+    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual; /*!< velocity corrector solver vector function interface */
     // Using pointer since default VectorFunction constructor allocations are not permitted.
     // Temperature VectorFunction allocation is optional since heat transfer calculations are optional
-    std::shared_ptr<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>> mTemperatureResidual;
+    std::shared_ptr<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>> mTemperatureResidual; /*!< temperature solver vector function interface */
 
     // optimization problem criteria
-    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>;
-    using Criteria  = std::unordered_map<std::string, Criterion>;
-    Criteria mCriteria;
+    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>; /*!< local criterion type */
+    using Criteria  = std::unordered_map<std::string, Criterion>; /*!< local criterion list type */
+    Criteria mCriteria;  /*!< criteria list */
 
     // local conservation equation, i.e. physics, types
-    using MassConservationT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
-    using EnergyConservationT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
-    using MomentumConservationT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
+    using MassConservationT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>; /*!< local mass conservation equation type */
+    using EnergyConservationT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>; /*!< local energy conservation equation type */
+    using MomentumConservationT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>; /*!< local momentum conservation equation type */
 
     // essential boundary conditions accessors
-    Plato::EssentialBCs<MassConservationT>     mPressureEssentialBCs;
-    Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
-    Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
+    Plato::EssentialBCs<MassConservationT>     mPressureEssentialBCs; /*!< pressure essential/Dirichlet boundary condition interface */
+    Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs; /*!< velocity essential/Dirichlet boundary condition interface */
+    Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs; /*!< temperature essential/Dirichlet boundary condition interface */
 
 public:
+    /******************************************************************************//**
+     * \brief Constructor
+     * \param [in] aMesh     finite element mesh metadata
+     * \param [in] aMeshSets mesh entity sets metadata
+     * \param [in] aInputs   input file metadata
+     * \param [in] aMachine  input file metadata
+     **********************************************************************************/
     QuasiImplicit
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
@@ -9787,11 +9794,9 @@ public:
         this->initialize(aInputs);
     }
 
-    const decltype(mDataMap)& getDataMap() const
-    {
-        return mDataMap;
-    }
-
+    /******************************************************************************//**
+     * \brief Destructor
+     **********************************************************************************/
     ~QuasiImplicit()
     {
         if(Plato::Comm::rank(mMachine) == 0)
@@ -9800,6 +9805,21 @@ public:
         }
     }
 
+    /******************************************************************************//**
+     * \fn const Plato::DataMap getDataMap
+     * \brief Return constant reference to Plato output database.
+     * \return constant reference to Plato output database
+     **********************************************************************************/
+    const decltype(mDataMap)& getDataMap() const
+    {
+        return mDataMap;
+    }
+
+    /******************************************************************************//**
+     * \fn void output
+     * \brief Output solution to visualization file.
+     * \param [in] aFilePath visualization file path (default = ./output)
+     **********************************************************************************/
     void output(std::string aFilePath = "output")
     {
         auto tMesh = mSpatialModel.Mesh;
@@ -9832,6 +9852,16 @@ public:
         tWriter.write(tCurrentTimeStep, tTime, tTags);
     }
 
+    /******************************************************************************//**
+     * \fn void write
+     * \brief Write solution to visualization file. This function is mostly used for
+     *   optimization purposes to avoid storing large time-dependent state history in
+     *   memory. Thus, maximizing available GPU memory.
+     *
+     * \param [in] aPrimal primal state database
+     * \param [in] aWriter interface to allow output to a VTK visualization file
+     *
+     **********************************************************************************/
     void write
     (const Plato::Primal& aPrimal,
      Omega_h::vtk::Writer& aWriter)
@@ -9871,6 +9901,14 @@ public:
         aWriter.write(tTimeStepIndex, tTimeStepIndex, tTags);
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Solutions solution
+     *
+     * \brief Solve finite element simulation.
+     * \param [in] aControl vector of design/optimization variables
+     * \return Plato database with state solutions
+     *
+     **********************************************************************************/
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
@@ -9880,7 +9918,7 @@ public:
         Plato::Primal tPrimal;
         auto tWriter = Omega_h::vtk::Writer("solution_history", &mSpatialModel.Mesh, mNumSpatialDims);
         this->setInitialConditions(tPrimal, tWriter);
-        this->calculateElemCharacteristicSize(tPrimal);
+        this->calculateCharacteristicElemSize(tPrimal);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
@@ -9913,10 +9951,20 @@ public:
             this->savePrimal(tPrimal);
         }
 
-        auto tSolution = this->setOutputSolution();
+        auto tSolution = this->setSolution();
         return tSolution;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionValue
+     *
+     * \brief Evaluate criterion.
+     * \param [in] aControl  vector of design/optimization variables
+     * \param [in] aSolution Plato database with state solutions
+     * \param [in] aName     criterion name/identifier
+     * \return criterion evaluation
+     *
+     **********************************************************************************/
     Plato::Scalar criterionValue
     (const Plato::ScalarVector & aControl,
      const Plato::Solutions    & aSolution,
@@ -9925,6 +9973,15 @@ public:
         return (this->criterionValue(aControl, aName));
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionValue
+     *
+     * \brief Evaluate criterion.
+     * \param [in] aControl  vector of design/optimization variables
+     * \param [in] aName     criterion name/identifier
+     * \return criterion evaluation
+     *
+     **********************************************************************************/
     Plato::Scalar criterionValue
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
@@ -9953,6 +10010,16 @@ public:
      	return tOutput;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionGradient
+     *
+     * \brief Evaluate criterion gradient with respect to design/optimization variables.
+     * \param [in] aControl  vector of design/optimization variables
+     * \param [in] aSolution Plato database with state solutions
+     * \param [in] aName     criterion name/identifier
+     * \return criterion gradient with respect to design/optimization variables
+     *
+     **********************************************************************************/
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
      const Plato::Solutions    & aSolution,
@@ -9961,6 +10028,15 @@ public:
         return (this->criterionGradient(aControl, aName));
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionGradient
+     *
+     * \brief Evaluate criterion gradient with respect to design/optimization variables.
+     * \param [in] aControl vector of design/optimization variables
+     * \param [in] aName    criterion name/identifier
+     * \return criterion gradient with respect to design/optimization variables
+     *
+     **********************************************************************************/
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
@@ -10019,13 +10095,19 @@ public:
         return tTotalDerivative;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionGradientX
+     *
+     * \brief Evaluate criterion gradient with respect to configuration variables.
+     * \param [in] aControl vector of design/optimization variables
+     * \param [in] aName    criterion name/identifier
+     * \return criterion gradient with respect to configuration variables
+     *
+     **********************************************************************************/
     Plato::ScalarVector criterionGradientX
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
     {
-        auto tNumDofs = mSpatialModel.Mesh.nverts() * mNumSpatialDims;
-        Plato::ScalarVector tTotalDerivative("total derivative", tNumDofs);
-        /*
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
         {
@@ -10033,26 +10115,81 @@ public:
         }
 
         Plato::Dual tDual;
-        Plato::Primal tPrimal;
-        this->setDual(tDual);
-        this->setPrimal(tPrimal);
-        tDual.vector("critical time step", mCriticalTimeStep);
-        tPrimal.vector("critical time step", mCriticalTimeStep);
-
-        if(mCalculateHeatTransfer)
+        Plato::Primal tCurrentState, tPreviousState;
+        auto tDirectory = std::string("solution_history");
+        auto tSolutionHistoryPaths = Plato::omega_h::read_pvtu_file_paths(tDirectory);
+        if(tSolutionHistoryPaths.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
         {
-            this->updateTemperatureAdjoint(aName, aControl, tPrimal, tDual);
+            THROWERR(std::string("Number of time steps read from the '") + tDirectory
+                 + "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
         }
-        this->updateCorrectorAdjoint(aName, aControl, tPrimal, tDual);
-        this->updatePressureAdjoint(aName, aControl, tPrimal, tDual);
-        this->updatePredictorAdjoint(aControl, tPrimal, tDual);
-        auto tTotalDerivative = this->calculateGradientConfig(aName, aControl, tPrimal, tDual);
 
-        */
+        Plato::ScalarVector tTotalDerivative("total derivative", mSpatialModel.Mesh.nverts());
+        for(auto tItr = tSolutionHistoryPaths.rbegin(); tItr != tSolutionHistoryPaths.rend() - 1; tItr++)
+        {
+            // set fields for the current primal state
+            auto tCurrentStateIndex = (tSolutionHistoryPaths.size() - 1u) - std::distance(tSolutionHistoryPaths.rbegin(), tItr);
+            tCurrentState.scalar("time step index", tCurrentStateIndex);
+            this->setPrimal(tSolutionHistoryPaths, tCurrentState);
+            this->setCriticalTimeStep(tCurrentState);
+
+            // set fields for the previous primal state
+            auto tPreviousStateIndex = tCurrentStateIndex + 1u;
+            tPreviousState.scalar("time step index", tPreviousStateIndex);
+            if(tPreviousStateIndex != tSolutionHistoryPaths.size())
+            {
+                this->setPrimal(tSolutionHistoryPaths, tPreviousState);
+                this->setCriticalTimeStep(tPreviousState);
+            }
+
+            // set adjoint state
+            this->setDual(tDual);
+
+            // update adjoint states
+            if(mCalculateHeatTransfer)
+            {
+                this->updateTemperatureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
+            }
+            this->updateCorrectorAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
+            this->updatePressureAdjoint(aName, aControl, tCurrentState, tPreviousState, tDual);
+            this->updatePredictorAdjoint(aControl, tCurrentState, tPreviousState, tDual);
+
+            // update total derivative with respect to control variables
+            this->updateTotalDerivativeWrtConfig(aName, aControl, tCurrentState, tDual, tTotalDerivative);
+
+            this->saveDual(tDual);
+        }
         return tTotalDerivative;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar criterionGradientX
+     *
+     * \brief Evaluate criterion gradient with respect to configuration variables.
+     * \param [in] aControl  vector of design/optimization variables
+     * \param [in] aSolution Plato database with state solutions
+     * \param [in] aName     criterion name/identifier
+     * \return criterion gradient with respect to configuration variables
+     *
+     **********************************************************************************/
+    Plato::ScalarVector criterionGradientX
+    (const Plato::ScalarVector & aControl,
+     const Plato::Solutions    & aSolution,
+     const std::string         & aName)
+    {
+        return (this->criterionGradientX(aControl, aName));
+    }
+
 private:
+    /******************************************************************************//**
+     * \fn bool writeOutput
+     *
+     * \brief Return boolean used to determine if state solution will be written to
+     *   visualization file.
+     * \param [in] aIteration current solver iteration
+     * \return boolean (true = output to file; false = skip output to file)
+     *
+     **********************************************************************************/
     bool writeOutput(const Plato::OrdinalType aIteration) const
     {
         auto tWrite = false;
@@ -10064,9 +10201,17 @@ private:
         return tWrite;
     }
 
-    void setCurrentFields
-    (const Omega_h::filesystem::path& aPath,
-           Plato::Primal& aStates)
+    /******************************************************************************//**
+     * \fn void readCurrentFields
+     *
+     * \brief Read current states from visualization file.
+     * \param [in]     aPath   visualization file path
+     * \param [in/out] aStates primal state solution database
+     *
+     **********************************************************************************/
+    void readCurrentFields
+    (const Omega_h::filesystem::path & aPath,
+           Plato::Primal             & aPrimal)
     {
         Plato::FieldTags tFieldTags;
         tFieldTags.set("Velocity", "current velocity");
@@ -10076,12 +10221,20 @@ private:
         {
             tFieldTags.set("Temperature", "current temperature");
         }
-        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aStates);
+        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aPrimal);
     }
 
-    void setPreviousFields
-    (const Omega_h::filesystem::path& aPath,
-           Plato::Primal& aStates)
+    /******************************************************************************//**
+     * \fn void readPreviousFields
+     *
+     * \brief Read previous states from visualization file.
+     * \param [in]     aPath   visualization file path
+     * \param [in/out] aStates primal state solution database
+     *
+     **********************************************************************************/
+    void readPreviousFields
+    (const Omega_h::filesystem::path & aPath,
+           Plato::Primal             & aPrimal)
     {
         Plato::FieldTags tFieldTags;
         tFieldTags.set("Velocity", "previous velocity");
@@ -10090,18 +10243,33 @@ private:
         {
             tFieldTags.set("Temperature", "previous temperature");
         }
-        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aStates);
+        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aPrimal);
     }
 
+    /******************************************************************************//**
+     * \fn void setPrimal
+     *
+     * \brief Set primal state solution database for the current optimization iteration.
+     * \param [in]     aPath   list with paths to visualization files
+     * \param [in/out] aPrimal primal state solution database
+     *
+     **********************************************************************************/
     void setPrimal
-    (const std::vector<Omega_h::filesystem::path>& aPaths,
-           Plato::Primal& aPrimal)
+    (const std::vector<Omega_h::filesystem::path> & aPaths,
+           Plato::Primal                          & aPrimal)
     {
         auto tTimeStepIndex = static_cast<size_t>(aPrimal.scalar("time step index"));
-        this->setCurrentFields(aPaths[tTimeStepIndex], aPrimal);
-        this->setPreviousFields(aPaths[tTimeStepIndex - 1u], aPrimal);
+        this->readCurrentFields(aPaths[tTimeStepIndex], aPrimal);
+        this->readPreviousFields(aPaths[tTimeStepIndex - 1u], aPrimal);
     }
 
+    /******************************************************************************//**
+     * \fn void setCriticalTimeStep
+     *
+     * \brief Set critical time step for the current optimization iteration.
+     * \param [in/out] aPrimal primal state solution database
+     *
+     **********************************************************************************/
     void setCriticalTimeStep
     (Plato::Primal& aPrimal)
     {
@@ -10113,7 +10281,14 @@ private:
         aPrimal.vector("critical time step", tCriticalTimeStep);
     }
 
-    Plato::Solutions setOutputSolution()
+    /******************************************************************************//**
+     * \fn void setSolution
+     *
+     * \brief Set solution database.
+     * \return solution database
+     *
+     **********************************************************************************/
+    Plato::Solutions setSolution()
     {
         Plato::Solutions tSolution;
         tSolution.set("velocity", mVelocity);
@@ -10125,6 +10300,14 @@ private:
         return tSolution;
     }
 
+    /******************************************************************************//**
+     * \fn void setInitialConditions
+     *
+     * \brief Set initial conditions for pressure, temperature and veloctity fields.
+     * \param [in] aPrimal primal state database
+     * \param [in] aWriter interface to allow output to a VTK visualization file
+     *
+     **********************************************************************************/
     void setInitialConditions
     (Plato::Primal & aPrimal,
      Omega_h::vtk::Writer& aWriter)
@@ -10171,6 +10354,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void printIteration
+     *
+     * \brief Print current iteration diagnostics to diagnostic file.
+     * \param [in] aPrimal primal state database
+     *
+     **********************************************************************************/
     void printIteration
     (const Plato::Primal & aPrimal)
     {
@@ -10192,6 +10382,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void areDianosticsEnabled
+     *
+     * \brief Check if diagnostics are enabled, if true, open diagnostic file.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void areDianosticsEnabled
     (Teuchos::ParameterList & aInputs)
     {
@@ -10203,6 +10400,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void initialize
+     *
+     * \brief Initialize member data.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void initialize
     (Teuchos::ParameterList & aInputs)
     {
@@ -10211,10 +10415,18 @@ private:
         this->parseNewtonSolverInputs(aInputs);
         this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
-        this->parseHeatTransferEquation(aInputs);
+        this->setHeatTransferEquation(aInputs);
         this->allocateOptimizationMetadata(aInputs);
     }
 
+    /******************************************************************************//**
+     * \fn void setCriticalFluidProperties
+     *
+     * \brief Set fluid properties used to calculate the critical time step for heat
+     *   transfer applications.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void setCriticalFluidProperties(Teuchos::ParameterList &aInputs)
     {
         mCriticalThermalDiffusivity = Plato::parse_max_material_property<Plato::Scalar>
@@ -10225,7 +10437,15 @@ private:
 	Plato::is_positive_finite_number(mCriticalKinematicViscocity, "Kinematic Viscocity");
     }
 
-    void parseHeatTransferEquation
+    /******************************************************************************//**
+     * \fn void setHeatTransferEquation
+     *
+     * \brief Set temperature equation vector function interface if heat transfer
+     *   calculations are requested.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
+    void setHeatTransferEquation
     (Teuchos::ParameterList & aInputs)
     {
         mCalculateHeatTransfer = Plato::Fluids::calculate_heat_transfer(aInputs);
@@ -10237,6 +10457,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void parseNewtonSolverInputs
+     *
+     * \brief Parse Newton solver parameters from input file.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void parseNewtonSolverInputs
     (Teuchos::ParameterList & aInputs)
     {
@@ -10254,6 +10481,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void parseTimeIntegratorInputs
+     *
+     * \brief Parse time integration scheme parameters from input file.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void parseTimeIntegratorInputs
     (Teuchos::ParameterList & aInputs)
     {
@@ -10265,6 +10499,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void parseConvergenceCriteria
+     *
+     * \brief Parse fluid solver's convergence criteria from input file.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void parseConvergenceCriteria
     (Teuchos::ParameterList & aInputs)
     {
@@ -10277,6 +10518,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void clear
+     *
+     * \brief Clear forward solver state data. This function is utilized only in
+     *   optimization workflows since the solver is used in re-entrant mode.
+     *
+     **********************************************************************************/
     void clear()
     {
         mNumForwardSolveTimeSteps = 0;
@@ -10286,16 +10534,18 @@ private:
         Plato::blas2::fill(0.0, mPredictor);
         Plato::blas2::fill(0.0, mTemperature);
 
-	auto tDirectory = std::string("solution_history");
-	Plato::filesystem::remove(tDirectory);
+        auto tDirectory = std::string("solution_history");
+        Plato::filesystem::remove(tDirectory);
     }
 
+    /******************************************************************************//**
+     * \fn void checkProblemSetup
+     *
+     * \brief Check forward problem setup.
+     *
+     **********************************************************************************/
     void checkProblemSetup()
     {
-        //if(mPressureEssentialBCs.empty())
-        //{
-        //    THROWERR("Pressure essential boundary conditions are not defined.")
-        //}
         if(mVelocityEssentialBCs.empty())
         {
             THROWERR("Velocity essential boundary conditions are not defined.")
@@ -10313,20 +10563,32 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void allocateDualStates
+     *
+     * \brief Allocate dual state containers.
+     *
+     **********************************************************************************/
     void allocateDualStates()
     {
         constexpr auto tTimeSnapshotsStored = 2;
         auto tNumNodes = mSpatialModel.Mesh.nverts();
-        mAdjointPressure    = Plato::ScalarMultiVector("Adjoint Pressure Snapshots", tTimeSnapshotsStored, tNumNodes);
-        mAdjointVelocity    = Plato::ScalarMultiVector("Adjoint Velocity Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
-        mAdjointPredictor   = Plato::ScalarMultiVector("Adjoint Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+        mAdjointPressure = Plato::ScalarMultiVector("Adjoint Pressure Snapshots", tTimeSnapshotsStored, tNumNodes);
+        mAdjointVelocity = Plato::ScalarMultiVector("Adjoint Velocity Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+        mAdjointPredictor = Plato::ScalarMultiVector("Adjoint Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
 
-	if(mCalculateHeatTransfer)
-	{
+        if(mCalculateHeatTransfer)
+        {
             mAdjointTemperature = Plato::ScalarMultiVector("Adjoint Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
-	}
+        }
     }
 
+    /******************************************************************************//**
+     * \fn void allocatePrimalStates
+     *
+     * \brief Allocate primal state containers.
+     *
+     **********************************************************************************/
     void allocatePrimalStates()
     {
         constexpr auto tTimeSnapshotsStored = 2;
@@ -10337,6 +10599,13 @@ private:
         mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
     }
 
+    /******************************************************************************//**
+     * \fn void allocateCriteriaList
+     *
+     * \brief Allocate criteria list.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void allocateCriteriaList(Teuchos::ParameterList &aInputs)
     {
         Plato::Fluids::CriterionFactory<PhysicsT> tScalarFuncFactory;
@@ -10358,6 +10627,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void allocateOptimizationMetadata
+     *
+     * \brief Allocate optimization problem metadata.
+     * \param [in] aInputs input file database
+     *
+     **********************************************************************************/
     void allocateOptimizationMetadata(Teuchos::ParameterList &aInputs)
     {
         if(aInputs.isSublist("Criteria"))
@@ -10367,7 +10643,15 @@ private:
         }
     }
 
-    Plato::Scalar calculateVelocityMisfitNorm(const Plato::Primal & aPrimal)
+    /******************************************************************************//**
+     * \fn void calculateVelocityMisfitNorm
+     *
+     * \brief Calculate velocity misfit euclidean norm.
+     * \param [in] aPrimal primal state database
+     *
+     **********************************************************************************/
+    Plato::Scalar calculateVelocityMisfitNorm
+    (const Plato::Primal & aPrimal)
     {
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentVelocity = aPrimal.vector("current velocity");
@@ -10378,7 +10662,15 @@ private:
         return tOutput;
     }
 
-    Plato::Scalar calculatePressureMisfitNorm(const Plato::Primal & aPrimal)
+    /******************************************************************************//**
+     * \fn void calculatePressureMisfitNorm
+     *
+     * \brief Calculate pressure misfit euclidean norm.
+     * \param [in] aPrimal primal state database
+     *
+     **********************************************************************************/
+    Plato::Scalar calculatePressureMisfitNorm
+    (const Plato::Primal & aPrimal)
     {
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentPressure = aPrimal.vector("current pressure");
@@ -10389,6 +10681,13 @@ private:
         return tOutput;
     }
 
+    /******************************************************************************//**
+     * \fn void printSteadyStateCriterion
+     *
+     * \brief Print steady state criterion to diagnostic file.
+     * \param [in] aPrimal primal state database
+     *
+     **********************************************************************************/
     void printSteadyStateCriterion
     (const Plato::Primal & aPrimal)
     {
@@ -10406,6 +10705,14 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn bool isFluidSolverDiverging
+     *
+     * \brief Check is fluid solver is diverging.
+     * \param [in] aPrimal primal state database
+     * \return boolean (true = diverging; false = not diverging)
+     *
+     **********************************************************************************/
     bool isFluidSolverDiverging
     (Plato::Primal & aPrimal)
     {
@@ -10417,6 +10724,14 @@ private:
         return false;
     }
 
+    /******************************************************************************//**
+     * \fn bool checkStoppingCriteria
+     *
+     * \brief Check fluid solver stopping criterion.
+     * \param [in] aPrimal primal state database
+     * \return boolean (true = converged; false = did not coverge)
+     *
+     **********************************************************************************/
     bool checkStoppingCriteria
     (Plato::Primal & aPrimal)
     {
@@ -10445,14 +10760,32 @@ private:
         return tStop;
     }
 
-    void calculateElemCharacteristicSize(Plato::Primal & aPrimal)
+    /******************************************************************************//**
+     * \fn void calculateCharacteristicElemSize
+     *
+     * \brief Calculate characteristic element size
+     * \param [in] aPrimal primal state database
+     *
+     **********************************************************************************/
+    void calculateCharacteristicElemSize
+    (Plato::Primal & aPrimal)
     {
         auto tElemCharSizes =
             Plato::cbs::calculate_element_characteristic_sizes<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
         aPrimal.vector("element characteristic size", tElemCharSizes);
     }
 
-    Plato::Scalar calculateCriticalConvectiveTimeStep
+    /******************************************************************************//**
+     * \fn Plato::Scalar calculateCriticalConvectiveTimeStep
+     *
+     * \brief Calculate critical convective time step.
+     * \param [in] aPrimal   primal state database
+     * \param [in] aVelocity velocity field
+     * \return critical convective time step
+     *
+     **********************************************************************************/
+    Plato::Scalar
+    calculateCriticalConvectiveTimeStep
     (const Plato::Primal & aPrimal,
      const Plato::ScalarVector & aVelocity)
     {
@@ -10463,7 +10796,16 @@ private:
         return tCriticalTimeStep;
     }
 
-    Plato::Scalar calculateCriticalDiffusionTimeStep
+    /******************************************************************************//**
+     * \fn Plato::Scalar calculateCriticalDiffusionTimeStep
+     *
+     * \brief Calculate critical diffusive time step.
+     * \param [in] aPrimal primal state database
+     * \return critical diffusive time step
+     *
+     **********************************************************************************/
+    Plato::Scalar
+    calculateCriticalDiffusionTimeStep
     (const Plato::Primal & aPrimal)
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
@@ -10474,17 +10816,35 @@ private:
         return tCriticalTimeStep;
     }
 
+    /******************************************************************************//**
+     * \fn Plato::Scalar calculateCriticalTimeStepUpperBound
+     *
+     * \brief Calculate critical time step upper bound.
+     * \param [in] aPrimal primal state database
+     * \return critical time step upper bound
+     *
+     **********************************************************************************/
     inline Plato::Scalar
     calculateCriticalTimeStepUpperBound
-    (const Plato::Primal & aPrimal)
+    (const Plato::Primal &aPrimal)
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tVelLowerBound = aPrimal.scalar("critical velocity lower bound");
-	auto tOutput = Plato::cbs::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
-	return tOutput;
+        auto tOutput = Plato::cbs::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
+        return tOutput;
     }
 
-    Plato::ScalarVector criticalTimeStep
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector criticalTimeStep
+     *
+     * \brief Calculate critical time step.
+     * \param [in] aPrimal primal state database
+     * \param [in] aVelocity velocity field
+     * \return critical time step
+     *
+     **********************************************************************************/
+    Plato::ScalarVector
+    criticalTimeStep
     (const Plato::Primal & aPrimal,
      const Plato::ScalarVector & aVelocity)
     {
@@ -10499,7 +10859,7 @@ private:
             tHostCriticalTimeStep(0) = tMinCriticalTimeStep;
         }
 
-	auto tCriticalTimeStepUpperBound = this->calculateCriticalTimeStepUpperBound(aPrimal);
+        auto tCriticalTimeStepUpperBound = this->calculateCriticalTimeStepUpperBound(aPrimal);
         auto tMinCriticalTimeStep = std::min(tCriticalTimeStepUpperBound, tHostCriticalTimeStep(0));
         tHostCriticalTimeStep(0) = mTimeStepDamping * tMinCriticalTimeStep;
         mCriticalTimeStepHistory.push_back(tHostCriticalTimeStep(0));
@@ -10508,7 +10868,16 @@ private:
         return tCriticalTimeStep;
     }
 
-    Plato::ScalarVector initialCriticalTimeStep
+    /******************************************************************************//**
+     * \fn Plato::ScalarVector initialCriticalTimeStep
+     *
+     * \brief Calculate initial critical time step.
+     * \param [in] aPrimal primal state database
+     * \return critical time step
+     *
+     **********************************************************************************/
+    Plato::ScalarVector
+    initialCriticalTimeStep
     (const Plato::Primal & aPrimal)
     {
         Plato::ScalarVector tBcValues;
@@ -10522,7 +10891,15 @@ private:
         return tCriticalTimeStep;
     }
 
-    void checkCriticalTimeStep(const Plato::Primal &aPrimal)
+    /******************************************************************************//**
+     * \fn void checkCriticalTimeStep
+     *
+     * \brief Check critical time step, an runtime error is thrown if an unstable time step is detected.
+     * \param [in] aPrimal primal state database
+     *
+     **********************************************************************************/
+    void checkCriticalTimeStep
+    (const Plato::Primal &aPrimal)
     {
         auto tCriticalTimeStep = aPrimal.vector("critical time step");
         auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
@@ -10536,7 +10913,15 @@ private:
         }
     }
 
-    void calculateCriticalTimeStep(Plato::Primal & aPrimal)
+    /******************************************************************************//**
+     * \fn void calculateCriticalTimeStep
+     *
+     * \brief Calculate critical time step.
+     * \param [in\out] aPrimal primal state database
+     *
+     **********************************************************************************/
+    void calculateCriticalTimeStep
+    (Plato::Primal & aPrimal)
     {
         auto tIteration = aPrimal.scalar("time step index");
         if(tIteration > 1)
@@ -10552,7 +10937,15 @@ private:
         }
     }
 
-    void setDual(Plato::Dual& aDual)
+    /******************************************************************************//**
+     * \fn void setDual
+     *
+     * \brief Set dual state database
+     * \param [in\out] aDual dual state database
+     *
+     **********************************************************************************/
+    void setDual
+    (Plato::Dual& aDual)
     {
         constexpr auto tCurrentSnapshot = 1u;
         auto tCurrentAdjointVel = Kokkos::subview(mAdjointVelocity, tCurrentSnapshot, Kokkos::ALL());
@@ -10579,7 +10972,15 @@ private:
 	    }
     }
 
-    void saveDual(Plato::Dual & aDual)
+    /******************************************************************************//**
+     * \fn void saveDual
+     *
+     * \brief Set previous dual state for the next iteration.
+     * \param [in\out] aDual dual state database
+     *
+     **********************************************************************************/
+    void saveDual
+    (Plato::Dual & aDual)
     {
         constexpr auto tPreviousSnapshot = 0u;
 
@@ -10603,7 +11004,15 @@ private:
         }
     }
 
-    void savePrimal(Plato::Primal & aPrimal)
+    /******************************************************************************//**
+     * \fn void savePrimal
+     *
+     * \brief Set previous primal state for the next iteration.
+     * \param [in\out] aPrimal primal state database
+     *
+     **********************************************************************************/
+    void savePrimal
+    (Plato::Primal & aPrimal)
     {
         constexpr auto tPreviousSnapshot = 0u;
 
@@ -10627,7 +11036,15 @@ private:
         }
     }
 
-    void setPrimal(Plato::Primal & aPrimal)
+    /******************************************************************************//**
+     * \fn void setPrimal
+     *
+     * \brief Set previous and current primal states.
+     * \param [in\out] aPrimal primal state database
+     *
+     **********************************************************************************/
+    void setPrimal
+    (Plato::Primal & aPrimal)
     {
         constexpr Plato::OrdinalType tCurrentState = 1;
         auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentState, Kokkos::ALL());
@@ -10651,6 +11068,12 @@ private:
         aPrimal.vector("previous temperature", tPreviousTemp);
     }
 
+    /******************************************************************************//**
+     * \fn void printCorrectorSolverHeader
+     *
+     * \brief Print diagnostic header for velocity corrector solver.
+     *
+     **********************************************************************************/
     void printCorrectorSolverHeader()
     {
         if(Plato::Comm::rank(mMachine) == 0)
@@ -10666,18 +11089,26 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void updateCorrector
+     *
+     * \brief Solve for current velocity field using the Newton method.
+     * \param [in]     aControl control/optimization variables
+     * \param [in\out] aPrimal  primal state database
+     *
+     **********************************************************************************/
     void updateCorrector
     (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aStates)
+           Plato::Primal       & aPrimal)
     {
         this->printCorrectorSolverHeader();
         this->printNewtonHeader();
 
-        auto tCurrentVelocity = aStates.vector("current velocity");
+        auto tCurrentVelocity = aPrimal.vector("current velocity");
         Plato::blas1::fill(0.0, tCurrentVelocity);
 
         // calculate current residual and jacobian matrix
-        auto tJacobian = mCorrectorResidual.gradientCurrentVel(aControl, aStates);
+        auto tJacobian = mCorrectorResidual.gradientCurrentVel(aControl, aPrimal);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
@@ -10695,9 +11126,9 @@ private:
         Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
         while(true)
         {
-            aStates.scalar("newton iteration", tIteration);
+            aPrimal.scalar("newton iteration", tIteration);
 
-            auto tResidual = mCorrectorResidual.value(aControl, aStates);
+            auto tResidual = mCorrectorResidual.value(aControl, aPrimal);
             Plato::blas1::scale(-1.0, tResidual);
             Plato::blas1::fill(0.0, tDeltaCorrector);
             tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
@@ -10708,14 +11139,14 @@ private:
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
-		tInitialNormResidual = tNormResidual;
+                tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
-            aStates.scalar("norm step", tNormStep);
+            aPrimal.scalar("norm step", tNormStep);
             tNormResidual = tNormResidual / tInitialNormResidual;
-            aStates.scalar("norm residual", tNormResidual);
+            aPrimal.scalar("norm residual", tNormResidual);
 
-            this->printNewtonDiagnostics(aStates);
+            this->printNewtonDiagnostics(aPrimal);
             if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
             {
                 break;
@@ -10726,6 +11157,12 @@ private:
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
     }
 
+    /******************************************************************************//**
+     * \fn void printNewtonHeader
+     *
+     * \brief Print Newton solver header to diagnostics text file.
+     *
+     **********************************************************************************/
     void printNewtonHeader()
     {
         if(Plato::Comm::rank(mMachine) == 0)
@@ -10739,6 +11176,12 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void printPredictorSolverHeader
+     *
+     * \brief Print velocity predictor solver header to diagnostics text file.
+     *
+     **********************************************************************************/
     void printPredictorSolverHeader()
     {
         if(Plato::Comm::rank(mMachine) == 0)
@@ -10754,6 +11197,13 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void printNewtonDiagnostics
+     *
+     * \brief Print Newton's solver diagnostics to text file.
+     * \param [in] aPrimal  primal state database
+     *
+     **********************************************************************************/
     void printNewtonDiagnostics
     (Plato::Primal & aPrimal)
     {
@@ -10771,6 +11221,14 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void updatePredictor
+     *
+     * \brief Solve for current velocity predictor field using the Newton method.
+     * \param [in]     aControl control/optimization variables
+     * \param [in\out] aPrimal  primal state database
+     *
+     **********************************************************************************/
     void updatePredictor
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
@@ -10812,7 +11270,7 @@ private:
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
-		tInitialNormResidual = tNormResidual;
+                tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
@@ -10831,6 +11289,12 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void printPressureSolverHeader
+     *
+     * \brief Print pressure solver header to diagnostics text file.
+     *
+     **********************************************************************************/
     void printPressureSolverHeader()
     {
         if(Plato::Comm::rank(mMachine) == 0)
@@ -10846,6 +11310,14 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void updatePressure
+     *
+     * \brief Solve for current pressure field using the Newton method.
+     * \param [in]     aControl control/optimization variables
+     * \param [in\out] aPrimal  primal state database
+     *
+     **********************************************************************************/
     void updatePressure
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
@@ -10877,7 +11349,7 @@ private:
             Plato::blas1::scale(-1.0, tResidual);
             auto tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
 
-	    Plato::Scalar tScale = (tIteration == 1) ? 1.0 : 0.0;
+            Plato::Scalar tScale = (tIteration == 1) ? 1.0 : 0.0;
             Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual, tScale);
             Plato::blas1::fill(0.0, tDeltaPressure);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
@@ -10888,7 +11360,7 @@ private:
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
-		tInitialNormResidual = tNormResidual;
+                tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
@@ -10906,6 +11378,12 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void printTemperatureSolverHeader
+     *
+     * \brief Print temperature solver header to diagnostics text file.
+     *
+     **********************************************************************************/
     void printTemperatureSolverHeader()
     {
         if(Plato::Comm::rank(mMachine) == 0)
@@ -10921,6 +11399,14 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void updateTemperature
+     *
+     * \brief Solve for current temperature field using the Newton method.
+     * \param [in]     aControl control/optimization variables
+     * \param [in\out] aPrimal  primal state database
+     *
+     **********************************************************************************/
     void updateTemperature
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
@@ -10953,27 +11439,27 @@ private:
             Plato::blas1::scale(-1.0, tResidual);
             auto tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
 
-	    // solve system of equations
-	    Plato::Scalar tScale = (tIteration == 1) ? 1.0 : 0.0;
+            // solve system of equations
+            Plato::Scalar tScale = (tIteration == 1) ? 1.0 : 0.0;
             Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual, tScale);
             Plato::blas1::fill(0.0, tDeltaTemperature);
             tSolver->solve(*tJacobian, tDeltaTemperature, tResidual);
             Plato::blas1::update(1.0, tDeltaTemperature, 1.0, tCurrentTemperature);
 
-	    // calculate stopping criteria 
+            // calculate stopping criteria
             auto tNormResidual = Plato::blas1::norm(tResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaTemperature);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
-		tInitialNormResidual = tNormResidual;
+                tInitialNormResidual = tNormResidual;
             }
             tNormStep = tNormStep / tInitialNormStep;
             aStates.scalar("norm step", tNormStep);
             tNormResidual = tNormResidual / tInitialNormResidual;
             aStates.scalar("norm residual", tNormResidual);
 
-	    // check stopping criteria
+            // check stopping criteria
             this->printNewtonDiagnostics(aStates);
             if(tNormResidual < mTemperatureTolerance || tIteration >= mMaxTemperatureIterations)
             {
@@ -10984,10 +11470,20 @@ private:
         }
     }
 
+    /******************************************************************************//**
+     * \fn void updatePredictorAdjoint
+     *
+     * \brief Solve for the current velocity predictor adjoint field using the Newton method.
+     * \param [in]     aControl        control/optimization variables
+     * \param [in]     aCurrentPrimal  current primal state database
+     * \param [in]     aPreviousPrimal previous primal state database
+     * \param [in/out] aDual           current dual state database
+     *
+     **********************************************************************************/
     void updatePredictorAdjoint
     (const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurrentPrimalState,
-     const Plato::Primal       & aPreviousPrimalState,
+     const Plato::Primal       & aCurrentPrimal,
+     const Plato::Primal       & aPreviousPrimal,
            Plato::Dual         & aDual)
     {
         auto tCurrentPredictorAdjoint = aDual.vector("current predictor adjoint");
@@ -10995,12 +11491,12 @@ private:
 
         // add PDE contribution from current state to right hand side adjoint vector
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tJacCorrectorResWrtPredictor = mCorrectorResidual.gradientPredictor(aControl, aCurrentPrimalState);
+        auto tJacCorrectorResWrtPredictor = mCorrectorResidual.gradientPredictor(aControl, aCurrentPrimal);
         Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
         Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtPredictor, tCurrentVelocityAdjoint, tRHS);
 
         auto tCurrentPressureAdjoint = aDual.vector("current pressure adjoint");
-        auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aCurrentPrimalState);
+        auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aCurrentPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPredictor, tCurrentPressureAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
@@ -11008,19 +11504,29 @@ private:
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurrentPrimalState);
+        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurrentPrimal);
         tSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
+    /******************************************************************************//**
+     * \fn void updatePressureAdjoint
+     *
+     * \brief Solve for the current pressure adjoint field using the Newton method.
+     * \param [in]     aControl        control/optimization variables
+     * \param [in]     aCurrentPrimal  current primal state database
+     * \param [in]     aPreviousPrimal previous primal state database
+     * \param [in/out] aDual           current dual state database
+     *
+     **********************************************************************************/
     void updatePressureAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurrentPrimalState,
-     const Plato::Primal       & aPreviousPrimalState,
+     const Plato::Primal       & aCurrentPrimal,
+     const Plato::Primal       & aPreviousPrimal,
            Plato::Dual         & aDual)
     {
         // initialize data
-        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimal.scalar("time step index"));
         auto tCurrentPressAdjoint = aDual.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
 
@@ -11029,52 +11535,62 @@ private:
         Plato::ScalarVector tRightHandSide("right hand side vector", tNumDofs);
         if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
-            auto tPartialObjWrtCurrentPressure = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentPrimalState);
+            auto tPartialObjWrtCurrentPressure = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentPrimal);
             Plato::blas1::update(1.0, tPartialObjWrtCurrentPressure, 0.0, tRightHandSide);
         }
 
         // add PDE contribution from current state to right hand side adjoint vector
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tJacCorrectorResWrtCurPress = mCorrectorResidual.gradientCurrentPress(aControl, aCurrentPrimalState);
+        auto tJacCorrectorResWrtCurPress = mCorrectorResidual.gradientCurrentPress(aControl, aCurrentPrimal);
         Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtCurPress, tCurrentVelocityAdjoint, tRightHandSide);
 
         // add PDE contribution from previous state to right hand side adjoint vector
         if(tCurrentTimeStepIndex != mNumForwardSolveTimeSteps)
         {
             auto tPreviousPressureAdjoint = aDual.vector("previous pressure adjoint");
-            auto tJacPressResWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPreviousPrimalState);
+            auto tJacPressResWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPreviousPrimal);
             Plato::MatrixTimesVectorPlusVector(tJacPressResWrtPrevPress, tPreviousPressureAdjoint, tRightHandSide);
 
             auto tPreviousVelocityAdjoint = aDual.vector("previous velocity adjoint");
-            auto tJacCorrectorResWrtPrevVel = mCorrectorResidual.gradientPreviousPress(aControl, aPreviousPrimalState);
+            auto tJacCorrectorResWrtPrevVel = mCorrectorResidual.gradientPreviousPress(aControl, aPreviousPrimal);
             Plato::MatrixTimesVectorPlusVector(tJacCorrectorResWrtPrevVel, tPreviousVelocityAdjoint, tRightHandSide);
         }
         Plato::blas1::scale(-1.0, tRightHandSide);
 
-	// prepare constraints dofs
+        // prepare constraints dofs
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mPressureEssentialBCs.get(tBcDofs, tBcValues);
-	Plato::blas1::fill(0.0, tBcValues);
+        Plato::blas1::fill(0.0, tBcValues);
 
         // solve adjoint system of equations
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
-        auto tJacPressResWrtCurPress = mPressureResidual.gradientCurrentPress(aControl, aCurrentPrimalState);
+        auto tJacPressResWrtCurPress = mPressureResidual.gradientCurrentPress(aControl, aCurrentPrimal);
         Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacPressResWrtCurPress, tRightHandSide);
         tSolver->solve(*tJacPressResWrtCurPress, tCurrentPressAdjoint, tRightHandSide);
     }
 
+    /******************************************************************************//**
+     * \fn void updateTemperatureAdjoint
+     *
+     * \brief Solve for the current temperature adjoint field using the Newton method.
+     * \param [in]     aControl        control/optimization variables
+     * \param [in]     aCurrentPrimal  current primal state database
+     * \param [in]     aPreviousPrimal previous primal state database
+     * \param [in/out] aDual           current dual state database
+     *
+     **********************************************************************************/
     void updateTemperatureAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurrentPrimalState,
-     const Plato::Primal       & aPreviousPrimalState,
+     const Plato::Primal       & aCurrentPrimal,
+     const Plato::Primal       & aPreviousPrimal,
            Plato::Dual         & aDual)
     {
         // initialize data
-        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimal.scalar("time step index"));
         auto tCurrentTempAdjoint = aDual.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
 
@@ -11083,7 +11599,7 @@ private:
         Plato::ScalarVector tRightHandSide("right hand side vector", tNumDofs);
         if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
-            auto tPartialObjWrtCurrentTemperature = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentPrimalState);
+            auto tPartialObjWrtCurrentTemperature = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentPrimal);
             Plato::blas1::update(1.0, tPartialObjWrtCurrentTemperature, 0.0, tRightHandSide);
         }
 
@@ -11091,15 +11607,15 @@ private:
         if(tCurrentTimeStepIndex != mNumForwardSolveTimeSteps)
         {
             auto tPreviousPredAdjoint = aDual.vector("previous predictor adjoint");
-            auto tGradResPredWrtPreviousTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPreviousPrimalState);
+            auto tGradResPredWrtPreviousTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPreviousPrimal);
             Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPreviousTemp, tPreviousPredAdjoint, tRightHandSide);
 
-	    if(mCalculateHeatTransfer)
-	    {
+            if(mCalculateHeatTransfer)
+            {
                 auto tPreviousTempAdjoint = aDual.vector("previous temperature adjoint");
-                auto tJacTempResWrtPreviousTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPreviousPrimalState);
+                auto tJacTempResWrtPreviousTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPreviousPrimal);
                 Plato::MatrixTimesVectorPlusVector(tJacTempResWrtPreviousTemp, tPreviousTempAdjoint, tRightHandSide);
-	    }
+            }
         }
         Plato::blas1::scale(-1.0, tRightHandSide);
 
@@ -11113,11 +11629,21 @@ private:
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
-        auto tJacobianCurrentTemp = mTemperatureResidual->gradientCurrentTemp(aControl, aCurrentPrimalState);
+        auto tJacobianCurrentTemp = mTemperatureResidual->gradientCurrentTemp(aControl, aCurrentPrimal);
         Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobianCurrentTemp, tRightHandSide);
         tSolver->solve(*tJacobianCurrentTemp, tCurrentTempAdjoint, tRightHandSide);
     }
 
+    /******************************************************************************//**
+     * \fn void updateCorrectorAdjoint
+     *
+     * \brief Solve for the current velocity adjoint field using the Newton method.
+     * \param [in]     aControl        control/optimization variables
+     * \param [in]     aCurrentPrimal  current primal state database
+     * \param [in]     aPreviousPrimal previous primal state database
+     * \param [in/out] aDual           current dual state database
+     *
+     **********************************************************************************/
     void updateCorrectorAdjoint
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
@@ -11180,67 +11706,94 @@ private:
         tSolver->solve(*tJacCorrectorResWrtCurVel, tCurrentVelocityAdjoint, tRightHandSide);
     }
 
+    /******************************************************************************//**
+     * \fn void updateTotalDerivativeWrtControl
+     *
+     * \brief Update total derivative of the criterion with respect to control variables.
+     * \param [in]     aName            criterion name
+     * \param [in]     aControl         control/optimization variables
+     * \param [in]     aCurrentPrimal   current primal state database
+     * \param [in]     aDual            current dual state database
+     * \param [in/out] aTotalDerivative total derivative
+     *
+     **********************************************************************************/
     void  updateTotalDerivativeWrtControl
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurrentPrimalState,
+     const Plato::Primal       & aCurrentPrimal,
      const Plato::Dual         & aDual,
            Plato::ScalarVector & aTotalDerivative)
     {
-        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimalState.scalar("time step index"));
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimal.scalar("time step index"));
         if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
         {
-            auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentPrimalState);
+            auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentPrimal);
             Plato::blas1::update(1.0, tGradCriterionWrtControl, 1.0, aTotalDerivative);
         }
 
         auto tCurrentPredictorAdjoint = aDual.vector("current predictor adjoint");
-        auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aCurrentPrimalState);
+        auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aCurrentPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtControl, tCurrentPredictorAdjoint, aTotalDerivative);
 
         auto tCurrentPressureAdjoint = aDual.vector("current pressure adjoint");
-        auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurrentPrimalState);
+        auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurrentPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, aTotalDerivative);
 
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tGradResVelWrtControl = mCorrectorResidual.gradientControl(aControl, aCurrentPrimalState);
+        auto tGradResVelWrtControl = mCorrectorResidual.gradientControl(aControl, aCurrentPrimal);
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, aTotalDerivative);
 
-	if(mCalculateHeatTransfer)
-	{
+        if(mCalculateHeatTransfer)
+        {
             auto tCurrentTemperatureAdjoint = aDual.vector("current temperature adjoint");
-            auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aCurrentPrimalState);
+            auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aCurrentPrimal);
             Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, aTotalDerivative);
-	}
-
+        }
     }
 
-    Plato::ScalarVector
-    calculateGradientConfig
+    /******************************************************************************//**
+     * \fn void updateTotalDerivativeWrtConfig
+     *
+     * \brief Update total derivative of the criterion with respect to the configuration variables.
+     * \param [in]     aName            criterion name
+     * \param [in]     aControl         control/optimization variables
+     * \param [in]     aCurrentPrimal   current primal state database
+     * \param [in]     aDual            current dual state database
+     * \param [in/out] aTotalDerivative total derivative
+     *
+     **********************************************************************************/
+    void updateTotalDerivativeWrtConfig
     (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aPrimal,
-     const Plato::Dual         & aDual)
+     const Plato::Primal       & aCurrentPrimal,
+     const Plato::Dual         & aDual,
+           Plato::ScalarVector & aTotalDerivative)
     {
-        auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aPrimal);
+        auto tCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(aCurrentPrimal.scalar("time step index"));
+        if(tCurrentTimeStepIndex == mNumForwardSolveTimeSteps)
+        {
+            auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aCurrentPrimal);
+            Plato::blas1::update(1.0, tGradCriterionWrtConfig, 1.0, aTotalDerivative);
+        }
 
         auto tCurrentPredictorAdjoint = aDual.vector("current predictor adjoint");
-        auto tGradResPredWrtConfig = mPredictorResidual.gradientConfig(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtConfig, tCurrentPredictorAdjoint, tGradCriterionWrtConfig);
+        auto tGradResPredWrtConfig = mPredictorResidual.gradientConfig(aControl, aCurrentPrimal);
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtConfig, tCurrentPredictorAdjoint, aTotalDerivative);
 
         auto tCurrentPressureAdjoint = aDual.vector("current pressure adjoint");
-        auto tGradResPressWrtConfig = mPressureResidual.gradientConfig(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, tGradCriterionWrtConfig);
-
-        auto tCurrentTemperatureAdjoint = aDual.vector("current temperature adjoint");
-        auto tGradResTempWrtConfig = mTemperatureResidual->gradientConfig(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtConfig, tCurrentTemperatureAdjoint, tGradCriterionWrtConfig);
+        auto tGradResPressWrtConfig = mPressureResidual.gradientConfig(aControl, aCurrentPrimal);
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, aTotalDerivative);
 
         auto tCurrentVelocityAdjoint = aDual.vector("current velocity adjoint");
-        auto tGradResVelWrtConfig = mCorrectorResidual.gradientConfig(aControl, aPrimal);
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, tGradCriterionWrtConfig);
+        auto tGradResVelWrtConfig = mCorrectorResidual.gradientConfig(aControl, aCurrentPrimal);
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, aTotalDerivative);
 
-        return tGradCriterionWrtConfig;
+        if(mCalculateHeatTransfer)
+        {
+            auto tCurrentTemperatureAdjoint = aDual.vector("current temperature adjoint");
+            auto tGradResTempWrtConfig = mTemperatureResidual->gradientConfig(aControl, aCurrentPrimal);
+            Plato::MatrixTimesVectorPlusVector(tGradResTempWrtConfig, tCurrentTemperatureAdjoint, aTotalDerivative);
+        }
     }
 };
 // class QuasiImplicit
