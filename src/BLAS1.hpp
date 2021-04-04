@@ -19,6 +19,23 @@ namespace blas1
 {
 
 /******************************************************************************//**
+ * \fn device_type inline void dot
+ *
+ * \brief Compute absolute value of a one-dimensional scalar array
+ *
+ * \param [in/out] aVector 1D scalar view
+**********************************************************************************/
+inline void abs(const Plato::ScalarVector & aVector)
+{
+    Plato::OrdinalType tLength = aVector.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        aVector(aOrdinal) = fabs(aVector(aOrdinal));
+    }, "calculate absolute value");
+}
+// function abs
+
+/******************************************************************************//**
  * \brief Fill host 1D container with random numbers
  * \param [in] aLowerBound lower bounds on random numbers
  * \param [in] aUpperBound upper bounds on random numbers
