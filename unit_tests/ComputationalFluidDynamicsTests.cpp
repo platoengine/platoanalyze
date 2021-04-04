@@ -160,7 +160,7 @@ project_scalar_field_onto_surface
 }
 // function project_scalar_field_onto_surface
 
-namespace blas2
+namespace blas3
 {
 
 /******************************************************************************//**
@@ -3271,8 +3271,8 @@ public:
             // calculate deviatoric stress contribution to internal energy
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tCurVelWS, tGradient, tStrainRate);
             auto tTwoTimesPrNum = static_cast<Plato::Scalar>(2.0) * tPrNum;
-            Plato::blas2::scale<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tTwoTimesPrNum, tStrainRate, tDevStress);
-            Plato::blas2::dot<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
+            Plato::blas3::scale<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tTwoTimesPrNum, tStrainRate, tDevStress);
+            Plato::blas3::dot<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
 
             // calculate fictitious material model (i.e. brinkman model) contribution to internal energy
             ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
@@ -15090,7 +15090,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_Dot)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_DeviceScale)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS3_DeviceScale)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
@@ -15100,8 +15100,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_DeviceScale)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::blas2::scale<tNumSpaceDims, tNumSpaceDims>(aCellOrdinal, 4.0, tInput, tOutput);
-    }, "device blas2::scale");
+        Plato::blas3::scale<tNumSpaceDims, tNumSpaceDims>(aCellOrdinal, 4.0, tInput, tOutput);
+    }, "device blas3::scale");
 
     auto tTol = 1e-6;
     auto tHostOutput = Kokkos::create_mirror(tOutput);
@@ -15118,7 +15118,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_DeviceScale)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_Dot)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS3_Dot)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
@@ -15130,8 +15130,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_Dot)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::blas2::dot<tNumSpaceDims, tNumSpaceDims>(aCellOrdinal, tInputA, tInputB, tOutput);
-    }, "device blas2::dot");
+        Plato::blas3::dot<tNumSpaceDims, tNumSpaceDims>(aCellOrdinal, tInputA, tInputB, tOutput);
+    }, "device blas3::dot");
 
     auto tTol = 1e-6;
     auto tHostOutput = Kokkos::create_mirror(tOutput);
