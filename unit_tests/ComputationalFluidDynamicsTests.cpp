@@ -160,7 +160,7 @@ project_scalar_field_onto_surface
 }
 // function project_scalar_field_onto_surface
 
-namespace blas1
+namespace blas2
 {
 
 /******************************************************************************//**
@@ -290,7 +290,7 @@ DEVICE_TYPE inline void dot
 // function dot
 
 }
-// namespace blas1
+// namespace blas2
 
 
 /******************************************************************************//**
@@ -3181,7 +3181,7 @@ public:
             ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tImpermeability, tBrinkConvexParam, tControlWS);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            Plato::blas1::dot<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
+            Plato::blas2::dot<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
             aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelDotCurVel(aCellOrdinal);
 
             // apply gauss weight times volume multiplier
@@ -5200,7 +5200,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tAdvection, aResultWS);
 
             // 4. apply time step, i.e. \Delta{t}( \theta K\bar{u} + C u_n - (\theta-1)K u_n )
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+            Plato::blas2::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 5. add predicted inertial force to residual, i.e. R += M\bar{u}
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredVelWS, tPredVelGP);
@@ -5271,8 +5271,8 @@ public:
            auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
            {
-               Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tTractionWS);
-               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tTractionWS, 1.0, aResultWS);
+               Plato::blas2::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tTractionWS);
+               Plato::blas2::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tTractionWS, 1.0, aResultWS);
            }, "traction force");
        }
    }
@@ -5600,7 +5600,7 @@ public:
                 (aCellOrdinal, tPressureTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPressGradGP, aResultWS);
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+            Plato::blas2::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 2. add current delta inertial force to residual, i.e. R += M(u_{n+1} - u_n)
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
@@ -6172,7 +6172,7 @@ public:
                 (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS, 1.0);
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+            Plato::blas2::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 6. add stabilizing force contribution to residual, i.e. R += C_u(u^{n+1}) T^n - Q_u(u^{n+1})
             auto tScalar = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
@@ -6437,7 +6437,7 @@ public:
             auto tMultiplier = (tTheta - static_cast<Plato::Scalar>(1));
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevTempWS, tPrevThermalFlux);
-            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tPrevThermalFlux);
+            Plato::blas2::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tPrevThermalFlux);
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, -tMultiplier);
 
@@ -6451,7 +6451,7 @@ public:
             // 3. add current diffusive force contribution to residual, i.e. R += \theta_3 K T^{n+1}
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCurTempWS, tCurThermalFlux);
-            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tCurThermalFlux);
+            Plato::blas2::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tCurThermalFlux);
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tCurThermalFlux, aResultWS, tTheta);
 
@@ -6459,7 +6459,7 @@ public:
             auto tHeatSourceConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, aResultWS, -tHeatSourceConstant);
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+            Plato::blas2::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 5. add stabilizing force contribution to residual, i.e. R += C_u(u^{n+1}) T^n - Q_u(u^{n+1})
             tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
@@ -6707,8 +6707,8 @@ public:
             auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tHeatFluxWS);
-                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tHeatFluxWS, 1.0, aResultWS);
+                Plato::blas2::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tHeatFluxWS);
+                Plato::blas2::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tHeatFluxWS, 1.0, aResultWS);
             }, "heat flux contribution");
         }
     }
@@ -7159,7 +7159,7 @@ public:
 
             // 4. apply \frac{1}{\Delta{t}} multiplier to right hand side, i.e. RHS = \frac{1}{\Delta{t}} * RHS
             tMultiplier = static_cast<Plato::Scalar>(1.0) / tCriticalTimeStep(0);
-            Plato::blas1::scale<mNumPressDofsPerCell>(aCellOrdinal, tMultiplier, tRightHandSide);
+            Plato::blas2::scale<mNumPressDofsPerCell>(aCellOrdinal, tMultiplier, tRightHandSide);
 
             // 5. add divergence of current pressure gradient to residual, i.e. R += \theta^{p}\theta^{u} L p^{n+1}
             tMultiplier = tMomentumDamping * tPressDamping;
@@ -7173,7 +7173,7 @@ public:
                 (aCellOrdinal, tGradient, tCellVolume, tPrevPressGradGP, aResultWS, -tMultiplier);
 
             // 7. add right hand side force vector to residual, i.e. R -= RHS
-            Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tRightHandSide, 1.0, aResultWS);
+            Plato::blas2::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tRightHandSide, 1.0, aResultWS);
         }, "calculate continuity residual");
     }
 
@@ -14686,7 +14686,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateViscousForces)
     //Plato::print_array_2D(tResultWS, "viscous forces");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_update)
 {
     constexpr auto tNumCells = 2;
     constexpr auto tNumDofsPerCell = 6;
@@ -14698,8 +14698,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tConstant = static_cast<Plato::Scalar>(aCellOrdinal);
-        Plato::blas1::update<tNumDofsPerCell>(aCellOrdinal, 2.0, tVec1, 3.0 + tConstant, tVec2);
-    },"device_blas1_update");
+        Plato::blas2::update<tNumDofsPerCell>(aCellOrdinal, 2.0, tVec1, 3.0 + tConstant, tVec2);
+    },"device_blas2_update");
 
     auto tTol = 1e-4;
     auto tHostVec2 = Kokkos::create_mirror(tVec2);
@@ -14919,7 +14919,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
     TEST_FLOATING_EQUALITY(0.46,  tHostStrainRate(1, 1, 1), tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_DeviceScale)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
@@ -14929,8 +14929,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::blas1::scale<tNumSpaceDims>(aCellOrdinal, 4.0, tInput, tOutput);
-    }, "device blas1::scale");
+        Plato::blas2::scale<tNumSpaceDims>(aCellOrdinal, 4.0, tInput, tOutput);
+    }, "device blas2::scale");
 
     auto tTol = 1e-6;
     auto tHostOutput = Kokkos::create_mirror(tOutput);
@@ -14953,8 +14953,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale_Version2)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::blas1::scale<tNumSpaceDims>(aCellOrdinal, 4.0, tInput);
-    }, "device blas1::scale");
+        Plato::blas2::scale<tNumSpaceDims>(aCellOrdinal, 4.0, tInput);
+    }, "device blas2::scale");
 
     auto tTol = 1e-6;
     auto tHostInput = Kokkos::create_mirror(tInput);
@@ -14980,8 +14980,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_Dot)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::blas1::dot<tNumSpaceDims>(aCellOrdinal, tInputA, tInputB, tOutput);
-    }, "device blas1::dot");
+        Plato::blas2::dot<tNumSpaceDims>(aCellOrdinal, tInputA, tInputB, tOutput);
+    }, "device blas2::dot");
 
     auto tTol = 1e-6;
     auto tHostOutput = Kokkos::create_mirror(tOutput);
