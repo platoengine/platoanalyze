@@ -372,6 +372,66 @@ inline void copy_1Dview_to_write(const Plato::ScalarVector & aInput, Omega_h::Wr
     },"PlatoDriver::compress_copy_1Dview_to_write");
 }
 
+/******************************************************************************//**
+ * \tparam ViewType view type
+ *
+ * \fn inline void print_fad_val_values
+ *
+ * \brief Print values of 1D view of forward automatic differentiation (FAD) types.
+ *
+ * \param [in] aInput input 1D FAD view
+ * \param [in] aName  name used to identify 1D view
+**********************************************************************************/
+template <typename ViewType>
+inline void print_fad_val_values
+(const Plato::ScalarVectorT<ViewType> & aInput,
+ const std::string & aName)
+{
+    std::cout << "\nStart: Print ScalarVector '" << aName << "'.\n";
+    const auto tLength = aInput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        printf("Input(%d) = %f\n", aOrdinal, aInput(aOrdinal).val());
+    }, "print_fad_val_values");
+    std::cout << "End: Print ScalarVector '" << aName << "'.\n";
+}
+// function print_fad_val_values
+
+/******************************************************************************//**
+ * \tparam NumNodesPerCell number of nodes per cell (integer)
+ * \tparam NumDofsPerNode  number of degrees of freedom (integer)
+ * \tparam ViewType        view type
+ *
+ * \fn inline void print_fad_dx_values
+ *
+ * \brief Print derivative values of a 1D view of forward automatic differentiation (FAD) type.
+ *
+ * \param [in] aInput input 1D FAD view
+ * \param [in] aName  name used to identify 1D view
+**********************************************************************************/
+template <Plato::OrdinalType NumNodesPerCell,
+          Plato::OrdinalType NumDofsPerNode,
+          typename ViewType>
+inline void print_fad_dx_values
+(const Plato::ScalarVectorT<ViewType> & aInput,
+ const std::string & aName)
+{
+    std::cout << "\nStart: Print ScalarVector '" << aName << "'.\n";
+    const auto tLength = aInput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        for(Plato::OrdinalType tNode=0; tNode < NumNodesPerCell; tNode++)
+        {
+            for(Plato::OrdinalType tDof=0; tDof < NumDofsPerNode; tDof++)
+            {
+                printf("Input(Cell=%d,Node=%d,Dof=%d) = %f\n", aOrdinal, tNode, tDof, aInput(aOrdinal).dx(tNode * NumDofsPerNode + tDof));
+            }
+        }
+    }, "print_fad_dx_values");
+    std::cout << "End: Print ScalarVector '" << aName << "'.\n";
+}
+// function print_fad_dx_values
+
 } // namespace Plato
 
 #endif /* SRC_PLATO_PLATOUTILITIES_HPP_ */

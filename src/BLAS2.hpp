@@ -16,6 +16,132 @@ namespace blas2
 {
 
 /******************************************************************************//**
+ * \tparam Length    number of elements along summation dimension
+ * \tparam aAlpha    multiplication/scaling factor
+ * \tparam aInputWS  2D scalar view
+ * \tparam aBeta     multiplication/scaling factor
+ * \tparam aOutputWS 2D scalar view
+ *
+ * \fn device_type inline void update
+ *
+ * \brief Add two-dimensional 2D views, b = \alpha a + \beta b
+ *
+ * \param [in/out] aVector 1D scalar view
+**********************************************************************************/
+template<Plato::OrdinalType Length,
+         typename ScalarT,
+         typename AViewTypeT,
+         typename BViewTypeT>
+DEVICE_TYPE inline void
+update
+(const Plato::OrdinalType & aCellOrdinal,
+ const ScalarT & aAlpha,
+ const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
+ const ScalarT & aBeta,
+ const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutputWS(aCellOrdinal, tIndex) =
+            aBeta * aOutputWS(aCellOrdinal, tIndex) + aAlpha * aInputWS(aCellOrdinal, tIndex);
+    }
+}
+// update function
+
+/******************************************************************************//**
+ * \tparam Length   number of elements along summation dimension
+ * \tparam ScalarT  multiplication/scaling factor
+ * \tparam ResultT  2D scalar view
+ *
+ * \fn device_type inline void update
+ *
+ * \brief Scale all the elements by input scalar value, \mathbf{a} = \alpha\mathbf{a}
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aScalar      acalar multiplication factor
+ * \param [out] aOutputWS    output 2D scalar view
+**********************************************************************************/
+template<Plato::OrdinalType Length,
+         typename ScalarT,
+         typename ResultT>
+DEVICE_TYPE inline void
+scale
+(const Plato::OrdinalType & aCellOrdinal,
+ const ScalarT & aScalar,
+ const Plato::ScalarMultiVectorT<ResultT> & aOutputWS)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutputWS(aCellOrdinal, tIndex) *= aScalar;
+    }
+}
+// function scale
+
+/******************************************************************************//**
+ * \tparam Length   number of elements along summation dimension
+ * \tparam ScalarT  multiplication/scaling factor
+ * \tparam ResultT  2D scalar view
+ *
+ * \fn device_type inline void update
+ *
+ * \brief Scale all the elements by input scalar value, \mathbf{b} = \alpha\mathbf{a}
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aScalar      acalar multiplication factor
+ * \param [in]  aInputWS     input 2D scalar view
+ * \param [out] aOutputWS    output 2D scalar view
+**********************************************************************************/
+template<Plato::OrdinalType Length,
+         typename ScalarT,
+         typename AViewTypeT,
+         typename BViewTypeT>
+DEVICE_TYPE inline void
+scale
+(const Plato::OrdinalType & aCellOrdinal,
+ const ScalarT & aScalar,
+ const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
+ const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutputWS(aCellOrdinal, tIndex) = aScalar * aInputWS(aCellOrdinal, tIndex);
+    }
+}
+// function scale
+
+/******************************************************************************//**
+ * \tparam Length     number of elements in the summing direction
+ * \tparam AViewTypeT view type
+ * \tparam BViewTypeT view type
+ * \tparam CViewTypeT view type
+ *
+ * \fn device_type inline void dot
+ *
+ * \brief Compute two-dimensional tensor dot product for each cell.
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aViewA       input 2D scalar view
+ * \param [in]  aViewB       input 2D scalar view
+ * \param [out] aOutput      output 1D scalar view
+**********************************************************************************/
+template<Plato::OrdinalType Length,
+         typename AViewType,
+         typename BViewType,
+         typename CViewType>
+DEVICE_TYPE inline void dot
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarMultiVectorT<AViewType> & aViewA,
+ const Plato::ScalarMultiVectorT<BViewType> & aViewB,
+ const Plato::ScalarVectorT<CViewType>      & aOutput)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutput(aCellOrdinal) += aViewA(aCellOrdinal, tIndex) * aViewB(aCellOrdinal, tIndex);
+    }
+}
+// function dot
+
+/******************************************************************************//**
  * \brief Extract a sub 2D array from full 2D array
  *
  * \tparam NumStride stride, e.g. number of degree of freedom per node
