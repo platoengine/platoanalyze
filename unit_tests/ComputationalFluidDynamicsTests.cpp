@@ -20,6 +20,7 @@
 #include "NaturalBCs.hpp"
 #include "UtilsOmegaH.hpp"
 #include "Plato_Solve.hpp"
+#include "UtilsTeuchos.hpp"
 #include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
 #include "ProjectToNode.hpp"
@@ -159,26 +160,6 @@ project_scalar_field_onto_surface
 
 
 /******************************************************************************//**
- * \fn void is_material_defined
- *
- * \brief Check if material is defined, if not, throw an error.
- *
- * \param [in] aMaterialName material sublist name
- * \param [in] aInputs       parameter list with input data information
-**********************************************************************************/
-inline void is_material_defined
-(const std::string & aMaterialName,
- const Teuchos::ParameterList & aInputs)
-{
-    if(!aInputs.sublist("Material Models").isSublist(aMaterialName))
-    {
-        THROWERR(std::string("Material with tag '") + aMaterialName + "' is not defined in 'Material Models' block")
-    }
-}
-// function is_material_defined
-
-
-/******************************************************************************//**
  * \tparam Type array type
  *
  * \fn inline std::vector<Type> parse_array
@@ -304,7 +285,7 @@ inline Type parse_max_material_property
     for(auto& tDomain : aDomains)
     {
         auto tMaterialName = tDomain.getMaterialName();
-        Plato::is_material_defined(tMaterialName, aInputs);
+        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         if( tMaterial.isSublist(aBlock) )
         {
@@ -5658,7 +5639,7 @@ private:
     void setThermalConductivity(Teuchos::ParameterList &aInputs)
     {
         auto tMaterialName = mSpatialDomain.getMaterialName();
-        Plato::is_material_defined(tMaterialName, aInputs);
+        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
         Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
@@ -5671,7 +5652,7 @@ private:
     void setThermalDiffusivityRatio(Teuchos::ParameterList &aInputs)
     {
         auto tMaterialName = mSpatialDomain.getMaterialName();
-        Plato::is_material_defined(tMaterialName, aInputs);
+        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         mThermalDiffusivityRatio = Plato::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
         Plato::is_positive_finite_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
@@ -5947,7 +5928,7 @@ private:
         if(aInputs.isSublist("Heat Source"))
         {
             auto tMaterialName = mSpatialDomain.getMaterialName();
-            Plato::is_material_defined(tMaterialName, aInputs);
+            Plato::teuchos::is_material_defined(tMaterialName, aInputs);
             auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
             auto tThermalPropBlock = std::string("Thermal Properties");
             mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
