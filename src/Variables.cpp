@@ -105,3 +105,34 @@ void Variables::printScalarMap() const
 
 }
 // namespace Plato
+
+namespace Plato
+{
+
+void FieldTags::set(const std::string& aTag, const std::string& aID)
+{
+    mFields[aTag] = aID;
+}
+
+std::vector<std::string> FieldTags::tags() const
+{
+    std::vector<std::string> tTags;
+    for(auto& tPair : mFields)
+    {
+        tTags.push_back(tPair.first);
+    }
+    return tTags;
+}
+
+std::string FieldTags::id(const std::string& aTag) const
+{
+    auto tItr = mFields.find(aTag);
+    if(tItr == mFields.end())
+    {
+        THROWERR(std::string("Field with tag '") + aTag + "' is not defined.")
+    }
+    return tItr->second;
+}
+
+}
+// namespace Plato

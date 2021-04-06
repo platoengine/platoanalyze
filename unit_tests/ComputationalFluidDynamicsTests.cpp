@@ -166,92 +166,7 @@ project_scalar_field_onto_surface
 
 
 
-/***************************************************************************//**
- * \struct FieldTags
- *
- * \brief Holds string identifiers linked to field data tags. Field data is defined
- *   as the field data saved on the finite element mesh metadata structure.
- ******************************************************************************/
-struct FieldTags
-{
-private:
-    std::unordered_map<std::string, std::string> mFields; /*!< map from field data tag to field data identifier */
 
-public:
-    /***************************************************************************//**
-     * \fn void set
-     * \brief Set field data tag and associated identifier.
-     * \param [in] aTag field data tag
-     * \param [in] aID  field data identifier
-     ******************************************************************************/
-    void set(const std::string& aTag, const std::string& aID)
-    {
-        mFields[aTag] = aID;
-    }
-
-    /***************************************************************************//**
-     * \fn void tags
-     * \brief Return list of field data tags.
-     * \return list of field data tags
-     ******************************************************************************/
-    std::vector<std::string> tags() const
-    {
-        std::vector<std::string> tTags;
-        for(auto& tPair : mFields)
-        {
-            tTags.push_back(tPair.first);
-        }
-        return tTags;
-    }
-
-    /***************************************************************************//**
-     * \fn void name
-     * \brief Return field data identifier.
-     * \param [in] aTag field data tag
-     * \return field data identifier
-     ******************************************************************************/
-    std::string id(const std::string& aTag) const
-    {
-        auto tItr = mFields.find(aTag);
-        if(tItr == mFields.end())
-        {
-            THROWERR(std::string("Field with tag '") + aTag + "' is not defined.")
-        }
-        return tItr->second;
-    }
-};
-// struct FieldTags
-
-/***************************************************************************//**
- * \tparam EntityDim Oemga_h entity dimension
- * \fn inline void read_fields
- * \brief Read field data from vtk file.
- *
- * \param [in] aMesh      mesh metadata
- * \param [in] aPath      path to vtk file
- * \param [in] aFieldTags map from field data tag to identifier
- *
- * \param [in/out] aVariables map holding simulation metadata
- ******************************************************************************/
-template<Omega_h::LO EntityDim>
-inline void
-read_fields
-(const Omega_h::Mesh& aMesh,
- const Omega_h::filesystem::path& aPath,
- const Plato::FieldTags& aFieldTags,
-       Plato::Variables& aVariables)
-{
-    Omega_h::Mesh tReadMesh(aMesh.library());
-    Omega_h::vtk::read_parallel(aPath, aMesh.library()->world(), &tReadMesh);
-    auto tTags = aFieldTags.tags();
-    for(auto& tTag : tTags)
-    {
-        auto tData = Plato::omega_h::read_metadata_from_mesh(tReadMesh, EntityDim, tTag);
-        auto tFieldName = aFieldTags.id(tTag);
-        aVariables.vector(tFieldName, tData);
-    }
-}
-// function read_fields
 
 namespace Fluids
 {
@@ -8980,7 +8895,7 @@ private:
         {
             tFieldTags.set("Temperature", "current temperature");
         }
-        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aPrimal);
+        Plato::omega_h::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aPrimal);
     }
 
     /******************************************************************************//**
@@ -9002,7 +8917,7 @@ private:
         {
             tFieldTags.set("Temperature", "previous temperature");
         }
-        Plato::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aPrimal);
+        Plato::omega_h::read_fields<Omega_h::VERT>(mSpatialModel.Mesh, aPath, tFieldTags, aPrimal);
     }
 
     /******************************************************************************//**
@@ -10684,7 +10599,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
     for(auto tItr = tPaths.rbegin(); tItr != tPaths.rend() - 1; tItr++)
     {
 	auto tCurrentIndex = (tPaths.size() - 1u) - std::distance(tPaths.rbegin(), tItr);
-	Plato::read_fields<Omega_h::VERT>(*tMesh, tPaths[tCurrentIndex], tCurrentFieldTags, tPrimal);
+	Plato::omega_h::read_fields<Omega_h::VERT>(*tMesh, tPaths[tCurrentIndex], tCurrentFieldTags, tPrimal);
 
         Plato::Scalar tMaxVel = 0;
         Plato::blas1::max(tPrimal.vector("current velocity"), tMaxVel);
@@ -10701,7 +10616,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
         TEST_FLOATING_EQUALITY(tGoldMinPress[tCurrentIndex], tMinPress, tTol);
 
 	auto tPreviousIndex = tCurrentIndex - 1u;
-	Plato::read_fields<Omega_h::VERT>(*tMesh, tPaths[tPreviousIndex], tPreviousFieldTags, tPrimal);
+	Plato::omega_h::read_fields<Omega_h::VERT>(*tMesh, tPaths[tPreviousIndex], tPreviousFieldTags, tPrimal);
 
         tMaxVel = 0;
         Plato::blas1::max(tPrimal.vector("previous velocity"), tMaxVel);
@@ -10839,7 +10754,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
     for(auto tItr = tPaths.rbegin(); tItr != tPaths.rend(); tItr++)
     {
 	auto tIndex = (tPaths.size() - 1u) - std::distance(tPaths.rbegin(), tItr);
-	Plato::read_fields<Omega_h::VERT>(*tMesh, tPaths[tIndex], tFieldTags, tCurrentState);
+	Plato::omega_h::read_fields<Omega_h::VERT>(*tMesh, tPaths[tIndex], tFieldTags, tCurrentState);
 
         Plato::Scalar tMaxVel = 0;
         Plato::blas1::max(tCurrentState.vector("current velocity"), tMaxVel);

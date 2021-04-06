@@ -102,3 +102,46 @@ typedef Variables Primal; /*!< variant name used to identify quantities associat
 
 }
 // namespace Plato
+
+namespace Plato
+{
+
+/***************************************************************************//**
+ * \struct FieldTags
+ *
+ * \brief Holds string identifiers linked to field data tags. Field data is defined
+ *   as the field data saved on the finite element mesh metadata structure.
+ ******************************************************************************/
+struct FieldTags
+{
+private:
+    std::unordered_map<std::string, std::string> mFields; /*!< map from field data tag to field data identifier */
+
+public:
+    /***************************************************************************//**
+     * \fn void set
+     * \brief Set field data tag and associated identifier.
+     * \param [in] aTag field data tag
+     * \param [in] aID  field data identifier
+     ******************************************************************************/
+    void set(const std::string& aTag, const std::string& aID);
+
+    /***************************************************************************//**
+     * \fn void tags
+     * \brief Return list of field data tags.
+     * \return list of field data tags
+     ******************************************************************************/
+    std::vector<std::string> tags() const;
+
+    /***************************************************************************//**
+     * \fn void name
+     * \brief Return field data identifier.
+     * \param [in] aTag field data tag
+     * \return field data identifier
+     ******************************************************************************/
+    std::string id(const std::string& aTag) const;
+};
+// struct FieldTags
+
+}
+// namespace Plato

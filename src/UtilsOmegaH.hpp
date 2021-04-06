@@ -12,7 +12,7 @@
 #include <Omega_h_array_ops.hpp>
 #include <Omega_h_filesystem.hpp>
 
-#include "PlatoStaticsTypes.hpp"
+#include "Variables.hpp"
 
 namespace Plato
 {
@@ -372,6 +372,37 @@ find_entities_on_non_prescribed_boundary
     return tIDsOfEntitiesOnNonPrescribedBoundary;
 }
 // function find_entities_on_non_prescribed_boundary
+
+/***************************************************************************//**
+ * \tparam EntityDim Oemga_h entity dimension
+ * \fn inline void read_fields
+ * \brief Read field data from vtk file.
+ *
+ * \param [in] aMesh      mesh metadata
+ * \param [in] aPath      path to vtk file
+ * \param [in] aFieldTags map from field data tag to identifier
+ *
+ * \param [in/out] aVariables map holding simulation metadata
+ ******************************************************************************/
+template<Omega_h::LO EntityDim>
+inline void
+read_fields
+(const Omega_h::Mesh& aMesh,
+ const Omega_h::filesystem::path& aPath,
+ const Plato::FieldTags& aFieldTags,
+       Plato::Variables& aVariables)
+{
+    Omega_h::Mesh tReadMesh(aMesh.library());
+    Omega_h::vtk::read_parallel(aPath, aMesh.library()->world(), &tReadMesh);
+    auto tTags = aFieldTags.tags();
+    for(auto& tTag : tTags)
+    {
+        auto tData = Plato::omega_h::read_metadata_from_mesh(tReadMesh, EntityDim, tTag);
+        auto tFieldName = aFieldTags.id(tTag);
+        aVariables.vector(tFieldName, tData);
+    }
+}
+// function read_fields
 
 }
 // namespace omega_h
