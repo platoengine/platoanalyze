@@ -10,7 +10,7 @@
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_vector.hpp>
 
-#include "OmegaHUtilities.hpp"
+#include "UtilsOmegaH.hpp"
 #include "SpatialModel.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "SurfaceIntegralUtilities.hpp"
@@ -108,7 +108,7 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()(
 ) const
 {
     // get sideset faces
-    auto tFaceLids = Plato::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
+    auto tFaceLids = Plato::omega_h::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
     auto tNumFaces = tFaceLids.size();
 
     // get mesh vertices

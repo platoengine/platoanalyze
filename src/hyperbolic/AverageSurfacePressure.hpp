@@ -134,7 +134,7 @@ public:
         for(auto& tName : mSideSets)
         {
             // get faces on this side set
-            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tFaceOrdinalsOnSideSet = Plato::omega_h::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 

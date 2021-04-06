@@ -404,6 +404,33 @@ read_fields
 }
 // function read_fields
 
+/***************************************************************************//**
+ * \brief Return face local identifiers/ordinals for each element on the requested
+ * side set. Here, local is used in the context of domain decomposition.  Therefore,
+ * the identifiers/ordinals are local to the subdomain.
+ *
+ * \param [in] aMeshSets    Omega_h side set database
+ * \param [in] aSideSetName Exodus side set name
+ *
+ * \return face local ordinals
+ *
+*******************************************************************************/
+inline Omega_h::LOs side_set_face_ordinals(const Omega_h::MeshSets& aMeshSets, const std::string& aSideSetName)
+{
+    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
+    auto tSideSetMapIterator = tSideSets.find(aSideSetName);
+    if(tSideSetMapIterator == tSideSets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << aSideSetName.c_str()
+            << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
+        THROWERR(tMsg.str());
+    }
+    auto tFaceLids = (tSideSetMapIterator->second);
+    return tFaceLids;
+}
+// function side_set_face_ordinals
+
 }
 // namespace omega_h
 

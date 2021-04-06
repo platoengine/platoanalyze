@@ -292,7 +292,7 @@ public:
         for(auto& tName : mWallSets)
         {
             // get faces on this side set
-            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tFaceOrdinalsOnSideSet = Plato::omega_h::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -4301,7 +4301,7 @@ public:
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode,   0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntitySetName);
+        auto tFaceLocalOrdinals = Plato::omega_h::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntitySetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
         auto tNumCells = mSpatialDomain.Mesh.nelems();

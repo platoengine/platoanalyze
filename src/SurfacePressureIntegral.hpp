@@ -8,10 +8,11 @@
 
 #include <Omega_h_vector.hpp>
 
-#include "OmegaHUtilities.hpp"
+#include "UtilsOmegaH.hpp"
+#include "SpatialModel.hpp"
 #include "ImplicitFunctors.hpp"
-#include "LinearTetCubRuleDegreeOne.hpp"
 #include "SurfaceIntegralUtilities.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 namespace Plato
 {
@@ -123,7 +124,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
     // get sideset faces
-    auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
+    auto tFaceLocalOrdinals = Plato::omega_h::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
     auto tNumFaces = tFaceLocalOrdinals.size();
     Plato::ScalarArray3DT<ConfigScalarType> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
