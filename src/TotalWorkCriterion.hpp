@@ -147,7 +147,7 @@ public:
      * \param [in] aControls            control variables
      * \param [in] aConfig              configuration variables
      * \param [in] aResult              output container
-     * \param [in] aTimeStep            pseudo time step index
+     * \param [in] aTimeData            time data object
     *******************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
                   const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
@@ -254,6 +254,7 @@ public:
      * \param [in] aGlobalState global state variables
      * \param [in] aLocalState  local state variables
      * \param [in] aControl     control variables, e.g. design variables
+     * \param [in] aTimeData    time data object
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,

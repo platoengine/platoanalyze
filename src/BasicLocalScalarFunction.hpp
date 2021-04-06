@@ -147,7 +147,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return function value
     *******************************************************************************/
     Plato::Scalar
@@ -223,7 +223,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial workset derivative wrt design variables
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -298,7 +298,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt current global states
     *******************************************************************************/
     Plato::ScalarMultiVector gradient_u(
@@ -372,7 +372,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt previous global states
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -447,7 +447,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt current local states
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -522,7 +522,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt previous local states
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -597,7 +597,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeData             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt configuration variables
      *******************************************************************************/
     Plato::ScalarMultiVector
@@ -670,7 +670,7 @@ public:
      * \param [in] aGlobalStates global states for all time steps
      * \param [in] aLocalStates  local states for all time steps
      * \param [in] aControls     current controls, i.e. design variables
-     * \param [in] aTimeData current time step increment
+     * \param [in] aTimeData time data object
     *******************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
                        const Plato::ScalarMultiVector & aLocalStates,

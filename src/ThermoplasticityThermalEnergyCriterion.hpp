@@ -128,7 +128,7 @@ public:
      * \param [in] aControls            control variables
      * \param [in] aConfig              configuration variables
      * \param [in] aResult              output container
-     * \param [in] aTimeStep            pseudo time step index
+     * \param [in] aTimeData            time data object
     *******************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
                   const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
@@ -139,17 +139,13 @@ public:
                   const Plato::ScalarVectorT<ResultT> &aResult,
                   const Plato::TimeData &aTimeData)
     {
-        // Only a function of the final time step
+        // Only a function of the state at the final time step
         if (!aTimeData.atFinalTimeStep())
         {
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aResult);
-            printf("Not at final time step !\n");
             return;
         }
-        else
-        {
-            printf("Final time step !\n");
-        }
+
         using GState_Config_T = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using GState_Config_Control_T = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, ConfigT, GlobalStateT>;
 
@@ -199,6 +195,7 @@ public:
      * \param [in] aGlobalState global state variables
      * \param [in] aLocalState  local state variables
      * \param [in] aControl     control variables, e.g. design variables
+     * \param [in] aTimeData    time data object
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,

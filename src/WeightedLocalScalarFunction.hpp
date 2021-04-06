@@ -222,7 +222,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return weighted sum
     *******************************************************************************/
@@ -286,7 +286,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return 2-D view with the gradient of weighted sum of scalar functions wrt
      * control parameters
@@ -320,7 +320,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return 2-D view with the gradient of weighted sum of scalar functions wrt
      * configuration parameters
@@ -353,7 +353,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return workset with partial derivative wrt current global states
     *******************************************************************************/
@@ -386,7 +386,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return workset with partial derivative wrt previous global states
     *******************************************************************************/
@@ -419,7 +419,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return workset with partial derivative wrt current local states
     *******************************************************************************/
@@ -452,7 +452,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      *
      * \return workset with partial derivative wrt previous local states
     *******************************************************************************/
