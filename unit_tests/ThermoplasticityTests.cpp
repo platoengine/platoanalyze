@@ -173,7 +173,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
     {
         //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
-        TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tGoldPress[0][tOrdinal], tTolerance);
+        const Plato::Scalar tValue = std::abs(tHostPressure(tTimeStep, tOrdinal)) < 1.0e-10 ? 0.0 : tHostPressure(tTimeStep, tOrdinal);
+        TEST_FLOATING_EQUALITY(tValue, tGoldPress[0][tOrdinal], tTolerance);
     }
 
     // 5.2 test displacement
@@ -193,7 +194,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
     {
         //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
-        TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), tGoldDisp[0][tOrdinal], tTolerance);
+        const Plato::Scalar tValue = std::abs(tHostDisplacements(tTimeStep, tOrdinal)) < 1.0e-10 ? 0.0 : tHostDisplacements(tTimeStep, tOrdinal);
+        TEST_FLOATING_EQUALITY(tValue, tGoldDisp[0][tOrdinal], tTolerance);
     }
 
     // 6. Output Data
@@ -2438,7 +2440,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
         {
             //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
-            const Plato::Scalar tValue = std::abs(tHostSolution(tIndexI, tIndexJ)) < 5.0e-14 ? 0.0 : tHostSolution(tIndexI, tIndexJ);
+            const Plato::Scalar tValue = std::abs(tHostSolution(tIndexI, tIndexJ)) < 1.0e-10 ? 0.0 : tHostSolution(tIndexI, tIndexJ);
             TEST_FLOATING_EQUALITY(tValue, tGold[tIndexI][tIndexJ], tTolerance);
         }
     }
