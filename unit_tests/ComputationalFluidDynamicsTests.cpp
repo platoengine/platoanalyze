@@ -9,9 +9,6 @@
 
 #include <unordered_map>
 
-#include <Omega_h_assoc.hpp>
-#include <Omega_h_shape.hpp>
-
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
