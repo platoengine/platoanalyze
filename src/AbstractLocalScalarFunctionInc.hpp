@@ -8,6 +8,7 @@
 
 #include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -92,7 +93,7 @@ public:
      * \param [in]     aControls            current set of design variables
      * \param [in]     aConfig              configuration variables, i.e. cell node coordinates
      * \param [in/out] aResult              scalar function value per cell
-     * \param [in]     aTimeStep            current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     * \param [in]     aTimeData            current time data object
      *
     *******************************************************************************/
     virtual void
@@ -104,17 +105,19 @@ public:
         const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>        & aControls,
         const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>         & aConfig,
         const Plato::ScalarVectorT      <typename EvaluationType::ResultScalarType>         & aResult,
-              Plato::Scalar aTimeStep = 0.0) = 0;
+        const Plato::TimeData & aTimeData) = 0;
 
     /******************************************************************************//**
      * \brief Update physics-based data within a frequency of optimization iterations
      * \param [in] aGlobalState global state variables
      * \param [in] aLocalState  local state variables
      * \param [in] aControl     control variables, e.g. design variables
+     * \param [in] aTimeData    current time data object,
     **********************************************************************************/
     virtual void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                                const Plato::ScalarMultiVector & aLocalState,
-                               const Plato::ScalarVector & aControl)
+                               const Plato::ScalarVector & aControl,
+                               const Plato::TimeData & aTimeData)
     { return; }
 };
 // class AbstractLocalScalarFunctionInc

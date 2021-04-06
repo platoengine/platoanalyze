@@ -200,7 +200,7 @@ public:
         const Plato::ScalarMultiVector & aGlobalStates,
         const Plato::ScalarMultiVector & aLocalStates,
         const Plato::ScalarVector      & aControls,
-              Plato::Scalar              aTimeStep = 0.0
+        const Plato::TimeData          & aTimeData
     ) const override
     {
         if(mLocalScalarFunctionContainer.empty())
@@ -210,7 +210,7 @@ public:
 
         for(Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mLocalScalarFunctionContainer.size(); tFunctionIndex++)
         {
-            mLocalScalarFunctionContainer[tFunctionIndex]->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mLocalScalarFunctionContainer[tFunctionIndex]->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
         }
     }
 
@@ -233,7 +233,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         if(mLocalScalarFunctionContainer.empty())
@@ -248,7 +248,7 @@ public:
 
         if(mWriteDiagnostics)
         {
-            printf("\nTime Step = %f\n", aTimeStep);
+            printf("\nTime Step = %f\n", aTimeData.mCurrentTime);
         }
 
         Plato::Scalar tResult = 0.0;
@@ -257,7 +257,7 @@ public:
             const auto tFunctionWeight = mFunctionWeights[tFunctionIndex];
             const auto tFunctionValue = mLocalScalarFunctionContainer[tFunctionIndex]->value(aCurrentGlobalState, aPreviousGlobalState,
                                                                                              aCurrentLocalState, aPreviousLocalState,
-                                                                                             aControls, aTimeStep);
+                                                                                             aControls, aTimeData);
             const auto tMyFunctionValue = tFunctionWeight * tFunctionValue;
 
             const auto tFunctionName = mFunctionNames[tFunctionIndex];
@@ -296,7 +296,7 @@ public:
                                         const Plato::ScalarVector &aCurrentLocalState,
                                         const Plato::ScalarVector &aPreviousLocalState,
                                         const Plato::ScalarVector &aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+                                        const Plato::TimeData     &aTimeData) const override
     {
         const auto tNumCells = mWorksetBase.numCells();
         Plato::ScalarMultiVector tOutput("gradient control workset", tNumCells, mNumNodesPerCell);
@@ -305,7 +305,7 @@ public:
             const auto tFunctionWeight = mFunctionWeights[tFunctionIndex];
             auto tFunctionGradZ = mLocalScalarFunctionContainer[tFunctionIndex]->gradient_z(aCurrentGlobalState, aPreviousGlobalState,
                                                                                             aCurrentLocalState, aPreviousLocalState,
-                                                                                            aControls, aTimeStep);
+                                                                                            aControls, aTimeData);
             Plato::blas2::update(tFunctionWeight, tFunctionGradZ, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
@@ -330,7 +330,7 @@ public:
                                         const Plato::ScalarVector &aCurrentLocalState,
                                         const Plato::ScalarVector &aPreviousLocalState,
                                         const Plato::ScalarVector &aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+                                        const Plato::TimeData     &aTimeData) const override
     {
         const auto tNumCells = mWorksetBase.numCells();
         Plato::ScalarMultiVector tOutput("gradient configuration workset", tNumCells, mNumConfigDofsPerCell);
@@ -339,7 +339,7 @@ public:
             const auto tFunctionWeight = mFunctionWeights[tFunctionIndex];
             auto tFunctionGradX = mLocalScalarFunctionContainer[tFunctionIndex]->gradient_x(aCurrentGlobalState, aPreviousGlobalState,
                                                                                             aCurrentLocalState, aPreviousLocalState,
-                                                                                            aControls, aTimeStep);
+                                                                                            aControls, aTimeData);
             Plato::blas2::update(tFunctionWeight, tFunctionGradX, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
@@ -362,7 +362,7 @@ public:
                                         const Plato::ScalarVector & aCurrentLocalState,
                                         const Plato::ScalarVector & aPreviousLocalState,
                                         const Plato::ScalarVector & aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+                                        const Plato::TimeData     & aTimeData) const override
     {
         const auto tNumCells = mWorksetBase.numCells();
         Plato::ScalarMultiVector tOutput("gradient current global states workset", tNumCells, mNumGlobalDofsPerCell);
@@ -372,7 +372,7 @@ public:
             auto tFunctionGradCurrentGlobalState =
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_u(aCurrentGlobalState, aPreviousGlobalState,
                                                                           aCurrentLocalState, aPreviousLocalState,
-                                                                          aControls, aTimeStep);
+                                                                          aControls, aTimeData);
             Plato::blas2::update(tFunctionWeight, tFunctionGradCurrentGlobalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
@@ -395,7 +395,7 @@ public:
                                          const Plato::ScalarVector & aCurrentLocalState,
                                          const Plato::ScalarVector & aPreviousLocalState,
                                          const Plato::ScalarVector & aControls,
-                                         Plato::Scalar aTimeStep = 0.0) const override
+                                         const Plato::TimeData     & aTimeData) const override
     {
         const auto tNumCells = mWorksetBase.numCells();
         Plato::ScalarMultiVector tOutput("gradient previous global states workset", tNumCells, mNumGlobalDofsPerCell);
@@ -405,7 +405,7 @@ public:
             auto tFunctionGradPreviousGlobalState =
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_up(aCurrentGlobalState, aPreviousGlobalState,
                                                                            aCurrentLocalState, aPreviousLocalState,
-                                                                           aControls, aTimeStep);
+                                                                           aControls, aTimeData);
             Plato::blas2::update(tFunctionWeight, tFunctionGradPreviousGlobalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
@@ -428,7 +428,7 @@ public:
                                         const Plato::ScalarVector & aCurrentLocalState,
                                         const Plato::ScalarVector & aPreviousLocalState,
                                         const Plato::ScalarVector & aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+                                        const Plato::TimeData     & aTimeData) const override
     {
         const auto tNumCells = mWorksetBase.numCells();
         Plato::ScalarMultiVector tOutput("gradient current local states workset", tNumCells, mNumLocalDofsPerCell);
@@ -438,7 +438,7 @@ public:
             auto tFunctionGradCurrentLocalState =
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_c(aCurrentGlobalState, aPreviousGlobalState,
                                                                           aCurrentLocalState, aPreviousLocalState,
-                                                                          aControls, aTimeStep);
+                                                                          aControls, aTimeData);
             Plato::blas2::update(tFunctionWeight, tFunctionGradCurrentLocalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
@@ -461,7 +461,7 @@ public:
                                          const Plato::ScalarVector & aCurrentLocalState,
                                          const Plato::ScalarVector & aPreviousLocalState,
                                          const Plato::ScalarVector & aControls,
-                                         Plato::Scalar aTimeStep = 0.0) const override
+                                         const Plato::TimeData     & aTimeData) const override
     {
         const auto tNumCells = mWorksetBase.numCells();
         Plato::ScalarMultiVector tOutput("gradient previous local states workset", tNumCells, mNumLocalDofsPerCell);
@@ -471,7 +471,7 @@ public:
             auto tFunctionGradPreviousLocalState =
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_cp(aCurrentGlobalState, aPreviousGlobalState,
                                                                            aCurrentLocalState, aPreviousLocalState,
-                                                                           aControls, aTimeStep);
+                                                                           aControls, aTimeData);
             Plato::blas2::update(tFunctionWeight, tFunctionGradPreviousLocalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;

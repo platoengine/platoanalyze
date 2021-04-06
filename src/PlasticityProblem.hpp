@@ -21,6 +21,7 @@
 #include "InfinitesimalStrainPlasticity.hpp"
 #include "InfinitesimalStrainThermoPlasticity.hpp"
 #include "PathDependentScalarFunctionFactory.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -60,22 +61,16 @@ private:
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;  /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;  /*!< global equality constraint interface */
     std::shared_ptr<Plato::LocalVectorFunctionInc<PlasticityT>> mLocalEquation; /*!< local equality constraint interface */
+    std::shared_ptr<Plato::TimeData> mTimeData;                                 /*!< time data object */
 
     // Optional
     Criteria mCriteria;
 
-    Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps */
-    Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
-
-    Plato::Scalar mEndTime;                       /*!< end time */
-    Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mPressureScaling;               /*!< pressure term scaling */
     Plato::Scalar mTemperatureScaling;            /*!< temperature term scaling */
     Plato::Scalar mReferenceTemperature;          /*!< reference temperature */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
-    Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
-    Plato::Scalar mPseudoTimeStepMultiplier;      /*!< dynamically increases number of pseudo time steps if Newton solver did not converge */
 
     Plato::ScalarVector mPressure;                /*!< projected pressure field */
     Plato::ScalarVector mControl;                 /*!< control variables for output */
@@ -98,7 +93,6 @@ private:
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
 
     bool mStopOptimization; /*!< stops optimization problem if Newton-Raphson solver fails to converge during an optimization run */
-    bool mMaxNumPseudoTimeStepsReached; /*!< use to check if maximum number of allowable pseudo time steps has been reached */
 
 // public functions
 public:
@@ -119,29 +113,23 @@ public:
       mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(mSpatialModel, mDataMap, aInputs)),
       mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(mSpatialModel, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
       mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(mSpatialModel, mDataMap, aInputs, std::string("State Gradient Projection"))),
-      mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
-      mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-      mEndTime(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "End Time", 1.0)),
-      mPseudoTimeStep(mEndTime/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+      mTimeData(std::make_shared<Plato::TimeData>(aInputs)),
       mPressureScaling(1.0),
       mTemperatureScaling(1.0),
       mReferenceTemperature(1.0),
       mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
       mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
-      mCurrentPseudoTimeStep(0.0),
-      mPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
       mPressure("Previous Pressure Field", aMesh.nverts()),
-      mLocalStates("Local States", mNumPseudoTimeSteps, mLocalEquation->size()),
-      mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalEquation->size()),
-      mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
-      mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
+      mLocalStates("Local States", mTimeData->mNumTimeSteps, mLocalEquation->size()),
+      mGlobalStates("Global States", mTimeData->mNumTimeSteps, mGlobalEquation->size()),
+      mReactionForce("Reaction Force", mTimeData->mNumTimeSteps, aMesh.nverts()),
+      mProjectedPressGrad("Projected Pressure Gradient", mTimeData->mNumTimeSteps, mProjectionEquation->size()),
       mWorksetBase(aMesh),
       mLinearSolverFactory(aInputs.sublist("Linear Solver")),
       mLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode)),
       mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
-      mMaxNumPseudoTimeStepsReached(false),
       mEssentialBCs(nullptr)
     {
         this->initialize(aInputs);
@@ -252,7 +240,7 @@ public:
             }
             Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
-            auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);
+            auto tTime = mTimeData->mCurrentTimeStepSize * static_cast<Plato::Scalar>(tSnapshot + 1);
             tWriter.write(tSnapshot, tTime, tTags);
         }
     }
@@ -337,13 +325,13 @@ public:
                        const Plato::Solution     & aSolution) override
     {
         auto tGlobalState = aSolution.State;
-        mLocalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
-        mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
-        mProjectionEquation->updateProblem(tGlobalState, aControls, mCurrentPseudoTimeStep);
+        mLocalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mTimeData->mCurrentTime);
+        mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mTimeData->mCurrentTime);
+        mProjectionEquation->updateProblem(tGlobalState, aControls, mTimeData->mCurrentTime);
 
         for( auto tCriterion : mCriteria )
         {
-            tCriterion.second->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+            tCriterion.second->updateProblem(tGlobalState, mLocalStates, aControls, *mTimeData);
         }
     }
 
@@ -378,7 +366,7 @@ public:
             }
             else
             {
-                if(mMaxNumPseudoTimeStepsReached == true)
+                if(mTimeData->mMaxNumTimeStepsReached == true)
                 {
                     tStop = true;
                     std::stringstream tMsg;
@@ -392,7 +380,7 @@ public:
                 this->resizeTimeDependentStates();
                 std::stringstream tMsg;
                 tMsg << "\n**** Forward Solve Was Not Successful ****\n"
-                        << "Number of pseudo time steps will be increased to '" << mNumPseudoTimeSteps << "'\n.";
+                        << "Number of pseudo time steps will be increased to '" << mTimeData->mNumTimeSteps << "'\n.";
                 REPORT(tMsg.str().c_str());
                 mNewtonSolver->appendOutputMessage(tMsg);
             }
@@ -710,21 +698,22 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Set initial temperature field
+     * \brief Set initial temperature field equal to the reference temperature
      * \param [in]     aCurrentStepIndex    current time step index
      * \param [in/out] aPreviousGlobalState previous global state
     *******************************************************************************/
     void setInitialTemperature(const Plato::OrdinalType & aCurrentStepIndex,
                                const Plato::ScalarVector & aPreviousGlobalState) const
     {
-        if (aCurrentStepIndex != 0) return;
+        if (aCurrentStepIndex != static_cast<Plato::OrdinalType>(0)) return;
+
         auto tReferenceTemperature = mReferenceTemperature;
         auto tTemperatureScaling   = mTemperatureScaling;
         auto tNumGlobalDofsPerNode = mNumGlobalDofsPerNode;
         auto tTemperatureDofOffset = mTemperatureDofOffset;
-        auto tNumVerts = mSpatialModel.Mesh.nverts();
+        auto tNumVerts             = mSpatialModel.Mesh.nverts();
 
-        if (tTemperatureDofOffset > 0)
+        if (tTemperatureDofOffset > static_cast<Plato::OrdinalType>(0))
         {
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumVerts),
                                     LAMBDA_EXPRESSION(const Plato::OrdinalType &aVertexOrdinal)
@@ -744,12 +733,6 @@ private:
     void initialize(Teuchos::ParameterList& aInputParams)
     {
         this->allocateCriteria(aInputParams);
-
-        if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
-        {
-            mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
-            mMaxNumPseudoTimeStepsReached = true;
-        }
 
         if(aInputParams.isSublist("Material Models") == false)
         {
@@ -813,24 +796,18 @@ private:
     }
 
     /***************************************************************************//**
-     * \brief Resize time-dependent state containers and decrease pseudo-time step.
+     * \brief Resize time-dependent state containers and decrease pseudo-time step size.
     *******************************************************************************/
     void resizeTimeDependentStates()
     {
-        mNumPseudoTimeSteps = static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier);
-        if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
-        {
-            mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
-            mMaxNumPseudoTimeStepsReached = true;
-        }
-        mPseudoTimeStep = static_cast<Plato::Scalar>(mEndTime) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+        mTimeData->increaseNumTimeSteps();
 
         Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
 
-        Kokkos::resize(mLocalStates, mNumPseudoTimeSteps, mLocalEquation->size());
-        Kokkos::resize(mGlobalStates, mNumPseudoTimeSteps, mGlobalEquation->size());
-        Kokkos::resize(mReactionForce, mNumPseudoTimeSteps, mGlobalEquation->numNodes());
-        Kokkos::resize(mProjectedPressGrad, mNumPseudoTimeSteps, mProjectionEquation->size());
+        Kokkos::resize(mLocalStates, mTimeData->mNumTimeSteps, mLocalEquation->size());
+        Kokkos::resize(mGlobalStates, mTimeData->mNumTimeSteps, mGlobalEquation->size());
+        Kokkos::resize(mReactionForce, mTimeData->mNumTimeSteps, mGlobalEquation->numNodes());
+        Kokkos::resize(mProjectedPressGrad, mTimeData->mNumTimeSteps, mProjectionEquation->size());
     }
 
     /***************************************************************************//**
@@ -867,12 +844,12 @@ private:
         Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
 
         bool tForwardProblemSolved = false;
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mTimeData->mNumTimeSteps; tCurrentStepIndex++)
         {
             std::stringstream tMsg;
-            mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1);
-            tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF " << mNumPseudoTimeSteps
-                 << " TIME STEPS, TOTAL TIME = " << mCurrentPseudoTimeStep << "\n";
+            mTimeData->updateTimeData(tCurrentStepIndex);
+            tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF " << mTimeData->mNumTimeSteps
+                 << " TIME STEPS, TOTAL TIME = " << mTimeData->mCurrentTime << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
 
             tCurrentState.mCurrentStepIndex = tCurrentStepIndex;
@@ -894,7 +871,7 @@ private:
                 tMsg << "**** Newton-Raphson Solver did not converge at time step #"
                      << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1)
                      << ".  Number of pseudo time steps will be increased to '"
-                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier) << "'. ****\n\n";
+                     << static_cast<Plato::OrdinalType>(mTimeData->mNumTimeSteps * mTimeData->mTimeStepExpansionMultiplier) << "'. ****\n\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
                 return tForwardProblemSolved;
             }
@@ -914,8 +891,7 @@ private:
     *******************************************************************************/
     void updateDispAndLoadControlMultipliers(const Plato::OrdinalType& aInput)
     {
-        mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
-        auto tLoadControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aInput + 1);
+        auto tLoadControlConstant = mTimeData->mCurrentTimeStepSize * static_cast<Plato::Scalar>(aInput + 1);
         mDataMap.mScalarValues["LoadControlConstant"] = tLoadControlConstant;
 
         if (aInput != static_cast<Plato::OrdinalType>(0))
@@ -945,7 +921,7 @@ private:
                                          Plato::CurrentStates &aStateData)
     {
         Plato::OrdinalType tNextStepIndex = aStateData.mCurrentStepIndex + static_cast<Plato::OrdinalType>(1);
-        if(tNextStepIndex >= mNumPseudoTimeSteps)
+        if(tNextStepIndex >= mTimeData->mNumTimeSteps)
         {
             return;
         }
@@ -1003,7 +979,7 @@ private:
         Plato::ScalarVector tPreviousGlobalState;
 
         Plato::Scalar tOutput = 0;
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mTimeData->mNumTimeSteps; tCurrentStepIndex++)
         {
             // SET CURRENT STATES
             auto tCurrentLocalState = Kokkos::subview(aLocalState, tCurrentStepIndex, Kokkos::ALL());
@@ -1014,9 +990,10 @@ private:
             this->getPreviousState(tCurrentStepIndex, aGlobalState, tPreviousGlobalState);
             this->setInitialTemperature(tCurrentStepIndex, tPreviousGlobalState);
 
+            mTimeData->updateTimeData(tCurrentStepIndex);
             tOutput += aCriterion.value(tCurrentGlobalState, tPreviousGlobalState,
                                         tCurrentLocalState, tPreviousLocalState,
-                                        aControls, tCurrentStepIndex);
+                                        aControls, *mTimeData);
         }
 
         return tOutput;
@@ -1035,7 +1012,7 @@ private:
     {
         Plato::ScalarVector tPreviousLocalState;
         Plato::ScalarVector tPreviousGlobalState;
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mTimeData->mNumTimeSteps; tCurrentStepIndex++)
         {
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
@@ -1045,9 +1022,10 @@ private:
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
             this->setInitialTemperature(tCurrentStepIndex, tPreviousGlobalState);
 
+            mTimeData->updateTimeData(tCurrentStepIndex);
             auto tDfDz = aCriterion.gradient_z(tCurrentGlobalState, tPreviousGlobalState,
                                                tCurrentLocalState, tPreviousLocalState,
-                                               aControls, tCurrentStepIndex);
+                                               aControls, *mTimeData);
             mWorksetBase.assembleScalarGradientZ(tDfDz, aTotalGradient);
         }
     }
@@ -1065,7 +1043,7 @@ private:
     {
         Plato::ScalarVector tPreviousLocalState;
         Plato::ScalarVector tPreviousGlobalState;
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mTimeData->mNumTimeSteps; tCurrentStepIndex++)
         {
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
@@ -1075,9 +1053,10 @@ private:
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
             this->setInitialTemperature(tCurrentStepIndex, tPreviousGlobalState);
 
+            mTimeData->updateTimeData(tCurrentStepIndex);
             auto tDfDX = aCriterion.gradient_x(tCurrentGlobalState, tPreviousGlobalState,
                                                tCurrentLocalState, tPreviousLocalState,
-                                               aControls, tCurrentStepIndex);
+                                               aControls, *mTimeData);
             mWorksetBase.assembleVectorGradientX(tDfDX, aTotalGradient);
         }
     }
@@ -1091,7 +1070,7 @@ private:
         mAdjointSolver->appendLocalEquation(mLocalEquation);
         mAdjointSolver->appendGlobalEquation(mGlobalEquation);
         mAdjointSolver->appendProjectionEquation(mProjectionEquation);
-        mAdjointSolver->setNumPseudoTimeSteps(mNumPseudoTimeSteps);
+        mAdjointSolver->setNumPseudoTimeSteps(mTimeData->mNumTimeSteps);
     }
 
     /***************************************************************************//**
@@ -1107,23 +1086,25 @@ private:
     {
         // Create state data manager
         auto tNumCells = mLocalEquation->numCells();
-        Plato::ForwardStates tCurrentStates(aType);
-        Plato::ForwardStates tPreviousStates(aType);
+        Plato::ForwardStates tCurrentStates(aType, *mTimeData);
+        Plato::ForwardStates tPreviousStates(aType, *mTimeData);
         Plato::AdjointStates tAdjointStates(mGlobalEquation->size(), mLocalEquation->size(), mProjectionEquation->size());
         tAdjointStates.mInvLocalJacT = ScalarArray3D("Inv(DhDc)^T", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         this->initializeAdjointSolver();
 
         // outer loop for pseudo time steps
-        auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        auto tLastStepIndex = mTimeData->mNumTimeSteps - static_cast<Plato::OrdinalType>(1);
         for(tCurrentStates.mCurrentStepIndex = tLastStepIndex; tCurrentStates.mCurrentStepIndex >= 0; tCurrentStates.mCurrentStepIndex--)
         {
+            tCurrentStates.mTimeData.updateTimeData(tCurrentStates.mCurrentStepIndex);
+
             tPreviousStates.mCurrentStepIndex = tCurrentStates.mCurrentStepIndex + 1;
-            if(tPreviousStates.mCurrentStepIndex < mNumPseudoTimeSteps)
+            tPreviousStates.mTimeData.updateTimeData(tPreviousStates.mCurrentStepIndex);
+            if(tPreviousStates.mCurrentStepIndex < mTimeData->mNumTimeSteps)
             {
                 this->updateForwardState(tPreviousStates);
             }
-
             this->updateForwardState(tCurrentStates);
             this->updateAdjointState(tAdjointStates);
 

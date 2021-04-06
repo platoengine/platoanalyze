@@ -7,6 +7,7 @@
 #pragma once
 
 #include "PlatoStaticsTypes.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -36,7 +37,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return function value
     *******************************************************************************/
     virtual Plato::Scalar value(const Plato::ScalarVector & aCurrentGlobalState,
@@ -44,7 +45,7 @@ public:
                                 const Plato::ScalarVector & aCurrentLocalState,
                                 const Plato::ScalarVector & aPreviousLocalState,
                                 const Plato::ScalarVector & aControls,
-                                Plato::Scalar aTimeStep = 0.0) const = 0;
+                                const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Return workset with partial derivative with respect to design variables
@@ -53,7 +54,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return workset with partial derivative with respect to design variables
     *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_z(const Plato::ScalarVector & aCurrentGlobalState,
@@ -61,7 +62,7 @@ public:
                                                 const Plato::ScalarVector & aCurrentLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
-                                                Plato::Scalar aTimeStep = 0.0) const = 0;
+                                                const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Return workset with partial derivative with respect to current global states
@@ -70,7 +71,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return workset with partial derivative with respect to current global states
     *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aCurrentGlobalState,
@@ -78,7 +79,7 @@ public:
                                                 const Plato::ScalarVector & aCurrentLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
-                                                Plato::Scalar aTimeStep = 0.0) const = 0;
+                                                const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Return workset with partial derivative with respect to previous global states
@@ -87,7 +88,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return workset with partial derivative with respect to previous global states
     *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_up(const Plato::ScalarVector & aCurrentGlobalState,
@@ -95,7 +96,7 @@ public:
                                                  const Plato::ScalarVector & aCurrentLocalState,
                                                  const Plato::ScalarVector & aPreviousLocalState,
                                                  const Plato::ScalarVector & aControls,
-                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
+                                                 const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Return workset partial derivative with respect to current local states
@@ -104,7 +105,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return workset with partial derivative with respect to current local states
     *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_c(const Plato::ScalarVector & aCurrentGlobalState,
@@ -112,7 +113,7 @@ public:
                                                 const Plato::ScalarVector & aCurrentLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
-                                                Plato::Scalar aTimeStep = 0.0) const = 0;
+                                                const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Return workset with partial derivative with respect to previous local states
@@ -121,7 +122,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return workset with partial derivative with respect to previous local states
     *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_cp(const Plato::ScalarVector & aCurrentGlobalState,
@@ -129,7 +130,7 @@ public:
                                                  const Plato::ScalarVector & aCurrentLocalState,
                                                  const Plato::ScalarVector & aPreviousLocalState,
                                                  const Plato::ScalarVector & aControls,
-                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
+                                                 const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Return workset with partial derivative with respect to configurtion variables
@@ -138,7 +139,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             current time data object
      * \return workset with partial derivative with respect to configurtion variables
     *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_x(const Plato::ScalarVector & aCurrentGlobalState,
@@ -146,19 +147,19 @@ public:
                                                 const Plato::ScalarVector & aCurrentLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
-                                                Plato::Scalar aTimeStep = 0.0) const = 0;
+                                                const Plato::TimeData     & aTimeData) const = 0;
 
     /***************************************************************************//**
      * \brief Update physics-based parameters within a frequency of optimization iterations
      * \param [in] aGlobalStates global states for all time steps
      * \param [in] aLocalStates  local states for all time steps
      * \param [in] aControls     current controls, i.e. design variables
-     * \param [in] aTimeStep current time step increment
+     * \param [in] aTimeData     current time data object
     *******************************************************************************/
     virtual void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
                                const Plato::ScalarMultiVector & aLocalStates,
                                const Plato::ScalarVector & aControls,
-                               Plato::Scalar aTimeStep = 0.0) const = 0;
+                               const Plato::TimeData     & aTimeData) const = 0;
 };
 // class LocalScalarFunctionInc
 

@@ -49,7 +49,6 @@ private:
     Plato::WorksetBase<PhysicsT> mWorksetBase;   /*!< interface for assembly routines */
 
     Plato::Scalar mStoppingTolerance;            /*!< stopping tolerance */
-    Plato::Scalar mDirichletValuesMultiplier;    /*!< multiplier for Dirichlet values */
     Plato::Scalar mCurrentResidualNormTolerance; /*!< current residual norm stopping tolerance - avoids unnecessary solves */
 
     Plato::OrdinalType mMaxNumSolverIter;  /*!< maximum number of iterations */
@@ -137,7 +136,6 @@ private:
             printf("Newton Raphson Solver: Apply Constraints\n");
             Plato::print_array_ordinals_1D(mDirichletDofs, "Dirichlet Dofs");
             Plato::print(mDirichletValues, "Dirichlet Values");
-            printf("Newton Raphson Solver: Displacement Control Multiplier: %e\n", mDirichletValuesMultiplier);
             Plato::print(tDispControlledDirichletValues, "Disp Controlled Dirichlet Values");
         }
 
@@ -439,8 +437,6 @@ private:
     void initialize(Teuchos::ParameterList& aInputs)
     {
         this->openDiagnosticsFile();
-        auto tInitialNumTimeSteps = Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20);
-        mDirichletValuesMultiplier = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(tInitialNumTimeSteps);
         auto tStopMeasure = Plato::ParseTools::getSubParam<std::string>(aInputs, "Newton-Raphson", "Stopping Measure", "absolute residual norm");
         mStopMeasure = Plato::newton_raphson_stopping_criterion(tStopMeasure);
     }
@@ -456,7 +452,6 @@ public:
     NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
         mWorksetBase(aMesh),
         mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
-        mDirichletValuesMultiplier(1),
         mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-8)),
         mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
         mCurrentSolverIter(0),
@@ -476,7 +471,6 @@ public:
     explicit NewtonRaphsonSolver(Omega_h::Mesh& aMesh) :
         mWorksetBase(aMesh),
         mStoppingTolerance(1e-6),
-        mDirichletValuesMultiplier(1),
         mCurrentResidualNormTolerance(5e-7),
         mMaxNumSolverIter(20),
         mCurrentSolverIter(0),
@@ -506,14 +500,6 @@ public:
         mDebugFlag = aInput;
     }
 
-    /***************************************************************************//**
-     * \brief Set multiplier for Dirichlet values
-     * \param [in] aInput multiplier
-    *******************************************************************************/
-    void setDirichletValuesMultiplier(const Plato::Scalar & aInput)
-    {
-        mDirichletValuesMultiplier = aInput;
-    }
 
     /***************************************************************************//**
      * \brief Append local system of equation interface

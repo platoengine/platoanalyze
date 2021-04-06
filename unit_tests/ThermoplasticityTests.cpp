@@ -1376,16 +1376,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_2D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     std::string tCriterionName("Elastic Work");
     auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
-    TEST_FLOATING_EQUALITY(tCriterionValue, -6.77828, tTolerance);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -3.29438, tTolerance);
 
     auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {   8.03858e+00, 5.07883e+00, 6.13084e+00, 1.31136e+01, 7.94362e+00, 
-                                           2.98272e+00, 5.09420e+00, 5.91316e-01, 4.44496e-01, 5.25237e-01, 
-                                           7.67438e-01, 1.45438e-01, 4.03751e-01, 7.01721e-01, 3.98144e-01, 
-                                           1.47186e-01, 2.64768e-01, 5.10102e-01, 3.06928e-01, 3.03242e-01, 
-                                           1.92345e-01, 3.97258e-02, 8.72496e-02, 7.13652e-02,-1.35716e-01,
-                                           -5.74592e-02,-6.71317e-02,-1.52573e-01,-1.66383e-01,-3.56113e-01,
-                                           -1.93767e-01,-2.42087e-01,-8.09962e-02};
+    std::vector<Plato::Scalar> tGold = {   1.51882e+00, 1.23924e+00, 1.42785e+00, 2.76356e+00,
+                                           1.70847e+00, 6.69285e-01, 1.19109e+00, 4.91660e-01,
+                                           7.67744e-01, 3.52735e-01, 5.57690e-01, 3.76597e-01,
+                                           2.60058e-01, 4.24760e-01, 2.93280e-01, 1.34020e-01,
+                                           2.07590e-01, 3.00113e-01, 1.81514e-01, 1.91147e-01,
+                                           1.13458e-01, 7.27940e-02, 9.78917e-02, 5.65194e-02,
+                                           2.03189e-02, 1.06486e-02, 2.33402e-02,-2.28043e-02,
+                                          -1.47685e-02,-4.14939e-02,-2.33275e-02,-3.35682e-02,
+                                          -1.14335e-02};
     auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
     Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
@@ -1550,18 +1552,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     std::string tCriterionName("Elastic Work");
     auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
-    TEST_FLOATING_EQUALITY(tCriterionValue, -0.316012, tTolerance);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -0.0921716, tTolerance);
 
     auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {   8.10725e-03, 2.76799e-03, 2.77315e-03, 2.75210e-03, 5.24313e-03, 
-                                           1.07304e-02, 5.24752e-03, 1.01715e-02, 8.34277e-03, 4.54118e-03, 
-                                           9.66973e-03, 4.47393e-03, 3.08696e-03, 8.61307e-04, 7.64494e-05, 
-                                           7.69755e-04, 7.12002e-03, 3.08811e-03, 4.99934e-03, 2.99937e-03,
-                                           -1.06117e-02,-2.40471e-02,-1.05099e-02,-1.83710e-02,-6.03998e-03,
-                                           -1.44660e-02,-6.42135e-03,-2.24518e-03,-2.50408e-03,-2.15290e-03,
-                                           -5.94603e-03,-9.66026e-03,-1.59782e-02,-2.86427e-02,-1.58519e-02,
-                                           -3.52717e-02,-4.74171e-02,-2.22469e-02,-4.07056e-02,-2.21171e-02,
-                                           -1.25146e-02,-3.74843e-02,-1.25843e-02,-1.24195e-02};
+    std::vector<Plato::Scalar> tGold = {   -1.91649e-02, -6.37505e-03, -6.38078e-03, -6.37505e-03, 
+                                           -1.24456e-02, -2.52712e-02, -1.24456e-02, -2.44140e-02, 
+                                           -2.26005e-02, -1.15857e-02, -2.37084e-02, -1.15857e-02, 
+                                           -2.02213e-02, -9.82122e-03, -1.90623e-02, -9.82122e-03, 
+                                           -2.19789e-02, -1.06993e-02, -2.08167e-02, -1.06993e-02, 
+                                           -7.20183e-03, -1.38015e-02, -7.20183e-03, -1.49893e-02, 
+                                           -8.07368e-03, -1.55637e-02, -1.73132e-02, -8.94705e-03, 
+                                           -1.84736e-02, -8.94705e-03, -8.07368e-03, -1.67285e-02, 
+                                           -6.34391e-03, -1.32680e-02, -6.34391e-03, -1.20343e-02, 
+                                           -1.04253e-02, -5.52352e-03, -1.15994e-02, -5.52352e-03, 
+                                           -2.45989e-03, -7.70026e-03, -2.45989e-03, -2.33445e-03};
     auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
     Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));

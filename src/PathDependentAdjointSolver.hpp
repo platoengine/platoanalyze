@@ -21,6 +21,7 @@
 #include "GlobalVectorFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
 #include "InfinitesimalStrainThermoPlasticity.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -42,6 +43,7 @@ struct PartialDerivative
 struct ForwardStates
 {
     Plato::OrdinalType mCurrentStepIndex;     /*!< current time step index */
+    Plato::TimeData    mTimeData;             /*!< time data object */
 
     Plato::ScalarVector mCurrentLocalState;   /*!< current local state */
     Plato::ScalarVector mPreviousLocalState;  /*!< previous local state */
@@ -57,8 +59,10 @@ struct ForwardStates
      * \brief Constructor
      * \param [in] aType partial derivative type
     *******************************************************************************/
-    explicit ForwardStates(const Plato::PartialDerivative::derivative_t &aType) :
+    explicit ForwardStates(const Plato::PartialDerivative::derivative_t &aType,
+                           const TimeData & aInputTimeData) :
         mCurrentStepIndex(0),
+        mTimeData(aInputTimeData),
         mPartialDerivativeType(aType)
     {
     }
@@ -299,7 +303,7 @@ private:
         // Compute partial derivative of objective with respect to current local states
         auto tDfDc = mCriterion->gradient_c(aCurStateVars.mCurrentGlobalState, aCurStateVars.mPreviousGlobalState,
                                             aCurStateVars.mCurrentLocalState, aCurStateVars.mPreviousLocalState,
-                                            aControls, aCurStateVars.mCurrentStepIndex);
+                                            aControls, aCurStateVars.mTimeData);
 
         auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aCurStateVars.mCurrentStepIndex != tFinalStepIndex)
@@ -308,7 +312,7 @@ private:
             const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
             auto tDfDcp = mCriterion->gradient_cp(aPrevStateVars.mCurrentGlobalState, aPrevStateVars.mPreviousGlobalState,
                                                   aPrevStateVars.mCurrentLocalState, aPrevStateVars.mPreviousLocalState,
-                                                  aControls, aPrevStateVars.mCurrentStepIndex);
+                                                  aControls, aPrevStateVars.mTimeData);
             Plato::blas2::update(tAlpha, tDfDcp, tBeta, tDfDc);
 
             // Compute DfDc_k + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} )
@@ -414,7 +418,7 @@ private:
         // Compute partial derivative of objective with respect to current global states
         auto tDfDu = mCriterion->gradient_u(aCurStateVars.mCurrentGlobalState, aCurStateVars.mPreviousGlobalState,
                                             aCurStateVars.mCurrentLocalState, aCurStateVars.mPreviousLocalState,
-                                            aControls, aCurStateVars.mCurrentStepIndex);
+                                            aControls, aCurStateVars.mTimeData);
 
         // Compute previous adjoint states contribution to global adjoint rhs
         auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
@@ -424,7 +428,7 @@ private:
             const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
             auto tDfDup = mCriterion->gradient_up(aPrevStateVars.mCurrentGlobalState, aPrevStateVars.mPreviousGlobalState,
                                                   aPrevStateVars.mCurrentLocalState, aPrevStateVars.mPreviousLocalState,
-                                                  aControls, aPrevStateVars.mCurrentStepIndex);
+                                                  aControls, aPrevStateVars.mTimeData);
             Plato::blas2::update(tAlpha, tDfDup, tBeta, tDfDu);
 
             // Compute projected pressure gradient contribution to global adjoint rhs, i.e. DpDu_{k+1}^T * gamma_{k+1}
@@ -824,7 +828,7 @@ public:
         // Compute DfDc_{k}
         auto tDfDc = mCriterion->gradient_c(aCurStateVars.mCurrentGlobalState, aCurStateVars.mPreviousGlobalState,
                                             aCurStateVars.mCurrentLocalState, aCurStateVars.mPreviousLocalState,
-                                            aControls, aCurStateVars.mCurrentStepIndex);
+                                            aControls, aCurStateVars.mTimeData);
 
         // Compute DfDc_k + ( DrDc_k^T * lambda_k )
         auto tNumCells = mLocalEquation->numCells();
@@ -843,7 +847,7 @@ public:
             const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
             auto tDfDcp = mCriterion->gradient_cp(aPrevStateVars.mCurrentGlobalState, aPrevStateVars.mPreviousGlobalState,
                                                   aPrevStateVars.mCurrentLocalState, aPrevStateVars.mPreviousLocalState,
-                                                  aControls, aPrevStateVars.mCurrentStepIndex);
+                                                  aControls, aPrevStateVars.mTimeData);
             Plato::blas2::update(tAlpha, tDfDcp, tBeta, tDfDc);
 
             // Compute DfDc_k + ( DrDc_k^T * lambda_k ) + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} )

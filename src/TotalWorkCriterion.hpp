@@ -22,7 +22,7 @@
 #include "DoubleDotProduct2ndOrderTensor.hpp"
 #include "AbstractLocalScalarFunctionInc.hpp"
 #include "ComputeDeviatoricStress.hpp"
-
+#include "TimeData.hpp"
 #include "ExpInstMacros.hpp"
 
 namespace Plato
@@ -156,7 +156,7 @@ public:
                   const Plato::ScalarMultiVectorT<ControlT> &aControls,
                   const Plato::ScalarArray3DT<ConfigT> &aConfig,
                   const Plato::ScalarVectorT<ResultT> &aResult,
-                  Plato::Scalar aTimeStep = 0.0)
+                  const Plato::TimeData &aTimeData)
     {
         using TotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
@@ -257,7 +257,8 @@ public:
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
-                       const Plato::ScalarVector & aControl) override
+                       const Plato::ScalarVector & aControl,
+                       const Plato::TimeData & aTimeData) override
     {
         auto tPreviousPenaltySIMP = mPenaltySIMP;
         auto tSuggestedPenaltySIMP = tPreviousPenaltySIMP + mAdditiveContinuationParam;

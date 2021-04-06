@@ -49,8 +49,26 @@ public:
     {
         mNumTimeSteps = std::min(mNumTimeSteps, mMaxNumTimeSteps);
     }
+
+    /***************************************************************************//**
+     * \brief Time Data copy constructor
+     * \param [in] aInputTimeData input TimeData object
+    *******************************************************************************/
+    TimeData( const TimeData & aInputTimeData ) :
+      mCurrentTimeStepIndex(aInputTimeData.mCurrentTimeStepIndex),
+      mNumTimeSteps(aInputTimeData.mNumTimeSteps),
+      mMaxNumTimeSteps(aInputTimeData.mMaxNumTimeSteps),
+      mCurrentTime(aInputTimeData.mCurrentTime),
+      mStartTime(aInputTimeData.mStartTime),
+      mEndTime(aInputTimeData.mEndTime),
+      mCurrentTimeStepSize(aInputTimeData.mCurrentTimeStepSize),
+      mTimeStepExpansionMultiplier(aInputTimeData.mTimeStepExpansionMultiplier),
+      mMaxNumTimeStepsReached(aInputTimeData.mMaxNumTimeStepsReached)
+    {
+
+    }
     
-    bool atFinalTimeStep()
+    bool atFinalTimeStep() const
     {
         Plato::Scalar tTolerance = static_cast<Plato::Scalar>(2.0) * std::numeric_limits<Plato::Scalar>::epsilon();
         return mCurrentTime > (mEndTime - tTolerance);
@@ -81,6 +99,6 @@ public:
         mCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(0);
     }
 
-} // TimeData
+}; // TimeData
 
 } //namespace Plato
