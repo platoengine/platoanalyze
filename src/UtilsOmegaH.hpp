@@ -18,6 +18,7 @@
 
 #include "Variables.hpp"
 #include "PlatoUtilities.hpp"
+#include "ImplicitFunctors.hpp"
 
 namespace Plato
 {

@@ -7,9 +7,9 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "alg/Basis.hpp"
+#include "UtilsOmegaH.hpp"
 #include "alg/Cubature.hpp"
 #include "SpatialModel.hpp"
-#include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
 #include "Plato_TopOptFunctors.hpp"
 
@@ -28,9 +28,9 @@ void getFunctionValues(Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemS
     Plato::OrdinalType numCells = aQuadraturePoints.extent(0);
     Plato::OrdinalType numPoints = aQuadraturePoints.extent(1);
 
-    auto x_coords = Plato::create_omega_h_write_array<Plato::Scalar>("forcing function x coords", numCells * numPoints);
-    auto y_coords = Plato::create_omega_h_write_array<Plato::Scalar>("forcing function y coords", numCells * numPoints);
-    auto z_coords = Plato::create_omega_h_write_array<Plato::Scalar>("forcing function z coords", numCells * numPoints);
+    auto x_coords = Plato::omega_h::create_omega_h_write_array<Plato::Scalar>("forcing function x coords", numCells * numPoints);
+    auto y_coords = Plato::omega_h::create_omega_h_write_array<Plato::Scalar>("forcing function y coords", numCells * numPoints);
+    auto z_coords = Plato::omega_h::create_omega_h_write_array<Plato::Scalar>("forcing function z coords", numCells * numPoints);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, numCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
     {

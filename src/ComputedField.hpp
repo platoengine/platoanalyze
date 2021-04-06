@@ -6,8 +6,7 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "OmegaHUtilities.hpp"
-#include "ImplicitFunctors.hpp"
+#include "UtilsOmegaH.hpp"
 
 namespace Plato
 {
@@ -48,9 +47,9 @@ class ComputedField
   /**************************************************************************/
   {
     auto numPoints = aMesh.nverts();
-    auto x_coords = Plato::create_omega_h_write_array<Plato::Scalar>("x coords", numPoints);
-    auto y_coords = Plato::create_omega_h_write_array<Plato::Scalar>("y coords", numPoints);
-    auto z_coords = Plato::create_omega_h_write_array<Plato::Scalar>("z coords", numPoints);
+    auto x_coords = Plato::omega_h::create_omega_h_write_array<Plato::Scalar>("x coords", numPoints);
+    auto y_coords = Plato::omega_h::create_omega_h_write_array<Plato::Scalar>("y coords", numPoints);
+    auto z_coords = Plato::omega_h::create_omega_h_write_array<Plato::Scalar>("z coords", numPoints);
   
     auto coords = aMesh.coords();
     auto values = mValues;

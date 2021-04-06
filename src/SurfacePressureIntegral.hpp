@@ -159,8 +159,8 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           tCalculateSurfaceArea(aFaceI, tCubWeightTimesScale, tJacobians, tSurfaceAreaTimesCubWeight);
 
           // compute unit normal vector
-          auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
-          auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
+          auto tElemFaceOrdinal = Plato::omega_h::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
+          auto tUnitNormalVec = Plato::omega_h::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
           // project into aResult workset
           for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)

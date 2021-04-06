@@ -10,9 +10,9 @@
 
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
+#include "UtilsOmegaH.hpp"
 #include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
-#include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/PlatoSolverFactory.hpp"
@@ -229,7 +229,7 @@ public:
               auto tTemperatureSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tTemperatureSubView);
               tMesh.add_tag(Omega_h::VERT, "Temperature", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tTemperatureSubViewDefaultMirror)));
             }
-            Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
+            Plato::omega_h::add_element_state_tags(tMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);
             tWriter.write(tSnapshot, tTime, tTags);

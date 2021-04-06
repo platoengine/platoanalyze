@@ -8,8 +8,8 @@
 
 #include "Teuchos_UnitTestHarness.hpp"
 
+#include "UtilsOmegaH.hpp"
 #include "PlatoUtilities.hpp"
-#include "OmegaHUtilities.hpp"
 #include "PlatoTestHelpers.hpp"
 #include "EllipticVMSProblem.hpp"
 

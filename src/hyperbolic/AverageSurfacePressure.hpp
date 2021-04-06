@@ -8,7 +8,6 @@
 
 #include "SpatialModel.hpp"
 #include "UtilsTeuchos.hpp"
-#include "OmegaHUtilities.hpp"
 #include "SurfaceIntegralUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
