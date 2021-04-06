@@ -17,6 +17,8 @@
 #include "BLAS3.hpp"
 #include "Simplex.hpp"
 #include "Assembly.hpp"
+#include "MetaData.hpp"
+#include "Solutions.hpp"
 #include "NaturalBCs.hpp"
 #include "UtilsOmegaH.hpp"
 #include "Plato_Solve.hpp"
@@ -37,6 +39,7 @@
 
 #include "Plato_Diagnostics.hpp"
 #include "alg/PlatoSolverFactory.hpp"
+#include "hyperbolic/SimplexFluids.hpp"
 
 #include "PlatoTestHelpers.hpp"
 
@@ -158,305 +161,6 @@ project_scalar_field_onto_surface
 }
 // function project_scalar_field_onto_surface
 
-
-/******************************************************************************//**
- * \tparam Type array type
- *
- * \fn inline std::vector<Type> parse_array
- *
- * \brief Return array of type=Type parsed from input file.
- *
- * \param [in] aTag    input array tag
- * \param [in] aInputs input file metadata
- *
- * \return array of type=Type
-**********************************************************************************/
-template <typename Type>
-inline std::vector<Type>
-parse_array
-(const std::string & aTag,
- const Teuchos::ParameterList & aInputs)
-{
-    if(!aInputs.isParameter(aTag))
-    {
-        std::vector<Type> tOutput;
-        return tOutput;
-    }
-    auto tSideSets = aInputs.get< Teuchos::Array<Type> >(aTag);
-
-    auto tLength = tSideSets.size();
-    std::vector<Type> tOutput(tLength);
-    for(auto & tName : tOutput)
-    {
-        auto tIndex = &tName - &tOutput[0];
-        tOutput[tIndex] = tSideSets[tIndex];
-    }
-    return tOutput;
-}
-// function parse_array
-
-
-/******************************************************************************//**
- * \tparam Type parameter type
- *
- * \fn inline Type parse_parameter
- *
- * \brief Return parameter of type=Type parsed from input file.
- *
- * \param [in] aTag    input array tag
- * \param [in] aBlock  XML sublist tag
- * \param [in] aInputs input file metadata
- *
- * \return parameter of type=Type
-**********************************************************************************/
-template <typename Type>
-inline Type parse_parameter
-(const std::string            & aTag,
- const std::string            & aBlock,
- const Teuchos::ParameterList & aInputs)
-{
-    if( !aInputs.isSublist(aBlock) )
-    {
-        THROWERR(std::string("Parameter Sublist '") + aBlock + "' within Paramater List '" + aInputs.name() + "' is not defined.")
-    }
-    auto tSublist = aInputs.sublist(aBlock);
-
-    if( !tSublist.isParameter(aTag) )
-    {
-        THROWERR(std::string("Parameter with tag '") + aTag + "' is not defined in Parameter Sublist '" + aBlock + "'.")
-    }
-    auto tOutput = tSublist.get<Type>(aTag);
-    return tOutput;
-}
-// function parse_parameter
-
-/******************************************************************************//**
- * \fn inline void is_positive_finite_number
- *
- * \brief Check if scalar number is positive, if negative, throw error.
- *
- * \param [in] aInput  scalar
- * \param [in] aTag   scalar tag
- *
- * \return parameter of type=Type
-**********************************************************************************/
-inline void
-is_positive_finite_number
-(const Plato::Scalar aInput,
- std::string aTag = "scalar")
-{
-    if(!std::isfinite(aInput))
-    {
-	THROWERR(std::string("Paramater '") + aTag + "' is set to a non-finite number")
-    }
-
-    if(aInput <= static_cast<Plato::Scalar>(0.0))
-    {
-        THROWERR(std::string("Expected a positive non-zero number and instead user-defined parameter '") 
-	     + aTag + "' was set to '" + std::to_string(aInput) + "'.")
-    }
-}
-// function is_positive_finite_number
-
-
-/******************************************************************************//**
- * \tparam Type scalar type
- *
- * \fn inline Type parse_max_material_property
- *
- * \brief Return maximum material property value from the list of similar material
- *   properties defined in other material blocks.
- *
- * \param [in] aInput    input file metadata
- * \param [in] aBlock    material block
- * \param [in] aProperty material property
- * \param [in] aDomains  spatial domain metadata
- *
- * \return material property scalar value
-**********************************************************************************/
-template<typename Type>
-inline Type parse_max_material_property
-(Teuchos::ParameterList& aInputs,
- const std::string& aBlock,
- const std::string& aProperty,
- const std::vector<Plato::SpatialDomain>& aDomains)
-{
-    std::vector<Type> tProperties;
-    for(auto& tDomain : aDomains)
-    {
-        auto tMaterialName = tDomain.getMaterialName();
-        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        if( tMaterial.isSublist(aBlock) )
-        {
-            auto tValue = Plato::parse_parameter<Plato::Scalar>(aProperty, aBlock, tMaterial);
-            Plato::is_positive_finite_number(tValue, aProperty);
-            tProperties.push_back(tValue);
-        }
-    }
-
-    Plato::Scalar tMax = std::numeric_limits<Plato::Scalar>::infinity();
-    if(!tProperties.empty())
-    {
-        tMax = *std::max_element(tProperties.begin(), tProperties.end());
-    }
-    return tMax;
-}
-// function parse_max_material_property
-
-
-/***************************************************************************//**
- *  \tparam SpaceDim    (integer) spatial dimensions
- *  \tparam NumControls (integer) number of design variable fields (default = 1)
- *
- *  \brief Base class for simplex fluid mechanics problems
- ******************************************************************************/
-template
-<Plato::OrdinalType SpaceDim,
- Plato::OrdinalType NumControls = 1>
-class SimplexFluids : public Plato::Simplex<SpaceDim>
-{
-public:
-    using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of spatial dimensions */
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per simplex cell */
-
-    // optimization quantities of interest
-    static constexpr Plato::OrdinalType mNumConfigDofsPerNode  = mNumSpatialDims; /*!< number of configuration degrees of freedom per node */
-    static constexpr Plato::OrdinalType mNumControlDofsPerNode = NumControls;     /*!< number of controls per node */
-    static constexpr Plato::OrdinalType mNumConfigDofsPerCell  = mNumConfigDofsPerNode * mNumNodesPerCell;  /*!< number of configuration degrees of freedom per cell */
-    static constexpr Plato::OrdinalType mNumControlDofsPerCell = mNumControlDofsPerNode * mNumNodesPerCell; /*!< number of controls per cell */
-
-    // physical quantities of interest
-    static constexpr Plato::OrdinalType mNumMassDofsPerNode     = 1; /*!< number of continuity degrees of freedom per node */
-    static constexpr Plato::OrdinalType mNumMassDofsPerCell     = mNumMassDofsPerNode * mNumNodesPerCell; /*!< number of continuity degrees of freedom per cell */
-    static constexpr Plato::OrdinalType mNumEnergyDofsPerNode   = 1; /*!< number energy degrees of freedom per node */
-    static constexpr Plato::OrdinalType mNumEnergyDofsPerCell   = mNumEnergyDofsPerNode * mNumNodesPerCell; /*!< number of energy degrees of freedom per cell */
-    static constexpr Plato::OrdinalType mNumMomentumDofsPerNode = mNumSpatialDims; /*!< number of momentum degrees of freedom per node */
-    static constexpr Plato::OrdinalType mNumMomentumDofsPerCell = mNumMomentumDofsPerNode * mNumNodesPerCell; /*!< number of momentum degrees of freedom per cell */
-
-};
-// class SimplexFluidDynamics
-
-
-/***************************************************************************//**
- * \struct Solutions
- *  \brief Holds POD state solutions
- ******************************************************************************/
-struct Solutions
-{
-private:
-    std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution; /*!< map from state solution name to 2D POD array */
-
-public:
-    /***************************************************************************//**
-     * \fn Plato::OrdinalType size
-     *
-     * \brief Return number of elements in solution map.
-     * \return number of elements in solution map (integer)
-     ******************************************************************************/
-    Plato::OrdinalType size() const
-    {
-        return (mSolution.size());
-    }
-
-    /***************************************************************************//**
-     * \fn std::vector<std::string> tags
-     *
-     * \brief Return list with state solution tags.
-     * \return list with state solution tags
-     ******************************************************************************/
-    std::vector<std::string> tags() const
-    {
-        std::vector<std::string> tTags;
-        for(auto& tPair : mSolution)
-        {
-            tTags.push_back(tPair.first);
-        }
-        return tTags;
-    }
-
-    /***************************************************************************//**
-     * \fn void set
-     *
-     * \brief Set value of an element in the solution map.
-     * \param aTag  data tag
-     * \param aData 2D POD array
-     ******************************************************************************/
-    void set(const std::string& aTag, const Plato::ScalarMultiVector& aData)
-    {
-        auto tLowerTag = Plato::tolower(aTag);
-        mSolution[tLowerTag] = aData;
-    }
-
-    /***************************************************************************//**
-     * \fn Plato::ScalarMultiVector get
-     *
-     * \brief Return 2D POD array.
-     * \param aTag data tag
-     ******************************************************************************/
-    Plato::ScalarMultiVector get(const std::string& aTag) const
-    {
-        auto tLowerTag = Plato::tolower(aTag);
-        auto tItr = mSolution.find(tLowerTag);
-        if(tItr == mSolution.end())
-        {
-            THROWERR(std::string("Solution with tag '") + aTag + "' is not defined.")
-        }
-        return tItr->second;
-    }
-};
-// struct Solutions
-
-
-/***************************************************************************//**
- *  \class MetaDataBase
- *  \brief Plato metadata pure virtual base class.
- ******************************************************************************/
-class MetaDataBase
-{
-public:
-    virtual ~MetaDataBase() = 0;
-};
-inline MetaDataBase::~MetaDataBase(){}
-// class MetaDataBase
-
-
-/***************************************************************************//**
- * \tparam Type metadata type
- * \class MetaData
- * \brief Plato metadata derived class.
- ******************************************************************************/
-template<class Type>
-class MetaData : public MetaDataBase
-{
-public:
-    /***************************************************************************//**
-     * \brief Constructor
-     * \param aData metadata
-     ******************************************************************************/
-    explicit MetaData(const Type &aData) : mData(aData) {}
-    MetaData() {}
-    Type mData; /*!< metadata */
-};
-// class MetaData
-
-
-/***************************************************************************//**
- * \tparam Type metadata type
- *
- * \fn inline Type metadata
- *
- * \brief Perform dynamic cast from MetaDataBase to Type data.
- *
- * \param aInput shared pointer of Plato metadata
- * \return Type data
- ******************************************************************************/
-template<class Type>
-inline Type metadata(const std::shared_ptr<Plato::MetaDataBase> & aInput)
-{
-    return (dynamic_cast<Plato::MetaData<Type>&>(aInput.operator*()).mData);
-}
-// function metadata
 
 
 /***************************************************************************//**
@@ -2116,7 +1820,7 @@ public:
          mFuncName(aName)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mSideSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
+        mSideSets = Plato::teuchos::parse_array<std::string>("Sides", tMyCriteria);
     }
 
     /***************************************************************************//**
@@ -2275,7 +1979,7 @@ public:
          mFuncName(aName)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mWallSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
+        mWallSets = Plato::teuchos::parse_array<std::string>("Sides", tMyCriteria);
     }
 
     /***************************************************************************//**
@@ -2633,13 +2337,13 @@ private:
         if(Plato::Fluids::is_impermeability_defined(aInputs))
         {
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            mImpermeability = Plato::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
+            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
         }
         else
         {
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
-            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
+            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
             mImpermeability = tPrNum / tDaNum;
         }
     }
@@ -3615,7 +3319,7 @@ reynolds_number
         THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+    auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
     return tReNum;
 }
 // function reynolds_number
@@ -3636,7 +3340,7 @@ prandtl_number
         THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+    auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
     return tPrNum;
 }
 // function prandtl_number
@@ -3723,8 +3427,8 @@ calculate_effective_conductivity
     auto tOutput = 0;
     if(tHeatTransfer == "forced" || tHeatTransfer == "mixed")
     {
-        auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-        auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+        auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+        auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
         tOutput = static_cast<Plato::Scalar>(1) / (tReNum*tPrNum);
     }
     else if(tHeatTransfer == "natural")
@@ -3907,7 +3611,7 @@ rayleigh_number
     Plato::ScalarVector tOuput("Rayleigh Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tRaNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Rayleigh Number", "Dimensionless Properties", tHyperbolic);
+        auto tRaNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Rayleigh Number", "Dimensionless Properties", tHyperbolic);
         if(tRaNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Rayleigh Number' array length should match the number of spatial dimensions. ")
@@ -3960,7 +3664,7 @@ grashof_number
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
+        auto tGrNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
         if(tGrNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Grashof Number' array length should match the number of spatial dimensions. ")
@@ -4013,7 +3717,7 @@ richardson_number
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tRiNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Richardson Number", "Dimensionless Properties", tHyperbolic);
+        auto tRiNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Richardson Number", "Dimensionless Properties", tHyperbolic);
         if(tRiNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Richardson Number' array length should match the number of spatial dimensions. ")
@@ -4415,13 +4119,13 @@ private:
 	if(Plato::Fluids::is_impermeability_defined(aInputs))
 	{
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            mImpermeability = Plato::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
+            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
 	}
 	else
 	{
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
-            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
+            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
             mImpermeability = tPrNum / tDaNum;
 	}
     }
@@ -5641,7 +5345,7 @@ private:
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::teuchos::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
+        mThermalConductivity = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
         Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
     }
 
@@ -5654,7 +5358,7 @@ private:
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::teuchos::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        mThermalDiffusivityRatio = Plato::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
+        mThermalDiffusivityRatio = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
         Plato::is_positive_finite_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
     }
 
@@ -5670,7 +5374,7 @@ private:
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
+        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
     }
 
     /***************************************************************************//**
@@ -5931,7 +5635,7 @@ private:
             Plato::teuchos::is_material_defined(tMaterialName, aInputs);
             auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
             auto tThermalPropBlock = std::string("Thermal Properties");
-            mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
+            mThermalConductivity = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
 	        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
         }
     }
@@ -5948,7 +5652,7 @@ private:
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
+        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
     }
 
     /***************************************************************************//**
@@ -7979,7 +7683,7 @@ private:
      **********************************************************************************/
     void parseTags(Teuchos::ParameterList & aInputs)
     {
-        mCriterionNames = Plato::parse_array<std::string>("Functions", aInputs);
+        mCriterionNames = Plato::teuchos::parse_array<std::string>("Functions", aInputs);
         if(mCriterionNames.empty())
         {
             THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncTag
@@ -7994,7 +7698,7 @@ private:
      **********************************************************************************/
     void parseWeights(Teuchos::ParameterList & aInputs)
     {
-        mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", aInputs);
+        mCriterionWeights = Plato::teuchos::parse_array<Plato::Scalar>("Weights", aInputs);
         if(mCriterionWeights.empty())
         {
             if(mCriterionNames.empty())
@@ -8327,7 +8031,7 @@ private:
      **********************************************************************************/
     void parseNames(Teuchos::ParameterList & aInputs)
     {
-        mCriterionNames = Plato::parse_array<std::string>("Functions", aInputs);
+        mCriterionNames = Plato::teuchos::parse_array<std::string>("Functions", aInputs);
         if(mCriterionNames.empty())
         {
             THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncName
@@ -8342,7 +8046,7 @@ private:
      **********************************************************************************/
     void parseTargets(Teuchos::ParameterList & aInputs)
     {
-        mCriterionTarget = Plato::parse_array<std::string>("Targets", aInputs);
+        mCriterionTarget = Plato::teuchos::parse_array<std::string>("Targets", aInputs);
         if(mCriterionTarget.empty())
         {
             THROWERR(std::string("'Targets' keyword was not defined in function block with name '") + mFuncName
@@ -8357,7 +8061,7 @@ private:
      **********************************************************************************/
     void parseWeights(Teuchos::ParameterList & aInputs)
     {
-        mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", aInputs);
+        mCriterionWeights = Plato::teuchos::parse_array<Plato::Scalar>("Weights", aInputs);
         if(mCriterionWeights.empty())
         {
             if(mCriterionNames.empty())
@@ -8377,7 +8081,7 @@ private:
      **********************************************************************************/
     void parseNormalization(Teuchos::ParameterList & aInputs)
     {
-        mCriterionNormalizations = Plato::parse_array<Plato::Scalar>("Normalizations", aInputs);
+        mCriterionNormalizations = Plato::teuchos::parse_array<Plato::Scalar>("Normalizations", aInputs);
         if(mCriterionNormalizations.empty())
         {
             if(mCriterionNames.empty())
@@ -8393,8 +8097,6 @@ private:
 
 }
 // namespace Fluids
-
-
 
 /******************************************************************************//**
  * \class MomentumConservation
@@ -9755,10 +9457,10 @@ private:
      **********************************************************************************/
     void setCriticalFluidProperties(Teuchos::ParameterList &aInputs)
     {
-        mCriticalThermalDiffusivity = Plato::parse_max_material_property<Plato::Scalar>
+        mCriticalThermalDiffusivity = Plato::teuchos::parse_max_material_property<Plato::Scalar>
             (aInputs, "Thermal Properties", "Thermal Diffusivity", mSpatialModel.Domains);
 	Plato::is_positive_finite_number(mCriticalThermalDiffusivity, "Thermal Diffusivity");
-        mCriticalKinematicViscocity = Plato::parse_max_material_property<Plato::Scalar>
+        mCriticalKinematicViscocity = Plato::teuchos::parse_max_material_property<Plato::Scalar>
             (aInputs, "Viscous Properties", "Kinematic Viscocity", mSpatialModel.Domains);
 	Plato::is_positive_finite_number(mCriticalKinematicViscocity, "Kinematic Viscocity");
     }
@@ -15175,7 +14877,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
             "  </ParameterList>"
             "</ParameterList>"
             );
-    auto tNames = Plato::parse_array<std::string>("Functions", tParams.operator*());
+    auto tNames = Plato::teuchos::parse_array<std::string>("Functions", tParams.operator*());
 
     std::vector<std::string> tGoldNames = {"My Inlet Pressure", "My Outlet Pressure"};
     for(auto& tName : tNames)
@@ -15184,7 +14886,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
         TEST_EQUALITY(tGoldNames[tIndex], tName);
     }
 
-    auto tWeights = Plato::parse_array<Plato::Scalar>("Weights", *tParams);
+    auto tWeights = Plato::teuchos::parse_array<Plato::Scalar>("Weights", *tParams);
     std::vector<Plato::Scalar> tGoldWeights = {1.0, -1.0};
     for(auto& tWeight : tWeights)
     {
@@ -15391,16 +15093,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
     );
 
     // Prandtl #
-    auto tScalarOutput = Plato::parse_parameter<Plato::Scalar>("Prandtl", "Dimensionless Properties", tParams.operator*());
+    auto tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl", "Dimensionless Properties", tParams.operator*());
     auto tTolerance = 1e-6;
     TEST_FLOATING_EQUALITY(tScalarOutput, 2.1, tTolerance);
 
     // Darcy #
-    tScalarOutput = Plato::parse_parameter<Plato::Scalar>("Darcy", "Dimensionless Properties", tParams.operator*());
+    tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy", "Dimensionless Properties", tParams.operator*());
     TEST_FLOATING_EQUALITY(tScalarOutput, 2.2, tTolerance);
 
     // Grashof #
-    auto tArrayOutput = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof", "Dimensionless Properties", tParams.operator*());
+    auto tArrayOutput = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof", "Dimensionless Properties", tParams.operator*());
     TEST_EQUALITY(3, tArrayOutput.size());
     TEST_FLOATING_EQUALITY(tArrayOutput[0], 0.0, tTolerance);
     TEST_FLOATING_EQUALITY(tArrayOutput[1], 1.5, tTolerance);

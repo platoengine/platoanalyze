@@ -33,6 +33,7 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
 
 ## core sources
 set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    Solutions.cpp 
     ExpressionEvaluator.cpp 
     alg/ParseInput.cpp 
     alg/Basis.cpp 
