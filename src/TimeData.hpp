@@ -28,7 +28,7 @@ public:
     const Plato::Scalar mEndTime;       /*!< simulation end time */
     Plato::Scalar mCurrentTimeStepSize; /*!< current time step size */
 
-    Plato::Scalar mTimeStepExpansionMultiplier; /*!< expansion multiplier for number of time steps */
+    const Plato::Scalar mTimeStepExpansionMultiplier; /*!< expansion multiplier for number of time steps */
 
     bool mMaxNumTimeStepsReached; /*!< whether the maximum number of time steps has been reached */
 
@@ -43,11 +43,15 @@ public:
       mCurrentTime(0.0),
       mStartTime(0.0),
       mEndTime(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "End Time", 1.0)),
-      mCurrentTimeStepSize(mEndTime/(static_cast<Plato::Scalar>(mNumTimeSteps))),
+      mCurrentTimeStepSize(mEndTime/(std::min(mNumTimeSteps, mMaxNumTimeSteps))),
       mTimeStepExpansionMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
       mMaxNumTimeStepsReached(mNumTimeSteps >= mMaxNumTimeSteps)
     {
         mNumTimeSteps = std::min(mNumTimeSteps, mMaxNumTimeSteps);
+        if (mTimeStepExpansionMultiplier < static_cast<Plato::Scalar>(1.0))
+        {
+            THROWERR("Time Step Expansion Multiplier must be greater than or equal to 1.")
+        }
     }
 
     /***************************************************************************//**
@@ -94,7 +98,7 @@ public:
             mNumTimeSteps = mMaxNumTimeSteps;
             mMaxNumTimeStepsReached = true;
         }
-        mCurrentTimeStepSize  = mEndTime / static_cast<Plato::Scalar>(mNumTimeSteps);
+        mCurrentTimeStepSize  = mEndTime / mNumTimeSteps;
         mCurrentTime          = mStartTime;
         mCurrentTimeStepIndex = static_cast<Plato::OrdinalType>(0);
     }

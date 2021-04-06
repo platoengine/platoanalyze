@@ -11,6 +11,7 @@
 #include "Plato_Diagnostics.hpp"
 
 #include "PlasticityProblem.hpp"
+#include "TimeData.hpp"
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
@@ -2460,5 +2461,1317 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,tNumElemX,tNumElemY);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='100.0'/>                 \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='100.0'/>                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='75.0e3'/>                 \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='2.0e3'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e-2'/>     \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='344.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Total Work'>                                                    \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Total Work'/>          \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='6'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='6'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -16.0}'/>             \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function' type='string' value='0.0'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_2D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
+
+    // 5. Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::string tCriterionName("Total Work");
+    auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, 5.06992, tTolerance);
+
+    auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
+    std::vector<Plato::Scalar> tGold = {   -9.28712e+00, -6.79736e+00, -7.66478e+00, -1.56062e+01, 
+                                           -9.43036e+00, -3.70027e+00, -5.94345e+00, -9.62833e-01, 
+                                           -1.61888e+00, -2.81570e-01, -2.87953e-01, -3.45369e-01, 
+                                           -2.18775e-01, -3.48212e-01, -2.78725e-01, -1.25728e-01, 
+                                           -1.92759e-01, -2.53400e-01, -1.53646e-01, -1.65543e-01, 
+                                           -9.66721e-02, -7.59678e-02, -9.63312e-02, -5.28950e-02, 
+                                           -4.67601e-02, -2.32137e-02, -3.85132e-02, -2.08850e-03, 
+                                           -1.33305e-02, -1.59979e-02, -7.90555e-03, -4.34650e-03, 
+                                           -1.42643e-03};
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        //printf("%12.5e\n", tHostGrad(tIndex));
+        TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+
+    // 6. Output Data
+    if (tOutputData)
+    {
+        tPlasticityProblem.saveStates("Thermoplasticity_TotalWork_2D");
+    }
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(10.0,1.0,1.0,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Iterations' type='int' value='5000'/>                             \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='20.0'/>                  \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='10.0'/>                  \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='100.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Total Work'>                                                    \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Total Work'/>          \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
+      "    <Parameter name='Current Residual Norm Stopping Tolerance' type='double' value='1e-8'/> \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='3'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.0'/>                        \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Applied Disp Boundary Condition'>                             \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.02*t'/>                     \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
+
+    // 5. Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::string tCriterionName("Total Work");
+    auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -0.135556, tTolerance);
+
+    auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
+    std::vector<Plato::Scalar> tGold = {   -1.92313e-02, -6.39966e-03, -6.40439e-03, -6.39966e-03, 
+                                           -1.25797e-02, -2.54369e-02, -1.25797e-02, -2.48132e-02, 
+                                           -2.34758e-02, -1.19482e-02, -2.42932e-02, -1.19482e-02, 
+                                           -2.17179e-02, -1.06455e-02, -2.08630e-02, -1.06455e-02, 
+                                           -2.30153e-02, -1.12936e-02, -2.21578e-02, -1.12936e-02, 
+                                           -8.71336e-03, -1.69832e-02, -8.71336e-03, -1.78582e-02, 
+                                           -9.35628e-03, -1.82821e-02, -1.95726e-02, -1.00005e-02, 
+                                           -2.04285e-02, -1.00005e-02, -9.35628e-03, -1.91411e-02, 
+                                           -8.08114e-03, -1.65886e-02, -8.08114e-03, -1.56822e-02, 
+                                           -1.44881e-02, -7.47480e-03, -1.53563e-02, -7.47480e-03, 
+                                           -3.51411e-03, -1.07753e-02, -3.51411e-03, -3.42100e-03};
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        //printf("%12.5e\n", tHostGrad(tIndex));
+        TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+
+    // 6. Output Data
+    if (tOutputData)
+    {
+        tPlasticityProblem.saveStates("Thermoplasticity_TotalWork_3D");
+    }
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D_GradientZ)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,tNumElemX,tNumElemY);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='100.0'/>                 \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='100.0'/>                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='75.0e3'/>                 \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='2.0e3'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e-2'/>     \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='344.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Total Work'>                                                    \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Total Work'/>          \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='6'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='6'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -16.0}'/>             \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function' type='string' value='0.0'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_2D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 5. Test results
+    std::string tCriterionName("Total Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
+    const Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D_GradientZ)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(10.0,1.0,1.0,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Iterations' type='int' value='5000'/>                             \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='20.0'/>                  \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='10.0'/>                  \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='100.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Total Work'>                                                    \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Total Work'/>          \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
+      "    <Parameter name='Current Residual Norm Stopping Tolerance' type='double' value='1e-8'/> \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='3'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.0'/>                        \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Applied Disp Boundary Condition'>                             \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.05*t'/>                     \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 5. Test results
+    std::string tCriterionName("Total Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
+    const Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,tNumElemX,tNumElemY);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='100.0'/>                 \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='100.0'/>                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='75.0e3'/>                 \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='2.0e3'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e-2'/>     \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='344.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Thermal Energy'>                                                \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Thermal Energy'/>      \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -16.0}'/>             \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function' type='string' value='0.0'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_2D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
+
+    // 5. Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::string tCriterionName("Thermal Energy");
+    auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, 27777.8, tTolerance);
+
+    auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
+    std::vector<Plato::Scalar> tGold = {   -1.38889e+03, -2.08333e+03, -2.08333e+03, -4.16667e+03, 
+                                           -2.08333e+03, -6.94444e+02, -2.08333e+03, -2.08333e+03, 
+                                           -4.16667e+03, -2.08333e+03, -4.16667e+03, -2.08333e+03, 
+                                           -2.08333e+03, -4.16667e+03, -2.08333e+03, -2.08333e+03, 
+                                           -2.08333e+03, -4.16667e+03, -2.08333e+03, -4.16667e+03, 
+                                           -2.08333e+03, -2.08333e+03, -4.16667e+03, -2.08333e+03, 
+                                           -4.16667e+03, -2.08333e+03, -2.08333e+03, -1.38889e+03, 
+                                           -2.08333e+03, -4.16667e+03, -2.08333e+03, -2.08333e+03, 
+                                           -6.94444e+02};
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        //printf("%12.5e\n", tHostGrad(tIndex));
+        TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+
+    // 6. Output Data
+    if (tOutputData)
+    {
+        tPlasticityProblem.saveStates("Thermoplasticity_ThermalEnergy_2D");
+    }
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(10.0,1.0,1.0,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Iterations' type='int' value='5000'/>                             \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='20.0'/>                  \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='10.0'/>                  \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='100.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Thermal Energy'>                                                \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Thermal Energy'/>      \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
+      "    <Parameter name='Current Residual Norm Stopping Tolerance' type='double' value='1e-8'/> \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='3'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.0'/>                        \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Applied Disp Boundary Condition'>                             \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.02*t'/>                     \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
+
+    // 5. Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::string tCriterionName("Thermal Energy");
+    auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -27777.8, tTolerance);
+
+    auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
+    std::vector<Plato::Scalar> tGold = {    2.08333e+03, 6.94444e+02, 6.94444e+02, 6.94444e+02, 
+                                            1.38889e+03, 2.77778e+03, 1.38889e+03, 2.77778e+03, 
+                                            2.77778e+03, 1.38889e+03, 2.77778e+03, 1.38889e+03, 
+                                            2.77778e+03, 1.38889e+03, 2.77778e+03, 1.38889e+03, 
+                                            2.77778e+03, 1.38889e+03, 2.77778e+03, 1.38889e+03, 
+                                            1.38889e+03, 2.77778e+03, 1.38889e+03, 2.77778e+03, 
+                                            1.38889e+03, 2.77778e+03, 2.77778e+03, 1.38889e+03, 
+                                            2.77778e+03, 1.38889e+03, 1.38889e+03, 2.77778e+03, 
+                                            1.38889e+03, 2.77778e+03, 1.38889e+03, 2.77778e+03, 
+                                            2.77778e+03, 1.38889e+03, 2.77778e+03, 1.38889e+03, 
+                                            6.94444e+02, 2.08333e+03, 6.94444e+02, 6.94444e+02};
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        //printf("%12.5e\n", tHostGrad(tIndex));
+        TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+
+    // 6. Output Data
+    if (tOutputData)
+    {
+        tPlasticityProblem.saveStates("Thermoplasticity_ThermalEnergy_3D");
+    }
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D_GradientZ)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,tNumElemX,tNumElemY);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='100.0'/>                 \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='100.0'/>                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='75.0e3'/>                 \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='2.0e3'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e-2'/>     \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='344.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Thermal Energy'>                                                \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Thermal Energy'/>      \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -16.0}'/>             \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function' type='string' value='0.0'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_2D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 5. Test results
+    std::string tCriterionName("Thermal Energy");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
+    const Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D_GradientZ)
+{
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(10.0,1.0,1.0,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Iterations' type='int' value='5000'/>                             \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='20.0'/>                  \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='10.0'/>                  \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
+      "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "      <ParameterList name='Plasticity Model'>                                               \n"
+      "        <ParameterList name='J2 Plasticity'>                                                \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='100.0'/>             \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/> \n"
+      "        </ParameterList>                                                                    \n"
+      "      </ParameterList>                                                                      \n"
+      "    </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                          \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Thermal Energy'>                                                \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Thermal Energy'/>      \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
+      "    <Parameter name='Current Residual Norm Stopping Tolerance' type='double' value='1e-8'/> \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
+      "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
+      "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
+      "   </ParameterList>                                                                      \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Fixed Temperature Boundary Condition'>                        \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='3'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.0'/>                        \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Applied Disp Boundary Condition'>                             \n"
+      "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Function'    type='string' value='0.02*t'/>                     \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tPlasticityProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 5. Test results
+    std::string tCriterionName("Thermal Energy");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
+    const Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TimeData_Test1)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='9'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='End Time' type='double' value='2.5'/>                               \n"
+      "    <Parameter name='Expansion Multiplier' type='double' value='1.25'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    Plato::TimeData tTimeData(*tParamList);
+    
+    TEST_ASSERT(tTimeData.mMaxNumTimeStepsReached);
+    
+    TEST_EQUALITY(tTimeData.mCurrentTimeStepIndex, 0);
+    TEST_EQUALITY(tTimeData.mNumTimeSteps, tTimeData.mMaxNumTimeSteps);
+
+    constexpr Plato::Scalar tTolerance = 1.0e-7;
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTime, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tTimeData.mStartTime, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tTimeData.mEndTime, 2.5, tTolerance);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTimeStepSize, 2.5/8.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tTimeData.mTimeStepExpansionMultiplier, 1.25, tTolerance);
+
+    const Plato::OrdinalType tCurrentTimeStepIndex = 4;
+    const Plato::Scalar tCurrentTimeStepIndexScalar = static_cast<Plato::Scalar>(tCurrentTimeStepIndex);
+    tTimeData.updateTimeData(tCurrentTimeStepIndex);
+    TEST_EQUALITY(tTimeData.mCurrentTimeStepIndex, tCurrentTimeStepIndex);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTime, 
+                           tTimeData.mCurrentTimeStepSize * (tCurrentTimeStepIndexScalar + 1.0), tTolerance);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TimeData_Test2)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='End Time' type='double' value='2.5'/>                               \n"
+      "    <Parameter name='Expansion Multiplier' type='double' value='1.75'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    Plato::TimeData tTimeData(*tParamList);
+    
+    TEST_ASSERT(!tTimeData.mMaxNumTimeStepsReached);
+    
+    TEST_EQUALITY(tTimeData.mCurrentTimeStepIndex, 0);
+    TEST_EQUALITY(tTimeData.mNumTimeSteps, 4);
+
+    constexpr Plato::Scalar tTolerance = 1.0e-7;
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTimeStepSize, 0.625, tTolerance);
+
+    const Plato::OrdinalType tCurrentTimeStepIndex = 3;
+    tTimeData.updateTimeData(tCurrentTimeStepIndex);
+    TEST_ASSERT(tTimeData.atFinalTimeStep());
+    TEST_EQUALITY(tTimeData.mCurrentTimeStepIndex, tCurrentTimeStepIndex);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTime, 2.5, tTolerance);
+
+    tTimeData.increaseNumTimeSteps();
+    TEST_ASSERT(!tTimeData.mMaxNumTimeStepsReached);
+    TEST_ASSERT(!tTimeData.atFinalTimeStep());
+    TEST_EQUALITY(tTimeData.mCurrentTimeStepIndex, 0);
+    TEST_EQUALITY(tTimeData.mNumTimeSteps, 7);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTime, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTimeStepSize, 2.5/7.0, tTolerance);
+
+    tTimeData.updateTimeData(tCurrentTimeStepIndex);
+    tTimeData.increaseNumTimeSteps();
+    TEST_ASSERT(tTimeData.mMaxNumTimeStepsReached);
+    TEST_ASSERT(!tTimeData.atFinalTimeStep());
+    TEST_EQUALITY(tTimeData.mCurrentTimeStepIndex, 0);
+    TEST_EQUALITY(tTimeData.mNumTimeSteps, 8);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTime, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tTimeData.mCurrentTimeStepSize, 2.5/8.0, tTolerance);
+}
 
 }
