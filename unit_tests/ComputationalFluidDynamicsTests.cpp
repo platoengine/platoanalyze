@@ -39,9 +39,9 @@
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "Plato_Diagnostics.hpp"
-#include "SimplexFluidsFadTypes.hpp"
 #include "alg/PlatoSolverFactory.hpp"
 #include "hyperbolic/SimplexFluids.hpp"
+#include "hyperbolic/SimplexFluidsFadTypes.hpp"
 
 #include "PlatoTestHelpers.hpp"
 
