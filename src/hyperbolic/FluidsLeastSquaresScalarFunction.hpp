@@ -418,4 +418,3 @@ extern template class Plato::Fluids::LeastSquaresScalarFunction<Plato::Incompres
 #ifdef PLATOANALYZE_3D
 extern template class Plato::Fluids::LeastSquaresScalarFunction<Plato::IncompressibleFluids<3>>;
 #endif
-
