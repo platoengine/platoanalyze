@@ -178,30 +178,6 @@ inline Type parse_max_material_property
 }
 // function parse_max_material_property
 
-/***************************************************************************//**
- * \fn inline bool is_impermeability_defined
- *
- * \brief Return true if dimensionless impermeability number is defined; return
- *   false if it is not defined.
- *
- * \param [in] aInputs input file metadata
- *
- * \return boolean (true or false)
- ******************************************************************************/
-inline bool
-is_impermeability_defined
-(Teuchos::ParameterList & aInputs)
-{
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if( !tHyperbolic.isSublist("Dimensionless Properties") )
-    {
-        THROWERR("Parameter Sublist 'Dimensionless Properties' is not defined.")
-    }
-    auto tSublist = tHyperbolic.sublist("Dimensionless Properties");
-    return (tSublist.isParameter("Impermeability Number"));
-}
-// function is_impermeability_defined
-
 }
 
 }
