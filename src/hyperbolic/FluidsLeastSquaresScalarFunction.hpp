@@ -404,3 +404,18 @@ private:
 
 }
 // namespace Plato
+
+#include "hyperbolic/IncompressibleFluids.hpp"
+
+#ifdef PLATOANALYZE_1D
+extern template class Plato::Fluids::FluidsLeastSquaresScalarFunction<Plato::IncompressibleFluids<1>>;
+#endif
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::Fluids::FluidsLeastSquaresScalarFunction<Plato::IncompressibleFluids<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::Fluids::FluidsLeastSquaresScalarFunction<Plato::IncompressibleFluids<3>>;
+#endif
+

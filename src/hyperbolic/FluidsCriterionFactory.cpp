@@ -18,4 +18,3 @@ template class Plato::Fluids::CriterionFactory<Plato::IncompressibleFluids<2>>;
 #ifdef PLATOANALYZE_3D
 template class Plato::Fluids::CriterionFactory<Plato::IncompressibleFluids<3>>;
 #endif
-
