@@ -26,9 +26,6 @@ namespace Fluids
 template<typename PhysicsT>
 class CriterionFactory
 {
-private:
-    using ScalarFunctionType = std::shared_ptr<Plato::Fluids::CriterionBase>; /*!< local scalar function type */
-
 public:
     /******************************************************************************//**
      * \brief Constructor
@@ -47,7 +44,7 @@ public:
      * \param [in] aInputs  input file metadata
      * \param [in] aTag    scalar function tag
      **********************************************************************************/
-    ScalarFunctionType
+    std::shared_ptr<Plato::Fluids::CriterionBase>
     createCriterion
     (Plato::SpatialModel    & aModel,
      Plato::DataMap         & aDataMap,
