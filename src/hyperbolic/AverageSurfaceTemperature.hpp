@@ -1,5 +1,5 @@
 /*
- * AverageSurfacePressure.hpp
+ * AverageSurfaceTemperature.hpp
  *
  *  Created on: Apr 6, 2021
  */
@@ -24,39 +24,39 @@ namespace Fluids
  * \tparam PhysicsT    Plato physics type
  * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
  *
- * \class AverageSurfacePressure
+ * \class AverageSurfaceTemperature
  *
- * \brief Class responsible for the evaluation of the average surface pressure
+ * \brief Class responsible for the evaluation of the average surface temperature
  *   along the user-specified entity sets (e.g. side sets).
  *
- *                  \f[ \int_{\Gamma_e} p^n d\Gamma_e \f],
+ *                  \f[ \int_{\Gamma} T^n d\Gamma \f],
  *
- * where \f$ n \f$ denotes the current time step and \f$ p \f$ denotes pressure.
+ * where \f$ n \f$ denotes the current time step and \f$ T \f$ denotes temperature.
  ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
-class AverageSurfacePressure : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
+class AverageSurfaceTemperature : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
-    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of pressure dofs per node */
+    static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of temperature dofs per node */
 
-    using ResultT   = typename EvaluationT::ResultScalarType;      /*!< result FAD type */
-    using ConfigT   = typename EvaluationT::ConfigScalarType;      /*!< configuration FAD type */
-    using PressureT = typename EvaluationT::CurrentMassScalarType; /*!< pressure FAD type */
+    using ResultT = typename EvaluationT::ResultScalarType; /*!< result FAD type */
+    using ConfigT = typename EvaluationT::ConfigScalarType; /*!< configuration FAD type */
+    using CurrentTempT = typename EvaluationT::CurrentEnergyScalarType; /*!< current temperature FAD type */
 
     // set local typenames
     using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>; /*!< local short name for cubature rule class */
 
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
-    CubatureRule mSurfaceCubatureRule; /*!< cubature integration rule on surface */
+    CubatureRule mSurfaceCubatureRule; /*!< cubature integration rule */
     const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
 
     // member parameters
     std::string mFuncName; /*!< scalar funciton name */
-    std::vector<std::string> mSideSets; /*!< sideset names corresponding to the surfaces associated with the surface integral */
+    std::vector<std::string> mWallSets; /*!< sideset names corresponding to the surfaces associated with the surface integral */
 
 public:
     /***************************************************************************//**
@@ -66,7 +66,7 @@ public:
      * \param [in] aDataMap holds output metadata
      * \param [in] aInputs  input file metadata
      ******************************************************************************/
-    AverageSurfacePressure
+    AverageSurfaceTemperature
     (const std::string          & aName,
      const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
@@ -77,13 +77,13 @@ public:
          mFuncName(aName)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mSideSets = Plato::teuchos::parse_array<std::string>("Sides", tMyCriteria);
+        mWallSets = Plato::teuchos::parse_array<std::string>("Sides", tMyCriteria);
     }
 
     /***************************************************************************//**
      * \brief Destructor
      ******************************************************************************/
-    virtual ~AverageSurfacePressure(){}
+    virtual ~AverageSurfaceTemperature(){}
 
     /***************************************************************************//**
      * \fn std::string name
@@ -98,7 +98,10 @@ public:
      * \param [in] aWorkSets holds state work sets initialize with correct FAD types
      * \param [in] aResult   1D output work set of size number of cells
      ******************************************************************************/
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarVectorT<ResultT> & aResult)
+    const override
     { return; }
 
     /***************************************************************************//**
@@ -107,7 +110,10 @@ public:
      * \param [in] aWorkSets holds state work sets initialize with correct FAD types
      * \param [in] aResult   1D output work set of size number of cells
      ******************************************************************************/
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
+    void evaluateBoundary
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarVectorT<ResultT> & aResult)
+    const override
     {
         // set face to element graph
         auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
@@ -124,14 +130,15 @@ public:
         Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
-        // set input worksets
-        auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tCurrentPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
-
-        // transfer member data to device
+        // set local data
         auto tCubatureWeight = mSurfaceCubatureRule.getCubWeight();
         auto tBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
-        for(auto& tName : mSideSets)
+
+        // set input worksets
+        auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tCurrentTempWS = Plato::metadata<Plato::ScalarMultiVectorT<CurrentTempT>>(aWorkSets.get("current temperature"));
+
+        for(auto& tName : mWallSets)
         {
             // get faces on this side set
             auto tFaceOrdinalsOnSideSet = Plato::omega_h::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
@@ -140,7 +147,7 @@ public:
 
             // set local worksets
             auto tNumCells = mSpatialDomain.Mesh.nelems();
-            Plato::ScalarVectorT<PressureT> tCurrentPressGP("current pressure at Gauss point", tNumCells);
+            Plato::ScalarVectorT<CurrentTempT> tCurrentTempGP("current temperature at GP", tNumCells);
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
             {
@@ -158,25 +165,25 @@ public:
                     tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigWS, tJacobians);
                     tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
-                    // project current pressure onto surface
+                    // project current temperature onto surface
                     for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
                     {
                         auto tLocalCellNode = tLocalNodeOrdinals[tNode];
-                        tCurrentPressGP(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentPressWS(tCellOrdinal, tLocalCellNode);
+                        tCurrentTempGP(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentTempWS(tCellOrdinal, tLocalCellNode);
                     }
 
-                    // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a p^h d\Gamma_e
+                    // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a T^h d\Gamma_e
                     for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
                     {
-                        aResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
+                        aResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentTempGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
                     }
                 }
-            }, "average surface pressure");
+            }, "average surface temperature");
 
         }
     }
 };
-// class AverageSurfacePressure
+// class AverageSurfaceTemperature
 
 }
 // namespace Fluids
