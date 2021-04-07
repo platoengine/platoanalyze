@@ -308,28 +308,116 @@ strain_rate
 // function strain_rate
 
 /***************************************************************************//**
- * \fn inline bool is_impermeability_defined
+ * \tparam NumNodes number of nodes in cell/element (integer)
+ * \tparam SpaceDim   spatial dimensions (integer)
+ * \tparam ResultT    output Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT    configuration FAD type
+ * \tparam PrevVelT   previous velocity FAD type
+ * \tparam StabilityT stabilizing force FAD type
  *
- * \brief Return true if dimensionless impermeability number is defined; return
- *   false if it is not defined.
+ * \fn device_type inline void integrate_stabilizing_vector_force
  *
- * \param [in] aInputs input file metadata
+ * \brief Integrate stabilizing momentum forces, defined as
  *
- * \return boolean (true or false)
+ * \f[
+ *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k \right) \hat{S}^n_{\bar{u}_i}\, d\Omega
+ * \f]
+ *
+ * where \f$\alpha\f$ denotes a scalar multiplier, \f$ u_k^n \f$ is the k-th
+ * component of the velocity field at time step n, \f$ x_i \f$ is the i-th
+ * coordinate and \f$\hat{S}^n_{\bar{u}_i}\f$ is the stabilizing force.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aCellVolume     cell/element volume workset
+ * \param [in] aGradient       spatial gradient workset
+ * \param [in] aPrevVelGP      previous velocity at Gauss points
+ * \param [in] aStabilization  stabilization forces
+ * \param [in] aMultiplier     scalar multiplier (default = 1.0)
+ * \param [in/out] aResult     result/output workset
+ *
  ******************************************************************************/
-inline bool
-is_impermeability_defined
-(Teuchos::ParameterList & aInputs)
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT,
+ typename ConfigT,
+ typename PrevVelT,
+ typename StabilityT>
+DEVICE_TYPE inline void
+integrate_stabilizing_vector_force
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<StabilityT> & aStabilization,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if( !tHyperbolic.isSublist("Dimensionless Properties") )
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
-        THROWERR("Parameter Sublist 'Dimensionless Properties' is not defined.")
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            auto tLocalCellDof = (SpaceDim * tNode) + tDimI;
+            for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
+            {
+                aResult(aCellOrdinal, tLocalCellDof) += aMultiplier * ( aGradient(aCellOrdinal, tNode, tDimK) *
+                    ( aPrevVelGP(aCellOrdinal, tDimK) * aStabilization(aCellOrdinal, tDimI) ) ) * aCellVolume(aCellOrdinal);
+            }
+        }
     }
-    auto tSublist = tHyperbolic.sublist("Dimensionless Properties");
-    return (tSublist.isParameter("Impermeability Number"));
 }
-// function is_impermeability_defined
+// function integrate_stabilizing_vector_force
+
+/***************************************************************************//**
+ * \tparam NumNodesPerCell number of nodes in cell/element (integer)
+ * \tparam NumDofsPerNode  number of degrees of freedom per node (integer)
+ * \tparam ResultT         output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT         configuration work set FAD type
+ * \tparam FieldT          vector field work set FAD type
+ *
+ * \fn device_type inline void integrate_vector_field
+ *
+ * \brief Integrate vector field, defined as
+ *
+ * \f[ \alpha\int_{\Omega} w_i^h f_i d\Omega \f]
+ *
+ * where \f$\alpha\f$ denotes a scalar multiplier.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aBasisFunctions cell/element basis functions
+ * \param [in] aCellVolume     cell/element volume workset
+ * \param [in] aGradient       spatial gradient workset
+ * \param [in] aField          vector field
+ * \param [in] aMultiplier     scalar multiplier (default = 1.0)
+ * \param [in/out] aResult     result/output workset
+ *
+ ******************************************************************************/
+template
+<Plato::OrdinalType NumNodesPerCell,
+ Plato::OrdinalType NumDofsPerNode,
+ typename ResultT,
+ typename ConfigT,
+ typename FieldT>
+DEVICE_TYPE inline
+void integrate_vector_field
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarMultiVectorT<FieldT> & aField,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        for(Plato::OrdinalType tDof = 0; tDof < NumDofsPerNode; tDof++)
+        {
+            auto tLocalCellDof = (NumDofsPerNode * tNode) + tDof;
+            aResult(aCellOrdinal, tLocalCellDof) += aMultiplier * aCellVolume(aCellOrdinal) *
+                aBasisFunctions(tNode) * aField(aCellOrdinal, tDof);
+        }
+    }
+}
+// function integrate_vector_field
 
 }
 // namespace Fluids
