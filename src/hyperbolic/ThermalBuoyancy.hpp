@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <Teuchos_ParameterList.hpp>
+
 #include "MetaData.hpp"
 #include "WorkSets.hpp"
 #include "FluidsUtils.hpp"

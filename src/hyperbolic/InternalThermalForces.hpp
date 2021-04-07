@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <Teuchos_ParameterList.hpp>
+
 #include "BLAS2.hpp"
 #include "MetaData.hpp"
 #include "SpatialModel.hpp"
