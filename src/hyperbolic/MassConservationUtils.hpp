@@ -15,6 +15,111 @@ namespace Fluids
 {
 
 /***************************************************************************//**
+ * \fn device_type void integrate_divergence_operator
+ *
+ * \tparam NumNodes number of nodes on cell/element (integer)
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ConfigT  configuration FAD evaluation type
+ * \tparam PrevVelT previous velocity FAD evaluation type
+ * \tparam aResult  result/output FAD evaluation type
+ *
+ * \brief Integrate momentum divergence, which is defined as
+ *
+ * \f[
+ *   \alpha\int_{\Omega} v^h\frac{\partial\bar{u}_i^{n}}{\partial\bar{x}_i} d\Omega
+ * \f]
+ *
+ * where \f$ v^h \f$ is the test function, \f$ \bar{u}_i^{n} \f$ is the previous
+ * velocity, and \f$ \alpha \f$ denotes a scalar multiplier.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aBasisFunctions basis functions
+ * \param [in] aGradient       spatial gradient workset
+ * \param [in] aCellVolume     cell/element volume workset
+ * \param [in] aPrevVel        previous velocity workset
+ * \param [in] aMultiplier     scalar multiplier
+ * \param [in/out] aResult     result/output workset
+ *
+ ******************************************************************************/
+template<Plato::OrdinalType NumNodes,
+         Plato::OrdinalType SpaceDim,
+         typename ConfigT,
+         typename PrevVelT,
+         typename ResultT>
+DEVICE_TYPE inline void
+integrate_divergence_operator
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVel,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            aResult(aCellOrdinal, tNode) += aMultiplier * aCellVolume(aCellOrdinal) *
+                aBasisFunctions(tNode) * aGradient(aCellOrdinal, tNode, tDim) * aPrevVel(aCellOrdinal, tDim);
+        }
+    }
+}
+// function integrate_divergence_operator
+
+/***************************************************************************//**
+ * \fn device_type void integrate_laplacian_operator
+ *
+ * \tparam NumNodes number of nodes on cell/element (integer)
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ConfigT  configuration FAD evaluation type
+ * \tparam FieldT   field FAD evaluation type
+ * \tparam aResult  result/output FAD evaluation type
+ *
+ * \brief Integrate Laplacian operator, defined as
+ *
+ * \f[
+ *   \alpha\int_{\Omega} \frac{\partial v^h}{\partial x_i}\frac{\partial p^n}{\partial x_i} d\Omega
+ * \f]
+ *
+ * where \f$ v^h \f$ is the test function, \f$ p^{n} \f$ is a scalar field at
+ * time step n, \f$ x_i \f$ is the i-th coordinate and \f$ \alpha \f$ denotes
+ * a scalar multiplier.
+ *
+ * \param [in] aCellOrdinal    cell/element ordinal
+ * \param [in] aGradient       spatial gradient workset
+ * \param [in] aCellVolume     cell/element volume workset
+ * \param [in] aField          vector field workset
+ * \param [in] aMultiplier     scalar multiplier
+ * \param [in/out] aResult     result/output workset
+ *
+ ******************************************************************************/
+template<Plato::OrdinalType NumNodes,
+         Plato::OrdinalType SpaceDim,
+         typename ConfigT,
+         typename FieldT,
+         typename ResultT>
+DEVICE_TYPE inline void
+integrate_laplacian_operator
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarMultiVectorT<FieldT> & aField,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            aResult(aCellOrdinal, tNode) += aMultiplier * aCellVolume(aCellOrdinal) *
+                aGradient(aCellOrdinal, tNode, tDim) * aField(aCellOrdinal, tDim);
+        }
+    }
+}
+// function integrate_laplacian_operator
+
+/***************************************************************************//**
  * \tparam NumNodes   number of nodes on the cell
  * \tparam SpaceDim   spatial dimensions
  * \tparam ConfigT    configuration Forward Automaitc Differentiation (FAD) type
