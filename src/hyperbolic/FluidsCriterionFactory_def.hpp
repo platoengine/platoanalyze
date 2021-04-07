@@ -23,10 +23,10 @@ namespace Fluids
 template <typename PhysicsT>
 std::shared_ptr<Plato::Fluids::CriterionBase>
 CriterionFactory<PhysicsT>::createCriterion
-(Plato::SpatialModel    & aModel,
- Plato::DataMap         & aDataMap,
- Teuchos::ParameterList & aInputs,
- std::string            & aTag)
+(const Plato::SpatialModel    & aModel,
+       Plato::DataMap         & aDataMap,
+       Teuchos::ParameterList & aInputs,
+       std::string            & aTag)
 {
    auto tFunctionTag = aInputs.sublist("Criteria").sublist(aTag);
    auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");

@@ -6,8 +6,11 @@
 
 #pragma once
 
+#include <memory>
+
 #include <Teuchos_ParameterList.hpp>
 
+#include "SpatialModel.hpp"
 #include "hyperbolic/FluidsCriterionBase.hpp"
 
 namespace Plato
@@ -44,10 +47,10 @@ public:
      **********************************************************************************/
     std::shared_ptr<Plato::Fluids::CriterionBase>
     createCriterion
-    (Plato::SpatialModel    & aModel,
-     Plato::DataMap         & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string            & aTag);
+    (const Plato::SpatialModel    & aModel,
+           Plato::DataMap         & aDataMap,
+           Teuchos::ParameterList & aInputs,
+           std::string            & aTag);
 };
 // class CriterionFactory
 
@@ -60,16 +63,13 @@ public:
 #include "hyperbolic/IncompressibleFluids.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<1>>;
-extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<1>>;
+extern template class Plato::Fluids::CriterionFactory<Plato::IncompressibleFluids<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<2>>;
-extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<2>>;
+extern template class Plato::Fluids::CriterionFactory<Plato::IncompressibleFluids<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<3>>;
-extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<3>>;
+extern template class Plato::Fluids::CriterionFactory<Plato::IncompressibleFluids<3>>;
 #endif

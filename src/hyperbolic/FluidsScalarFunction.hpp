@@ -87,10 +87,10 @@ public:
      * \param [in] aName    scalar function name
      ******************************************************************************/
     ScalarFunction
-    (Plato::SpatialModel    & aModel,
-     Plato::DataMap         & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string            & aName):
+    (const Plato::SpatialModel    & aModel,
+           Plato::DataMap         & aDataMap,
+           Teuchos::ParameterList & aInputs,
+           std::string            & aName):
         mFuncName(aName),
         mSpatialModel(aModel),
         mDataMap(aDataMap),
