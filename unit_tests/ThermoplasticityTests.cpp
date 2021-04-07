@@ -2804,7 +2804,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D_GradientZ)
 {
-    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     const Plato::OrdinalType tNumElemX = 10;
     const Plato::OrdinalType tNumElemY = 2;
@@ -2934,7 +2933,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D_GradientZ
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D_GradientZ)
 {
-    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 3;
     const Plato::OrdinalType tNumElemX = 10;
     const Plato::OrdinalType tNumElemY = 1;
@@ -3416,7 +3414,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D_GradientZ)
 {
-    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     const Plato::OrdinalType tNumElemX = 10;
     const Plato::OrdinalType tNumElemY = 2;
@@ -3546,7 +3543,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D_Gradi
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D_GradientZ)
 {
-    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 3;
     const Plato::OrdinalType tNumElemX = 10;
     const Plato::OrdinalType tNumElemY = 1;
