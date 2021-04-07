@@ -47,6 +47,7 @@
 #include "hyperbolic/MomentumSurfaceForces.hpp"
 #include "hyperbolic/MassConservationUtils.hpp"
 #include "hyperbolic/InternalThermalForces.hpp"
+#include "hyperbolic/FluidsCriterionFactory.hpp"
 #include "hyperbolic/AbstractVectorFunction.hpp"
 #include "hyperbolic/AverageSurfacePressure.hpp"
 #include "hyperbolic/EnergyConservationUtils.hpp"
