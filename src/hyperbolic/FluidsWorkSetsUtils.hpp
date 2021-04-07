@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "BLAS1.hpp"
 #include "WorkSets.hpp"
 #include "Variables.hpp"
