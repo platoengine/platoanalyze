@@ -8,9 +8,7 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "PlatoUtilities.hpp"
-
-#include "hyperbolic/FluidsScalarFunction.hpp"
+#include "hyperbolic/FluidsCriterionBase.hpp"
 
 namespace Plato
 {
@@ -49,38 +47,7 @@ public:
     (Plato::SpatialModel    & aModel,
      Plato::DataMap         & aDataMap,
      Teuchos::ParameterList & aInputs,
-     std::string            & aTag)
-     {
-        auto tFunctionTag = aInputs.sublist("Criteria").sublist(aTag);
-        auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");
-        auto tLowerType = Plato::tolower(tType);
-
-        if(tLowerType == "scalar function")
-        {
-            auto tCriterion =
-                std::make_shared<Plato::Fluids::ScalarFunction<PhysicsT>>
-                    (aModel, aDataMap, aInputs, aTag);
-            return tCriterion;
-        }
-        /*else if(tLowerType == "weighted sum")
-        {
-            auto tCriterion =
-                std::make_shared<Plato::Fluids::WeightedScalarFunction<PhysicsT>>
-                    (aSpatialModel, aDataMap, aInputs, aName);
-            return tCriterion;
-        }
-        else if(tLowerType == "least squares")
-        {
-            auto tCriterion =
-                std::make_shared<Plato::Fluids::LeastSquaresScalarFunction<PhysicsT>>
-                    (aSpatialModel, aDataMap, aInputs, aName);
-            return tCriterion;
-        }*/
-        else
-        {
-            THROWERR(std::string("Scalar function in block '") + aTag + "' with Type '" + tType + "' is not supported.")
-        }
-     }
+     std::string            & aTag);
 };
 // class CriterionFactory
 
@@ -89,3 +56,20 @@ public:
 
 }
 // namespace Plato
+
+#include "hyperbolic/IncompressibleFluids.hpp"
+
+#ifdef PLATOANALYZE_1D
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<1>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<1>>;
+#endif
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<2>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<3>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::IncompressibleFluids<3>>;
+#endif
