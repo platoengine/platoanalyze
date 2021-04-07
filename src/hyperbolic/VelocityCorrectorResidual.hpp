@@ -20,6 +20,7 @@
 #include "hyperbolic/ThermalBuoyancy.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 #include "hyperbolic/MassConservationUtils.hpp"
+#include "hyperbolic/AbstractVectorFunction.hpp"
 #include "hyperbolic/MomentumConservationUtils.hpp"
 
 namespace Plato
