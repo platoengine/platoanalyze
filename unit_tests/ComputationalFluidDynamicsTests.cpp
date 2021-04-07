@@ -45,6 +45,7 @@
 #include "hyperbolic/MassConservationUtils.hpp"
 #include "hyperbolic/AbstractVectorFunction.hpp"
 #include "hyperbolic/AverageSurfacePressure.hpp"
+#include "hyperbolic/EnergyConservationUtils.hpp"
 #include "hyperbolic/AverageSurfaceTemperature.hpp"
 #include "hyperbolic/MomentumConservationUtils.hpp"
 #include "hyperbolic/VelocityCorrectorResidual.hpp"
@@ -134,47 +135,6 @@ project_vector_field_onto_surface
     }
 }
 // function project_vector_field_onto_surface
-
-/******************************************************************************//**
- * \tparam NumNodes  (integer) number of nodes on surface/face
- * \tparam InStateType  input state type
- * \tparam OutStateType output state type
- *
- * \fn device_type inline project_scalar_field_onto_surface
- *
- * \brief Project scalar field onto surface/face
- *
- * \param [in] aCellOrdinal       cell/element ordinal
- * \param [in] aBasisFunctions    basis functions
- * \param [in] aLocalNodeOrdinals local cell node ordinals
- * \param [in] aInputState        input state
- * \param [in/out] aInputState    output state
-**********************************************************************************/
-template<Plato::OrdinalType NumNodes,
-         typename InStateType,
-         typename OutStateType>
-DEVICE_TYPE inline void
-project_scalar_field_onto_surface
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
- const Plato::OrdinalType aLocalNodeOrdinals[NumNodes],
- const Plato::ScalarMultiVectorT<InStateType> & aInputState,
- const Plato::ScalarMultiVectorT<OutStateType> & aOutputState)
-{
-    aOutputState(aCellOrdinal) = 0.0;
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        auto tLocalCellNode = aLocalNodeOrdinals[tNode];
-        aOutputState(aCellOrdinal) += aBasisFunctions(tNode) * aInputState(aCellOrdinal, tLocalCellNode);
-    }
-}
-// function project_scalar_field_onto_surface
-
-
-
-
-
-
 
 namespace Fluids
 {
@@ -325,335 +285,26 @@ private:
 */
 // class InternalDissipationEnergy
 
-
 /***************************************************************************//**
- * \tparam NumNodes  number of nodes
- * \tparam SpaceDim  spatial dimensions
- * \tparam ConfigT   configuration Forward Automatic Differentiation (FAD) type
- * \tparam PrevVelT  previous velocity FAD type
- * \tparam PrevTempT previous temperatue FAD type
- * \tparam ResultT   result/output FAD type
- *
- * \fn DEVICE_TYPE inline void calculate_convective_forces
- *
- * \brief Calculate convective forces.
- *
- * \param [in] aCellOrdinal cell/element ordinal
- * \param [in] aGradient    spatial gradient workset
- * \param [in] aPrevVelGP   previous velocity at the Gauss points
- * \param [in] aPrevTemp    previous temperature workset
- * \param [in] aMultiplier  scalar multiplier
- * \param [in\out] aResult  output/result workset
- *
- ******************************************************************************/
-template<Plato::OrdinalType NumNodes,
-         Plato::OrdinalType SpaceDim,
-         typename ConfigT,
-         typename PrevVelT,
-         typename PrevTempT,
-         typename ResultT>
-DEVICE_TYPE inline void
-calculate_convective_forces
-(const Plato::OrdinalType & aCellOrdinals,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarMultiVectorT<PrevTempT> & aPrevTemp,
- const Plato::ScalarVectorT<ResultT> & aResult,
- Plato::Scalar aMultiplier = 1.0)
-{
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
-        {
-            aResult(aCellOrdinals) += aMultiplier * aPrevVelGP(aCellOrdinals, tDim)
-                * ( aGradient(aCellOrdinals, tNode, tDim) * aPrevTemp(aCellOrdinals, tNode) );
-        }
-    }
-}
-// function calculate_convective_forces
-
-
-/***************************************************************************//**
- * \tparam NumNodes  number of nodes
- * \tparam SpaceDim  spatial dimensions
- * \tparam ConfigT   configuration Forward Automatic Differentiation (FAD) type
- * \tparam PrevVelT  previous velocity FAD type
- * \tparam PrevTempT previous temperature FAD type
- * \tparam ResultT   result/output FAD type
- *
- * \fn DEVICE_TYPE inline void integrate_scalar_field
- *
- * \brief Integrate scalar field, defined as
- *
- *   \f[ \int_{\Omega_e} w^h F d\Omega_e \f]
- *
- * where \f$ w^h \f$ are the test functions and \f$ F \f$ is the scalar field.
- *
- * \param [in] aCellOrdinal    cell/element ordinal
- * \param [in] aBasisFunctions basis functions
- * \param [in] aCellVolume     cell volume workset
- * \param [in] aField          scalar field workset
- * \param [in] aMultiplier     scalar multiplier
- * \param [in\out] aResult     output/result workset
- *
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodes,
- typename ConfigT,
- typename SourceT,
- typename ResultT,
- typename ScalarT>
-DEVICE_TYPE inline void
-integrate_scalar_field
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
- const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarVectorT<SourceT> & aField,
- const Plato::ScalarMultiVectorT<ResultT> & aResult,
-       ScalarT aMultiplier)
-{
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        aResult(aCellOrdinal, tNode) += aMultiplier * aBasisFunctions(tNode) *
-            aField(aCellOrdinal) * aCellVolume(aCellOrdinal);
-    }
-}
-// function integrate_scalar_field
-
-/***************************************************************************//**
- * \tparam NumNodes  number of nodes
- * \tparam SpaceDim  spatial dimensions
- * \tparam ConfigT   configuration Forward Automatic Differentiation (FAD) type
- * \tparam FluxT     flux FAD type
- * \tparam ScalarT   scalar multiplier FAD type
- * \tparam ResultT   result/output FAD type
- *
- * \fn DEVICE_TYPE inline void calculate_flux_divergence
- *
- * \brief Calculate flux divergence, defined as
- *
- *   \f[ \int_{\Omega_e} \frac{\partial}{\partial x_i} F_i d\Omega_e \f]
- *
- * where \f$ w^h \f$ are the test functions and \f$ F_i \f$ is the i-th flux.
- *
- * \param [in] aCellOrdinal ell/element ordinal
- * \param [in] aGradient    spatial gradient
- * \param [in] aCellVolume  cell volume workset
- * \param [in] aFlux        flux
- * \param [in] aMultiplier  scalar multiplier
- * \param [in\out] aResult  output/result workset
- *
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename ConfigT,
- typename FluxT,
- typename ResultT,
- typename ScalarT>
-DEVICE_TYPE inline void
-calculate_flux_divergence
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<FluxT> & aFlux,
- const Plato::ScalarMultiVectorT<ResultT> & aResult,
- const ScalarT & aMultiplier)
-{
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
-        {
-            aResult(aCellOrdinal, tNode) += aMultiplier * aCellVolume(aCellOrdinal) *
-                ( aGradient(aCellOrdinal, tNode, tDim) * aFlux(aCellOrdinal, tDim) );
-        }
-    }
-}
-// function calculate_flux_divergence
-
-
-/***************************************************************************//**
- * \tparam NumNodes number of nodes
- * \tparam SpaceDim spatial dimensions
- * \tparam FluxT    flux FAD type
- * \tparam ConfigT  configuration Forward Automatic Differentiation (FAD) type
- * \tparam StateT   state FAD type
- *
- * \fn DEVICE_TYPE inline void calculate_flux
- *
- * \brief Calculate flux divergence, defined as
- *
- *   \f[ \int_{\Omega_e} \frac{\partial}{\partial x_i} F d\Omega_e \f]
- *
- * where \f$ w^h \f$ are the test functions and \f$ F \f$ is a scalar field.
- *
- * \param [in] aCellOrdinal ell/element ordinal
- * \param [in] aGradient    spatial gradient
- * \param [in] aScalarField scalar field
- * \param [in\out] aFlux output/result workset
- *
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename FluxT,
- typename ConfigT,
- typename StateT>
-DEVICE_TYPE inline void
-calculate_flux
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<StateT> & aScalarField,
- const Plato::ScalarMultiVectorT<FluxT> & aFlux)
-{
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
-        {
-            aFlux(aCellOrdinal, tDim) += aGradient(aCellOrdinal, tNode, tDim) * aScalarField(aCellOrdinal, tNode);
-        }
-    }
-}
-// function calculate_flux
-
-
-/***************************************************************************//**
- * \tparam NumNodesPerCell number of nodes per cell/element (integer)
- * \tparam ControlT control Forward Automatic Differentiation (FAD) evaluation type
- *
- * \fn DEVICE_TYPE inline ControlT penalize_thermal_diffusivity
- *
- * \brief Penalize thermal diffusivity ratio.
- *
- * \param [in] aCellOrdinal      cell/element ordinal
- * \param [in] aThermalDiffRatio thermal diffusivity ratio (solid diffusivity/fluid diffusivity)
- * \param [in] aPenaltyExponent  SIMP penalty model exponent
- * \param [in] aControl          control work set
- *
- * \return penalized thermal diffusivity ratio
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodesPerCell,
- typename ControlT>
-DEVICE_TYPE inline ControlT
-penalize_thermal_diffusivity
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar & aThermalDiffRatio,
- const Plato::Scalar & aPenaltyExponent,
- const Plato::ScalarMultiVectorT<ControlT> & aControl)
-{
-    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
-    ControlT tPenalizedDensity = pow(tDensity, aPenaltyExponent);
-    ControlT tPenalizedThermalDiff =
-            aThermalDiffRatio + ( (static_cast<Plato::Scalar>(1.0) - aThermalDiffRatio) * tPenalizedDensity);
-    return tPenalizedThermalDiff;
-}
-// function penalize_thermal_diffusivity
-
-
-
-/***************************************************************************//**
- * \tparam NumNodesPerCell number of nodes per cell/element (integer)
- * \tparam ControlT control Forward Automatic Differentiation (FAD) evaluation type
- *
- * \fn DEVICE_TYPE inline ControlT penalize_heat_source_constant
- *
- * \brief Penalize heat source constant. This function is only needed for
- *   density-based topology optimization problems.
- *
- * \param [in] aCellOrdinal cell/element ordinal
- * \param [in] aConstant    heat source constant
- * \param [in] aPenalty     penalty exponent used for density-based penalty model
- * \param [in] aControl     control workset
- *
- * \return penalized heat source constant
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodesPerCell,
- typename ControlT>
-DEVICE_TYPE inline ControlT
-penalize_heat_source_constant
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar & aConstant,
- const Plato::Scalar & aPenalty,
- const Plato::ScalarMultiVectorT<ControlT> & aControl)
-{
-    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
-    ControlT tPenalizedDensity = pow(tDensity, aPenalty);
-    auto tPenalizedProperty = (static_cast<Plato::Scalar>(1) - tPenalizedDensity) * aConstant;
-    return tPenalizedProperty;
-}
-// function penalize_heat_source_constant
-
-/***************************************************************************//**
- * \tparam NumNodes number of nodes per cell/element (integer)
- * \tparam SpaceDim spatial dimensions (integer)
- * \tparam ResultT  result Forward Automatic Differentiation (FAD) evaluation type
- * \tparam ConfigT  configuration FAD evaluation type
- * \tparam PrevVelT previous velocity FAD evaluation type
- * \tparam StabT    stabilization FAD evaluation type
- *
- * \fn DEVICE_TYPE inline void integrate_stabilizing_scalar_forces
- *
- * \brief Integrate stabilized scalar field.
- *
- * \param [in] aCellOrdinal cell/element ordinal
- * \param [in] aCellVolume  cell/element volume workset
- * \param [in] aGradient    spatial gradient
- * \param [in] aPrevVelGP   previous velocity at Gauss points
- * \param [in] aStabForce   stabilizing force workset
- * \param [in] aMultiplier  scalar multiplier
- * \param [in/out] aResult  result/output workset
- *
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename ResultT,
- typename ConfigT,
- typename PrevVelT,
- typename StabT>
-DEVICE_TYPE inline void
-integrate_stabilizing_scalar_forces
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarVectorT<StabT> & aStabForce,
- const Plato::ScalarMultiVectorT<ResultT> & aResult,
- Plato::Scalar aMultiplier = 1.0)
- {
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
-        {
-            aResult(aCellOrdinal, tNode) += aMultiplier * ( ( aGradient(aCellOrdinal, tNode, tDimK) *
-                aPrevVelGP(aCellOrdinal, tDimK) ) * aStabForce(aCellOrdinal) ) * aCellVolume(aCellOrdinal);
-        }
-    }
- }
-// function integrate_stabilizing_scalar_forces
-
-/***************************************************************************//**
- * \class VelocityCorrectorResidual
+ * \class AbstractVolumeIntegrand
  *
  * \tparam PhysicsT    physics type
  * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
  *
- * \brief Abstract class used to defined cell/element volume integrals.
+ * \brief Abstract class used to defined interface for cell/element volume integrals.
  *
  ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
-class AbstractCellVolumeIntegral
+class AbstractVolumeIntegrand
 {
 private:
     using ResultT = typename EvaluationT::ResultScalarType; /*!< result FAD evaluation type */
 
 public:
-    virtual ~AbstractCellVolumeIntegral(){}
+    virtual ~AbstractVolumeIntegrand(){}
     virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResultWS) const = 0;
 };
-// class AbstractCellVolumeIntegral
+// class AbstractVolumeIntegrand
 
 
 namespace SIMP
@@ -671,7 +322,7 @@ namespace SIMP
  *
  ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
-class CellThermalVolumeIntegral : public Plato::Fluids::AbstractCellVolumeIntegral<PhysicsT,EvaluationT>
+class CellThermalVolumeIntegral : public Plato::Fluids::AbstractVolumeIntegrand<PhysicsT,EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -974,7 +625,7 @@ private:
  *
  ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
-class CellThermalVolumeIntegral : public Plato::Fluids::AbstractCellVolumeIntegral<PhysicsT,EvaluationT>
+class CellThermalVolumeIntegral : public Plato::Fluids::AbstractVolumeIntegrand<PhysicsT,EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -1225,7 +876,7 @@ struct CellVolumeIntegralFactory
  * \tparam PhysicsT    Physics type
  * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
  *
- * \fn inline std::shared_ptr<AbstractCellVolumeIntegral> createThermalVolumeIntegral
+ * \fn inline std::shared_ptr<AbstractVolumeIntegrand> createThermalVolumeIntegral
  *
  * \brief Return shared pointer to an abstract cell volume integral instance.
  *
@@ -1235,7 +886,7 @@ struct CellVolumeIntegralFactory
  *
  ******************************************************************************/
 template <typename PhysicsT, typename EvaluationT>
-inline std::shared_ptr<Plato::Fluids::AbstractCellVolumeIntegral<PhysicsT, EvaluationT>>
+inline std::shared_ptr<Plato::Fluids::AbstractVolumeIntegrand<PhysicsT, EvaluationT>>
 createThermalVolumeIntegral
 (const Plato::SpatialDomain & aDomain,
  Plato::DataMap & aDataMap,
@@ -1292,7 +943,7 @@ private:
 
     const Plato::SpatialDomain& mSpatialDomain; /*!< spatial domain metadata */
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux; /*!< natural boundary condition evaluator */
-    std::shared_ptr<Plato::Fluids::AbstractCellVolumeIntegral<PhysicsT,EvaluationT>> mVolumeIntegral; /*!< volume integral evaluator */
+    std::shared_ptr<Plato::Fluids::AbstractVolumeIntegrand<PhysicsT,EvaluationT>> mVolumeIntegral; /*!< volume integral evaluator */
 
 public:
     /***************************************************************************//**

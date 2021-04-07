@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include <Teuchos_ParameterList.hpp>
-
 #include "Plato_TopOptFunctors.hpp"
 
 namespace Plato
