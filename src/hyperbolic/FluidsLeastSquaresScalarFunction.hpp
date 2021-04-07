@@ -350,7 +350,7 @@ private:
      **********************************************************************************/
     void parseTargets(Teuchos::ParameterList & aInputs)
     {
-        mCriterionTarget = Plato::teuchos::parse_array<std::string>("Targets", aInputs);
+        mCriterionTarget = Plato::teuchos::parse_array<Plato::Scalar>("Targets", aInputs);
         if(mCriterionTarget.empty())
         {
             THROWERR(std::string("'Targets' keyword was not defined in function block with name '") + mFuncName
@@ -408,14 +408,14 @@ private:
 #include "hyperbolic/IncompressibleFluids.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::Fluids::FluidsLeastSquaresScalarFunction<Plato::IncompressibleFluids<1>>;
+extern template class Plato::Fluids::LeastSquaresScalarFunction<Plato::IncompressibleFluids<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::Fluids::FluidsLeastSquaresScalarFunction<Plato::IncompressibleFluids<2>>;
+extern template class Plato::Fluids::LeastSquaresScalarFunction<Plato::IncompressibleFluids<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::Fluids::FluidsLeastSquaresScalarFunction<Plato::IncompressibleFluids<3>>;
+extern template class Plato::Fluids::LeastSquaresScalarFunction<Plato::IncompressibleFluids<3>>;
 #endif
 
