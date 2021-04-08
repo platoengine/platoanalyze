@@ -128,6 +128,7 @@ endif()
 ## hyperbolic sources
 if(HYPERBOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    hyperbolic/BrinkmanForces.cpp
     hyperbolic/ThermalBuoyancy.cpp
     hyperbolic/PressureResidual.cpp
     hyperbolic/TemperatureResidual.cpp
