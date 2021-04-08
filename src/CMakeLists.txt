@@ -131,6 +131,7 @@ if(HYPERBOLIC)
     hyperbolic/PressureResidual.cpp
     hyperbolic/FluidsVectorFunction.cpp
     hyperbolic/FluidsCriterionFactory.cpp
+    hyperbolic/VelocityPredictorResidual.cpp
     hyperbolic/FluidsWeightedScalarFunction.cpp
     hyperbolic/FluidsLeastSquaresScalarFunction.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
