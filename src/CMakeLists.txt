@@ -138,6 +138,7 @@ if(HYPERBOLIC)
     hyperbolic/InternalThermalForces.cpp
     hyperbolic/MomentumSurfaceForces.cpp
     hyperbolic/FluidsCriterionFactory.cpp
+    hyperbolic/AverageSurfacePressure.cpp
     hyperbolic/AverageSurfaceTemperature.cpp
     hyperbolic/VelocityCorrectorResidual.cpp
     hyperbolic/VelocityPredictorResidual.cpp
