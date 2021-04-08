@@ -128,6 +128,7 @@ endif()
 ## hyperbolic sources
 if(HYPERBOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    hyperbolic/PressureResidual.cpp
     hyperbolic/FluidsVectorFunction.cpp
     hyperbolic/FluidsCriterionFactory.cpp
     hyperbolic/FluidsWeightedScalarFunction.cpp
