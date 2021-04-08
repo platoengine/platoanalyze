@@ -4,7 +4,7 @@
  *  Created on: Apr 8, 2021
  */
 
-#include "VelocityCorrectorResidual.hpp"
+#include "hyperbolic/VelocityCorrectorResidual.hpp"
 
 #ifdef PLATOANALYZE_1D
 PLATO_EXPL_DEF_FLUIDS(Plato::Fluids::VelocityCorrectorResidual, Plato::MomentumConservation, Plato::SimplexFluids, 1, 1)

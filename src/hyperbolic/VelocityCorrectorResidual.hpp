@@ -13,6 +13,7 @@
 #include "FluidsUtils.hpp"
 #include "UtilsTeuchos.hpp"
 #include "SpatialModel.hpp"
+#include "ExpInstMacros.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
