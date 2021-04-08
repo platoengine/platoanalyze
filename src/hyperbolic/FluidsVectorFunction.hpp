@@ -826,19 +826,16 @@ private:
 extern template class Plato::Fluids::VectorFunction<Plato::MassConservation<1>>;
 extern template class Plato::Fluids::VectorFunction<Plato::EnergyConservation<1>>;
 extern template class Plato::Fluids::VectorFunction<Plato::MomentumConservation<1>>;
-extern template class Plato::Fluids::VectorFunction<Plato::IncompressibleFluids<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::Fluids::VectorFunction<Plato::MassConservation<2>>;
 extern template class Plato::Fluids::VectorFunction<Plato::EnergyConservation<2>>;
 extern template class Plato::Fluids::VectorFunction<Plato::MomentumConservation<2>>;
-extern template class Plato::Fluids::VectorFunction<Plato::IncompressibleFluids<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::Fluids::VectorFunction<Plato::MassConservation<3>>;
 extern template class Plato::Fluids::VectorFunction<Plato::EnergyConservation<3>>;
 extern template class Plato::Fluids::VectorFunction<Plato::MomentumConservation<3>>;
-extern template class Plato::Fluids::VectorFunction<Plato::IncompressibleFluids<3>>;
 #endif
