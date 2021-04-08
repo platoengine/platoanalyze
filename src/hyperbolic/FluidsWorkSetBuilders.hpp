@@ -9,6 +9,8 @@
 #include "Assembly.hpp"
 #include "SpatialModel.hpp"
 #include "ImplicitFunctors.hpp"
+
+#include "hyperbolic/SimplexFluids.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 
 namespace Plato
@@ -517,3 +519,23 @@ public:
 
 }
 // namespace Plato
+
+#include "hyperbolic/IncompressibleFluids.hpp"
+
+#ifdef PLATOANALYZE_1D
+extern template class Plato::Fluids::WorkSetBuilder<Plato::MassConservation<1>>;
+extern template class Plato::Fluids::WorkSetBuilder<Plato::EnergyConservation<1>>;
+extern template class Plato::Fluids::WorkSetBuilder<Plato::MomentumConservation<1>>;
+#endif
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::Fluids::WorkSetBuilder<Plato::MassConservation<2>>;
+extern template class Plato::Fluids::WorkSetBuilder<Plato::EnergyConservation<2>>;
+extern template class Plato::Fluids::WorkSetBuilder<Plato::MomentumConservation<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::Fluids::WorkSetBuilder<Plato::MassConservation<3>>;
+extern template class Plato::Fluids::WorkSetBuilder<Plato::EnergyConservation<3>>;
+extern template class Plato::Fluids::WorkSetBuilder<Plato::MomentumConservation<3>>;
+#endif

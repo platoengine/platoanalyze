@@ -820,7 +820,6 @@ private:
 }
 // namespace Plato
 
-
 #include "hyperbolic/IncompressibleFluids.hpp"
 
 #ifdef PLATOANALYZE_1D

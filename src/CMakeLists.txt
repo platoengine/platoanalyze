@@ -132,6 +132,7 @@ if(HYPERBOLIC)
     hyperbolic/PressureResidual.cpp
     hyperbolic/TemperatureResidual.cpp
     hyperbolic/FluidsVectorFunction.cpp
+    hyperbolic/FluidsWorkSetBuilders.cpp
     hyperbolic/InternalThermalForces.cpp
     hyperbolic/MomentumSurfaceForces.cpp
     hyperbolic/FluidsCriterionFactory.cpp
