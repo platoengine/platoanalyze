@@ -129,6 +129,7 @@ endif()
 if(HYPERBOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     hyperbolic/PressureResidual.cpp
+    hyperbolic/TemperatureResidual.cpp
     hyperbolic/FluidsVectorFunction.cpp
     hyperbolic/FluidsCriterionFactory.cpp
     hyperbolic/VelocityCorrectorResidual.cpp
