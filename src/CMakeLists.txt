@@ -138,6 +138,7 @@ if(HYPERBOLIC)
     hyperbolic/FluidsCriterionFactory.cpp
     hyperbolic/VelocityCorrectorResidual.cpp
     hyperbolic/VelocityPredictorResidual.cpp
+    hyperbolic/FluidsVolumeIntegrandFactory.cpp
     hyperbolic/FluidsWeightedScalarFunction.cpp
     hyperbolic/FluidsLeastSquaresScalarFunction.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
