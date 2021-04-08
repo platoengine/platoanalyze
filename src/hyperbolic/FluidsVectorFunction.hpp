@@ -10,6 +10,7 @@
 #include "Assembly.hpp"
 
 #include "hyperbolic/FluidsWorkSetsUtils.hpp"
+#include "hyperbolic/FluidsFunctionFactory.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 #include "hyperbolic/AbstractVectorFunction.hpp"
 
@@ -774,7 +775,7 @@ private:
      Plato::DataMap         & aDataMap,
      Teuchos::ParameterList & aInputs)
     {
-        typename PhysicsT::FunctionFactory tVecFuncFactory;
+	Plato::Fluids::FunctionFactory tVecFuncFactory;
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();

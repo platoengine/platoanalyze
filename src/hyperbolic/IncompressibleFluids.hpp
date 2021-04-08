@@ -7,7 +7,6 @@
 #pragma once
 
 #include "hyperbolic/SimplexFluids.hpp"
-#include "hyperbolic/FluidsFunctionFactory.hpp"
 
 namespace Plato
 {
@@ -27,7 +26,6 @@ template
 class MomentumConservation : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
     using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
     static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum degress of freedom per node */
@@ -50,7 +48,6 @@ template
 class MassConservation : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
     using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
     static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMassDofsPerNode; /*!< number of mass degress of freedom per node */
@@ -73,7 +70,6 @@ template
 class EnergyConservation : public Plato::SimplexFluids<SpaceDim, NumControls>
 {
 public:
-    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
     using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
     static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode; /*!< number of energy degress of freedom per node */
@@ -98,7 +94,6 @@ class IncompressibleFluids : public Plato::SimplexFluids<SpaceDim, NumControls>
 public:
     static constexpr auto mNumSpatialDims = SpaceDim; /*!< number of spatial dimensions */
 
-    typedef Plato::Fluids::FunctionFactory FunctionFactory; /*!< local vector/scalar function factory type */
     using SimplexT = typename Plato::SimplexFluids<SpaceDim, NumControls>; /*!< local simplex element type */
 
     using MassPhysicsT     = typename Plato::MassConservation<SpaceDim, NumControls>; /*!< local mass conservation physics type */

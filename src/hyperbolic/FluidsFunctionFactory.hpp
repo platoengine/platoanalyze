@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "hyperbolic/IncompressibleFluids.hpp"
+
 #include "hyperbolic/AverageSurfacePressure.hpp"
 #include "hyperbolic/AverageSurfaceTemperature.hpp"
 

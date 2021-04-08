@@ -11,6 +11,7 @@
 
 #include "hyperbolic/FluidsWorkSetsUtils.hpp"
 #include "hyperbolic/FluidsCriterionBase.hpp"
+#include "hyperbolic/FluidsFunctionFactory.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 #include "hyperbolic/AbstractScalarFunction.hpp"
 
@@ -419,7 +420,7 @@ private:
      ******************************************************************************/
     void initialize(Teuchos::ParameterList & aInputs)
     {
-        typename PhysicsT::FunctionFactory tScalarFuncFactory;
+	Plato::Fluids::FunctionFactory tScalarFuncFactory;
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
