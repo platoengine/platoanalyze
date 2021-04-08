@@ -107,7 +107,7 @@ private:
         auto tNumCells = mLocalEquation->numCells();
         auto tDhDc = mLocalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                 aStates.mCurrentLocalState , aStates.mPreviousLocalState,
-                                                aControls, aStates.mCurrentStepIndex);
+                                                aControls, *(aStates.mTimeData));
         Plato::blas3::inverse<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, Output);
     }
 
@@ -208,7 +208,7 @@ private:
         // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
         auto tDhDu = mLocalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                  aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                 aControls, aStates.mCurrentStepIndex);
+                                                 aControls, *(aStates.mTimeData));
 
         // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
         Plato::Scalar tBeta = 0.0;
@@ -220,7 +220,7 @@ private:
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
         auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                   aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                  aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                                  aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
 
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
@@ -257,7 +257,7 @@ private:
         // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
         auto tDrDu = mGlobalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                    aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                   aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                                   aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
 
         // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
         const Plato::Scalar tBeta = 1.0;
@@ -296,13 +296,13 @@ private:
         auto tGlobalResidual =
             mGlobalEquation->value(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                      aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                     aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                     aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
 
         // compute local residual workset (WS)
         auto tLocalResidualWS =
                 mLocalEquation->valueWorkSet(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                               aControls, aStates.mCurrentStepIndex);
+                                               aControls, *(aStates.mTimeData));
 
         // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
         auto tNumCells = mLocalEquation->numCells();
@@ -314,7 +314,7 @@ private:
         Plato::ScalarMultiVector tLocalResidualTerm("LocalResidualTerm", tNumCells, mNumGlobalDofsPerCell);
         auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                    aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                   aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                                   aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
         Plato::blas2::matrix_times_vector("N", tAlpha, tDrDc, tInvLocalJacTimesLocalRes, tBeta, tLocalResidualTerm);
 
         // assemble local residual contribution
@@ -568,7 +568,7 @@ public:
         // Elastic trial step
         mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                          aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                         aControls, aStates.mCurrentStepIndex);
+                                         aControls, *(aStates.mTimeData));
         while(true)
         {
             tOutputData.mCurrentIteration = mCurrentSolverIter;
@@ -604,7 +604,7 @@ public:
             // update local states
             mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                              aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                             aControls, aStates.mCurrentStepIndex);
+                                             aControls, *(aStates.mTimeData));
             mCurrentSolverIter++;
         }
         if (mDebugFlag) printf("Newton iteration completed.\n");

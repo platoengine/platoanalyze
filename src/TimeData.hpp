@@ -72,12 +72,29 @@ public:
 
     }
     
+    /***************************************************************************//**
+     * \brief get the current time step number which is the time step index plus one
+     * \return current time step number (i.e. current_time_step_index + 1)
+    *******************************************************************************/
+    inline Plato::OrdinalType getTimeStepIndexPlusOne() const
+    {
+        return mCurrentTimeStepIndex + static_cast<Plato::OrdinalType>(1);
+    }
+
+    /***************************************************************************//**
+     * \brief Determine whether current time step is the final one
+     * \return true if at final time step and false otherwise
+    *******************************************************************************/
     bool atFinalTimeStep() const
     {
         Plato::Scalar tTolerance = static_cast<Plato::Scalar>(2.0) * std::numeric_limits<Plato::Scalar>::epsilon();
         return mCurrentTime > (mEndTime - tTolerance);
     }
 
+    /***************************************************************************//**
+     * \brief Update time data object with new time step index
+     * \param [in] aUpdatedTimeStepIndex updated time step index
+    *******************************************************************************/
     void updateTimeData(const Plato::OrdinalType aUpdatedTimeStepIndex)
     {
         if (aUpdatedTimeStepIndex < static_cast<Plato::OrdinalType>(0))
@@ -90,6 +107,9 @@ public:
         mCurrentTime = std::max(mCurrentTime, mStartTime);
     }
 
+    /***************************************************************************//**
+     * \brief increase the number of time steps and reset time data
+    *******************************************************************************/
     void increaseNumTimeSteps()
     {
         mNumTimeSteps = static_cast<Plato::OrdinalType>(mNumTimeSteps * mTimeStepExpansionMultiplier);

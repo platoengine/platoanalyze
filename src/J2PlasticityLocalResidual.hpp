@@ -296,7 +296,7 @@ public:
         const Plato::ScalarMultiVectorT< ControlT >         & aControl,
         const Plato::ScalarArray3DT    < ConfigT >          & aConfig,
         const Plato::ScalarMultiVectorT< ResultT >          & aResult,
-              Plato::Scalar aTimeStep = 0.0
+        const Plato::TimeData                               & aTimeData
     ) const
     {
       auto tNumCells = mSpatialDomain.numCells();
@@ -425,7 +425,7 @@ public:
         const Plato::ScalarMultiVector & aPrevLocalState,
         const Plato::ScalarMultiVector & aControl,
         const Plato::ScalarArray3D     & aConfig,
-              Plato::Scalar              aTimeStep = 0.0
+        const Plato::TimeData          & aTimeData
     ) const
     {
       auto tNumCells = mSpatialDomain.numCells();
@@ -532,7 +532,7 @@ public:
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
                        const Plato::ScalarVector & aControl,
-                       Plato::Scalar aTimeStep = 0.0) override
+                       const Plato::TimeData     & aTimeData) override
     {
         this->updateElasticPropertiesPenaltyModel();
         this->updatePlasticPropertiesPenaltyModel();

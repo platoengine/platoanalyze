@@ -14,6 +14,7 @@
 #include "SimplexStabilizedMechanics.hpp"
 #include "StabilizedElastostaticResidual.hpp"
 #include "ComputeDeviatoricStrain.hpp"
+#include "TimeData.hpp"
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
@@ -1942,8 +1943,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
     // 3. CALL FUNCTION
     Plato::InfinitesimalStrainPlasticityResidual<EvalType, PhysicsT> tComputeResidual(tOnlyDomain, tDataMap, *tElastoPlasticityInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidualWS("residual", tNumCells, PhysicsT::mNumDofsPerCell);
+    Plato::TimeData tTimeData(*tElastoPlasticityInputs);
     tComputeResidual.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
-                              tProjectedPressureGrad, tDesignVariables, tConfiguration, tResidualWS);
+                              tProjectedPressureGrad, tDesignVariables, tConfiguration, tResidualWS, tTimeData);
 
     // 5. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2059,8 +2061,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
     // 3. CALL FUNCTION
     Plato::InfinitesimalStrainPlasticityResidual<EvalType, PhysicsT> tComputeResidual(tOnlyDomain, tDataMap, *tInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
+    Plato::TimeData tTimeData(*tInputs);
     tComputeResidual.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
-                              tProjectedPressureGrad, tDesignVariables, tConfiguration, tResidual);
+                              tProjectedPressureGrad, tDesignVariables, tConfiguration, tResidual, tTimeData);
 
     // 5. TEST RESULTS
     std::vector<std::vector<Plato::Scalar>> tGold =
@@ -2301,7 +2304,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
-      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -100, 0.0}'/>         \n"
+      "     <Parameter  name='Values'   type='Array(string)' value='{0.0, -100*t, 0.0}'/>         \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -2473,7 +2476,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='string'        value='-100*t'/>                   \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -2654,7 +2657,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='string'        value='-100*t'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
@@ -2839,7 +2842,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='string'        value='-100*t'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -3025,7 +3028,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='string'        value='-100*t'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -3216,7 +3219,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-150'/>                     \n"
+      "     <Parameter  name='Value'    type='string'        value='-150*t'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"

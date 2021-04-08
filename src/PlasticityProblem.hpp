@@ -325,8 +325,8 @@ public:
                        const Plato::Solution     & aSolution) override
     {
         auto tGlobalState = aSolution.State;
-        mLocalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mTimeData->mCurrentTime);
-        mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mTimeData->mCurrentTime);
+        mLocalEquation->updateProblem(tGlobalState, mLocalStates, aControls, *mTimeData);
+        mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, *mTimeData);
         mProjectionEquation->updateProblem(tGlobalState, aControls, mTimeData->mCurrentTime);
 
         for( auto tCriterion : mCriteria )
@@ -684,7 +684,7 @@ public:
         mDataMap.mScalarValues["LoadControlConstant"] = 0.0;
         auto tInternalForce = mGlobalEquation->value(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                      aStates.mCurrentLocalState,  aStates.mPreviousLocalState,
-                                                     aStates.mProjectedPressGrad, aControl, aStates.mCurrentStepIndex);
+                                                     aStates.mProjectedPressGrad, aControl, *(aStates.mTimeData));
 
         auto tNumNodes = mGlobalEquation->numNodes();
         auto tReactionForce = Kokkos::subview(mReactionForce, aStates.mCurrentStepIndex, Kokkos::ALL());
@@ -834,7 +834,7 @@ private:
     {
         mDataMap.clearStates();
 
-        Plato::CurrentStates tCurrentState;
+        Plato::CurrentStates tCurrentState(mTimeData);
         auto tNumCells = mLocalEquation->numCells();
         tCurrentState.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
 
@@ -846,9 +846,10 @@ private:
         bool tForwardProblemSolved = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mTimeData->mNumTimeSteps; tCurrentStepIndex++)
         {
-            std::stringstream tMsg;
             mTimeData->updateTimeData(tCurrentStepIndex);
-            tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF " << mTimeData->mNumTimeSteps
+
+            std::stringstream tMsg;
+            tMsg << "TIME STEP #" << mTimeData->getTimeStepIndexPlusOne() << " OUT OF " << mTimeData->mNumTimeSteps
                  << " TIME STEPS, TOTAL TIME = " << mTimeData->mCurrentTime << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
 
@@ -869,7 +870,7 @@ private:
             {
                 std::stringstream tMsg;
                 tMsg << "**** Newton-Raphson Solver did not converge at time step #"
-                     << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1)
+                     << mTimeData->getTimeStepIndexPlusOne()
                      << ".  Number of pseudo time steps will be increased to '"
                      << static_cast<Plato::OrdinalType>(mTimeData->mNumTimeSteps * mTimeData->mTimeStepExpansionMultiplier) << "'. ****\n\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
