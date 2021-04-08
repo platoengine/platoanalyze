@@ -114,4 +114,30 @@ template class C<Plato::LocalJacobianPTypes<T<D>>, T<D>>; \
 template class C<Plato::GradientXTypes<T<D>>, T<D>>; \
 template class C<Plato::GradientZTypes<T<D>>, T<D>>; 
 
+// INCOMPRESSIBLE FLUID FLOW DECLARATION
+#define PLATO_EXPL_DEC_FLUIDS(C, P, S, D, M) \
+extern template class C<P<D,M>,Plato::ResultTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradConfigTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradControlTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradCurrentMassTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradCurrentEnergyTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradCurrentMomentumTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradPreviousMassTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradPreviousEnergyTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradPreviousMomentumTypes<S<D,M>>>; \
+extern template class C<P<D,M>,Plato::GradMomentumPredictorTypes<S<D,M>>>;
+
+// INCOMPRESSIBLE FLUID FLOW DEFINITION
+#define PLATO_EXPL_DEF_FLUIDS(C, P, S, D, M) \
+template class C<P<D,M>,Plato::ResultTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradConfigTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradControlTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradCurrentMassTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradCurrentEnergyTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradCurrentMomentumTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradPreviousMassTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradPreviousEnergyTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradPreviousMomentumTypes<S<D,M>>>; \
+template class C<P<D,M>,Plato::GradMomentumPredictorTypes<S<D,M>>>;
+
 #endif

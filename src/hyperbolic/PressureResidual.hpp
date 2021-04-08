@@ -13,6 +13,7 @@
 #include "WorkSets.hpp"
 #include "NaturalBCs.hpp"
 #include "SpatialModel.hpp"
+#include "ExpInstMacros.hpp"
 #include "AbstractVolumeIntegrand.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
