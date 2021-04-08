@@ -458,3 +458,23 @@ private:
 
 }
 // namespace Plato
+
+#include "hyperbolic/IncompressibleFluids.hpp"
+
+#ifdef PLATOANALYZE_1D
+extern template class Plato::Fluids::ScalarFunction<Plato::MassConservation<1>>;
+extern template class Plato::Fluids::ScalarFunction<Plato::EnergyConservation<1>>;
+extern template class Plato::Fluids::ScalarFunction<Plato::MomentumConservation<1>>;
+#endif
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::Fluids::ScalarFunction<Plato::MassConservation<2>>;
+extern template class Plato::Fluids::ScalarFunction<Plato::EnergyConservation<2>>;
+extern template class Plato::Fluids::ScalarFunction<Plato::MomentumConservation<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::Fluids::ScalarFunction<Plato::MassConservation<3>>;
+extern template class Plato::Fluids::ScalarFunction<Plato::EnergyConservation<3>>;
+extern template class Plato::Fluids::ScalarFunction<Plato::MomentumConservation<3>>;
+#endif
