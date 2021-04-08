@@ -4,7 +4,7 @@
  *  Created on: Apr 8, 2021
  */
 
-#include "VelocityPredictorResidual.hpp"
+#include "hyperbolic/VelocityPredictorResidual.hpp"
 
 #ifdef PLATOANALYZE_1D
 PLATO_EXPL_DEF_FLUIDS(Plato::Fluids::VelocityPredictorResidual, Plato::MomentumConservation, Plato::SimplexFluids, 1, 1)
