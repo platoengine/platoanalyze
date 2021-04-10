@@ -6,7 +6,12 @@
 
 #pragma once
 
+#include "Solutions.hpp"
+
 namespace Plato
+{
+
+namespace Fluids
 {
 
 /******************************************************************************//**
@@ -84,6 +89,9 @@ public:
     virtual Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
 };
 // class AbstractProblem
+
+}
+// namespace Fluids
 
 }
 // namespace Plato

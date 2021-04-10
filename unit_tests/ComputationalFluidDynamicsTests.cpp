@@ -9,6 +9,7 @@
 
 #include <unordered_map>
 
+#include "../src/hyperbolic/AbstractProblem.hpp"
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
@@ -26,7 +27,6 @@
 #include "EssentialBCs.hpp"
 #include "ProjectToNode.hpp"
 #include "PlatoUtilities.hpp"
-#include "AbstractProblem.hpp"
 #include "SimplexFadTypes.hpp"
 #include "ApplyConstraints.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -226,7 +226,7 @@ namespace Fluids
  *
  **********************************************************************************/
 template<typename PhysicsT>
-class QuasiImplicit : public Plato::AbstractProblem
+class QuasiImplicit : public Plato::Fluids::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
