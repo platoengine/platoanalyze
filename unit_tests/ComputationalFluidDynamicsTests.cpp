@@ -257,7 +257,7 @@ namespace cbs
 {
 
 /******************************************************************************//**
- * \fn inline Plato::ScalarVector calculate_element_characteristic_sizes
+ * \fn inline Plato::ScalarVector calculate_characteristic_element_size
  *
  * \tparam NumSpatialDims  spatial dimensions (integer)
  * \tparam NumNodesPerCell number of nodes per cell (integer)
@@ -272,7 +272,7 @@ template
 <Plato::OrdinalType NumSpatialDims,
  Plato::OrdinalType NumNodesPerCell>
 inline Plato::ScalarVector
-calculate_element_characteristic_sizes
+calculate_characteristic_element_size
 (const Plato::SpatialModel & aModel)
 {
     auto tCoords = aModel.Mesh.coords();
@@ -295,10 +295,10 @@ calculate_element_characteristic_sizes
 
     return tElemCharSize;
 }
-// function calculate_element_characteristic_sizes
+// function calculate_characteristic_element_size
 
 /******************************************************************************//**
- * \fn inline Plato::ScalarVector calculate_convective_velocity_magnitude
+ * \fn inline Plato::ScalarVector calculate_magnitude_convective_velocity
  *
  * \tparam NodesPerCell number of nodes per cell (integer)
  *
@@ -312,7 +312,7 @@ calculate_element_characteristic_sizes
  **********************************************************************************/
 template<Plato::OrdinalType NodesPerCell>
 Plato::ScalarVector
-calculate_convective_velocity_magnitude
+calculate_magnitude_convective_velocity
 (const Plato::SpatialModel & aModel,
  const Plato::ScalarVector & aVelocity)
 {
@@ -337,11 +337,11 @@ calculate_convective_velocity_magnitude
             tConvectiveVelocity(tVertexIndex) =
                 tMyValue >= tConvectiveVelocity(tVertexIndex) ? tMyValue : tConvectiveVelocity(tVertexIndex);
         }
-    }, "calculate_convective_velocity_magnitude");
+    }, "calculate_magnitude_convective_velocity");
 
     return tConvectiveVelocity;
 }
-// function calculate_convective_velocity_magnitude
+// function calculate_magnitude_convective_velocity
 
 /******************************************************************************//**
  * \fn inline Plato::Scalar calculate_critical_diffusion_time_step
@@ -443,55 +443,8 @@ calculate_critical_convective_time_step
 }
 // function calculate_critical_convective_time_step
 
-/******************************************************************************//**
- * \fn inline void enforce_boundary_condition
- *
- * \brief Enforce boundary conditions.
- *
- * \param [in] aBcDofs    degrees of freedom associated with the boundary conditions
- * \param [in] aBcValues  values enforced in boundary degrees of freedom
- * \param [in/out] aState physical field
- *
- **********************************************************************************/
-inline void
-enforce_boundary_condition
-(const Plato::LocalOrdinalVector & aBcDofs,
- const Plato::ScalarVector       & aBcValues,
- const Plato::ScalarVector       & aState)
-{
-    auto tLength = aBcValues.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        auto tDOF = aBcDofs(aOrdinal);
-        aState(tDOF) = aBcValues(aOrdinal);
-    }, "enforce boundary condition");
-}
-// function enforce_boundary_condition
-
 }
 // namespace cbs
-
-/******************************************************************************//**
- * \fn inline void set_dofs_values
- *
- * \brief Set values at degrees of freedom to input scalar (default scalar = 0.0).
- *
- * \param [in]     aBcDofs list of degrees of freedom (dofs)
- * \param [in]     aValue  scalar value (default = 0.0)
- * \param [in/out] aOutput output vector
- *
- **********************************************************************************/
-inline void set_dofs_values
-(const Plato::LocalOrdinalVector & aBcDofs,
-       Plato::ScalarVector & aOutput,
-       Plato::Scalar aValue = 0.0)
-{
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aBcDofs.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        aOutput(aBcDofs(aOrdinal)) = aValue;
-    }, "set values at bc dofs to zero");
-}
-// function set_dofs_values
 
 /******************************************************************************//**
  * \fn inline void open_text_file
@@ -1277,14 +1230,14 @@ private:
         Plato::LocalOrdinalVector tVelBcDofs;
         mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
         auto tPreviouVel = Kokkos::subview(mVelocity, tTimeStep, Kokkos::ALL());
-        Plato::cbs::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
+        Plato::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
         aPrimal.vector("previous velocity", tPreviouVel);
 
         Plato::ScalarVector tPressBcValues;
         Plato::LocalOrdinalVector tPressBcDofs;
         mPressureEssentialBCs.get(tPressBcDofs, tPressBcValues, tTime);
         auto tPreviousPress = Kokkos::subview(mPressure, tTimeStep, Kokkos::ALL());
-        Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
+        Plato::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
         aPrimal.vector("previous pressure", tPreviousPress);
 
         auto tPreviousPred = Kokkos::subview(mPredictor, tTimeStep, Kokkos::ALL());
@@ -1296,7 +1249,7 @@ private:
             Plato::LocalOrdinalVector tTempBcDofs;
             mTemperatureEssentialBCs.get(tTempBcDofs, tTempBcValues, tTime);
             auto tPreviousTemp  = Kokkos::subview(mTemperature, tTimeStep, Kokkos::ALL());
-            Plato::cbs::enforce_boundary_condition(tTempBcDofs, tTempBcValues, tPreviousTemp);
+            Plato::enforce_boundary_condition(tTempBcDofs, tTempBcValues, tPreviousTemp);
             aPrimal.vector("previous temperature", tPreviousTemp);
 
             aPrimal.scalar("thermal diffusivity", mCriticalThermalDiffusivity);
@@ -1726,7 +1679,7 @@ private:
     (Plato::Primal & aPrimal)
     {
         auto tElemCharSizes =
-            Plato::cbs::calculate_element_characteristic_sizes<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
+            Plato::cbs::calculate_characteristic_element_size<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
         aPrimal.vector("element characteristic size", tElemCharSizes);
     }
 
@@ -1745,7 +1698,7 @@ private:
      const Plato::ScalarVector & aVelocity)
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
-        auto tVelMag = Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, aVelocity);
+        auto tVelMag = Plato::cbs::calculate_magnitude_convective_velocity<mNumNodesPerCell>(mSpatialModel, aVelocity);
         auto tCriticalTimeStep = Plato::cbs::calculate_critical_convective_time_step
             (mSpatialModel, tElemCharSize, tVelMag, mTimeStepSafetyFactor);
         return tCriticalTimeStep;
@@ -1841,7 +1794,7 @@ private:
         auto tPreviousVelocity = aPrimal.vector("previous velocity");
         Plato::ScalarVector tInitialVelocity("initial velocity", tPreviousVelocity.size());
         Plato::blas1::update(1.0, tPreviousVelocity, 0.0, tInitialVelocity);
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tInitialVelocity);
+        Plato::enforce_boundary_condition(tBcDofs, tBcValues, tInitialVelocity);
         auto tCriticalTimeStep = this->criticalTimeStep(aPrimal, tInitialVelocity);
         return tCriticalTimeStep;
     }
@@ -2109,7 +2062,7 @@ private:
 
             tIteration++;
         }
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
+        Plato::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
     }
 
     /******************************************************************************//**
@@ -4688,7 +4641,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
     // call function
     constexpr auto tNumNodesPerCell = 3;
     auto tConvectiveVelocity =
-        Plato::cbs::calculate_convective_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tVelocity);
+        Plato::cbs::calculate_magnitude_convective_velocity<tNumNodesPerCell>(tSpatialModel, tVelocity);
 
     // test value
     auto tTol = 1e-4;
@@ -4712,7 +4665,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSizes)
     constexpr auto tNumSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
     auto tElemCharSize =
-        Plato::cbs::calculate_element_characteristic_sizes<tNumSpaceDims,tNumNodesPerCell>(tSpatialModel);
+        Plato::cbs::calculate_characteristic_element_size<tNumSpaceDims,tNumNodesPerCell>(tSpatialModel);
 
     // test value
     auto tTol = 1e-4;
