@@ -253,199 +253,6 @@ private:
 }
 // namespace Fluids
 
-namespace cbs
-{
-
-/******************************************************************************//**
- * \fn inline Plato::ScalarVector calculate_characteristic_element_size
- *
- * \tparam NumSpatialDims  spatial dimensions (integer)
- * \tparam NumNodesPerCell number of nodes per cell (integer)
- *
- * \brief Calculate characteristic size for all the elements on the finite element mesh.
- *
- * \param [in] aModel spatial model database, holds such as mesh information.
- * \return array of element characteristic size
- *
- **********************************************************************************/
-template
-<Plato::OrdinalType NumSpatialDims,
- Plato::OrdinalType NumNodesPerCell>
-inline Plato::ScalarVector
-calculate_characteristic_element_size
-(const Plato::SpatialModel & aModel)
-{
-    auto tCoords = aModel.Mesh.coords();
-    auto tCells2Nodes = aModel.Mesh.ask_elem_verts();
-
-    Plato::OrdinalType tNumCells = aModel.Mesh.nelems();
-    Plato::OrdinalType tNumNodes = aModel.Mesh.nverts();
-    Plato::ScalarVector tElemCharSize("element characteristic size", tNumNodes);
-    Plato::blas1::fill(std::numeric_limits<Plato::Scalar>::max(), tElemCharSize);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        auto tElemSize = Plato::omega_h::calculate_element_size<NumSpatialDims,NumNodesPerCell>(aCellOrdinal, tCells2Nodes, tCoords);
-        for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
-        {
-            auto tVertexIndex = tCells2Nodes[aCellOrdinal*NumNodesPerCell + tNode];
-            tElemCharSize(tVertexIndex) = tElemSize <= tElemCharSize(tVertexIndex) ? tElemSize : tElemCharSize(tVertexIndex);
-        }
-    },"calculate characteristic element size");
-
-    return tElemCharSize;
-}
-// function calculate_characteristic_element_size
-
-/******************************************************************************//**
- * \fn inline Plato::ScalarVector calculate_magnitude_convective_velocity
- *
- * \tparam NodesPerCell number of nodes per cell (integer)
- *
- * \brief Calculate convective velocity magnitude at each node.
- *
- * \param [in] aModel    spatial model database, holds such as mesh information
- * \param [in] aVelocity velocity field
- *
- * \return convective velocity magnitude at each node
- *
- **********************************************************************************/
-template<Plato::OrdinalType NodesPerCell>
-Plato::ScalarVector
-calculate_magnitude_convective_velocity
-(const Plato::SpatialModel & aModel,
- const Plato::ScalarVector & aVelocity)
-{
-    auto tCell2Node = aModel.Mesh.ask_elem_verts();
-    Plato::OrdinalType tSpaceDim = aModel.Mesh.dim();
-    Plato::OrdinalType tNumCells = aModel.Mesh.nelems();
-    Plato::OrdinalType tNumNodes = aModel.Mesh.nverts();
-
-    Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
-    {
-        for(Plato::OrdinalType tNode = 0; tNode < NodesPerCell; tNode++)
-        {
-            Plato::Scalar tSum = 0.0;
-            Plato::OrdinalType tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
-            for(Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
-            {
-                auto tDofIndex = tVertexIndex * tSpaceDim + tDim;
-                tSum += aVelocity(tDofIndex) * aVelocity(tDofIndex);
-            }
-            auto tMyValue = sqrt(tSum);
-            tConvectiveVelocity(tVertexIndex) =
-                tMyValue >= tConvectiveVelocity(tVertexIndex) ? tMyValue : tConvectiveVelocity(tVertexIndex);
-        }
-    }, "calculate_magnitude_convective_velocity");
-
-    return tConvectiveVelocity;
-}
-// function calculate_magnitude_convective_velocity
-
-/******************************************************************************//**
- * \fn inline Plato::Scalar calculate_critical_diffusion_time_step
- *
- * \brief Calculate critical diffusion time step.
- *
- * \param [in] aKinematicViscocity kinematic viscocity
- * \param [in] aThermalDiffusivity thermal diffusivity
- * \param [in] aCharElemSize       characteristic element size
- * \param [in] aSafetyFactor       safety factor
- *
- * \return critical diffusive time step scalar
- *
- **********************************************************************************/
-inline Plato::Scalar
-calculate_critical_diffusion_time_step
-(const Plato::Scalar aKinematicViscocity,
- const Plato::Scalar aThermalDiffusivity,
- const Plato::ScalarVector & aCharElemSize,
- Plato::Scalar aSafetyFactor = 0.7)
-{
-    auto tNumNodes = aCharElemSize.size();
-    Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
-    {
-        auto tKinematicStep = ( aSafetyFactor * aCharElemSize(aNodeOrdinal) * aCharElemSize(aNodeOrdinal) ) /
-                ( static_cast<Plato::Scalar>(2) * aKinematicViscocity );
-        auto tDiffusivityStep = ( aSafetyFactor * aCharElemSize(aNodeOrdinal) * aCharElemSize(aNodeOrdinal) ) /
-                ( static_cast<Plato::Scalar>(2) * aThermalDiffusivity );
-        tLocalTimeStep(aNodeOrdinal) = tKinematicStep < tDiffusivityStep ? tKinematicStep : tDiffusivityStep;
-    }, "calculate local critical time step");
-
-    Plato::Scalar tMinValue = 0.0;
-    Plato::blas1::min(tLocalTimeStep, tMinValue);
-    return tMinValue;
-}
-// function calculate_critical_diffusion_time_step
-
-/******************************************************************************//**
- * \fn inline Plato::Scalar calculate_critical_time_step_upper_bound
- *
- * \brief Calculate critical time step upper bound.
- *
- * \param [in] aVelUpperBound critical velocity lower bound
- * \param [in] aCharElemSize  characteristic element size
- *
- * \return critical time step upper bound (scalar)
- *
- **********************************************************************************/
-inline Plato::Scalar 
-calculate_critical_time_step_upper_bound
-(const Plato::Scalar aVelUpperBound,
- const Plato::ScalarVector& aCharElemSize)
-{
-    Plato::Scalar tMinValue = 0.0;
-    Plato::blas1::min(aCharElemSize, tMinValue);
-    auto tOutput = tMinValue / aVelUpperBound;
-    return tOutput;
-}
-// function calculate_critical_time_step_upper_bound
-
-
-/******************************************************************************//**
- * \fn inline Plato::Scalar calculate_critical_convective_time_step
- *
- * \brief Calculate critical convective time step.
- *
- * \param [in] aModel spatial model metadata
- * \param [in] aCharElemSize  characteristic element size
- * \param [in] aVelocity      velocity field
- * \param [in] aSafetyFactor  safety factor multiplier (default = 0.7)
- *
- * \return critical convective time step (scalar)
- *
- **********************************************************************************/
-inline Plato::Scalar
-calculate_critical_convective_time_step
-(const Plato::SpatialModel & aModel,
- const Plato::ScalarVector & aCharElemSize,
- const Plato::ScalarVector & aVelocity,
- Plato::Scalar aSafetyFactor = 0.7)
-{
-    auto tNorm = Plato::blas1::norm(aVelocity);
-    if(tNorm <= std::numeric_limits<Plato::Scalar>::min())
-    {
-        return std::numeric_limits<Plato::Scalar>::max();
-    }
-
-    auto tNumNodes = aModel.Mesh.nverts();
-    Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
-    {
-        tLocalTimeStep(aNodeOrdinal) = aSafetyFactor * ( aCharElemSize(aNodeOrdinal) / aVelocity(aNodeOrdinal) );
-    }, "calculate local critical time step");
-
-    Plato::Scalar tMinValue = 0;
-    Plato::blas1::min(tLocalTimeStep, tMinValue);
-    return tMinValue;
-}
-// function calculate_critical_convective_time_step
-
-}
-// namespace cbs
-
 /******************************************************************************//**
  * \fn inline void open_text_file
  *
@@ -1679,7 +1486,7 @@ private:
     (Plato::Primal & aPrimal)
     {
         auto tElemCharSizes =
-            Plato::cbs::calculate_characteristic_element_size<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
+            Plato::Fluids::calculate_characteristic_element_size<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
         aPrimal.vector("element characteristic size", tElemCharSizes);
     }
 
@@ -1698,8 +1505,8 @@ private:
      const Plato::ScalarVector & aVelocity)
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
-        auto tVelMag = Plato::cbs::calculate_magnitude_convective_velocity<mNumNodesPerCell>(mSpatialModel, aVelocity);
-        auto tCriticalTimeStep = Plato::cbs::calculate_critical_convective_time_step
+        auto tVelMag = Plato::Fluids::calculate_magnitude_convective_velocity<mNumNodesPerCell>(mSpatialModel, aVelocity);
+        auto tCriticalTimeStep = Plato::Fluids::calculate_critical_convective_time_step
             (mSpatialModel, tElemCharSize, tVelMag, mTimeStepSafetyFactor);
         return tCriticalTimeStep;
     }
@@ -1719,7 +1526,7 @@ private:
         auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tKinematicViscocity = aPrimal.scalar("kinematic viscocity");
         auto tThermalDiffusivity = aPrimal.scalar("thermal diffusivity");
-        auto tCriticalTimeStep = Plato::cbs::calculate_critical_diffusion_time_step
+        auto tCriticalTimeStep = Plato::Fluids::calculate_critical_diffusion_time_step
             (tKinematicViscocity, tThermalDiffusivity, tElemCharSize, mTimeStepSafetyFactor);
         return tCriticalTimeStep;
     }
@@ -1738,7 +1545,7 @@ private:
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tVelLowerBound = aPrimal.scalar("critical velocity lower bound");
-        auto tOutput = Plato::cbs::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
+        auto tOutput = Plato::Fluids::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
         return tOutput;
     }
 
@@ -4641,7 +4448,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
     // call function
     constexpr auto tNumNodesPerCell = 3;
     auto tConvectiveVelocity =
-        Plato::cbs::calculate_magnitude_convective_velocity<tNumNodesPerCell>(tSpatialModel, tVelocity);
+        Plato::Fluids::calculate_magnitude_convective_velocity<tNumNodesPerCell>(tSpatialModel, tVelocity);
 
     // test value
     auto tTol = 1e-4;
@@ -4665,7 +4472,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSizes)
     constexpr auto tNumSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
     auto tElemCharSize =
-        Plato::cbs::calculate_characteristic_element_size<tNumSpaceDims,tNumNodesPerCell>(tSpatialModel);
+        Plato::Fluids::calculate_characteristic_element_size<tNumSpaceDims,tNumNodesPerCell>(tSpatialModel);
 
     // test value
     auto tTol = 1e-4;
