@@ -256,7 +256,6 @@ private:
 namespace cbs
 {
 
-
 /******************************************************************************//**
  * \fn inline Plato::ScalarVector calculate_element_characteristic_sizes
  *
@@ -469,101 +468,8 @@ enforce_boundary_condition
 }
 // function enforce_boundary_condition
 
-/******************************************************************************//**
- * \fn inline Plato::Scalar calculate_misfit_euclidean_norm
- *
- * \tparam DofsPerNode degrees of freedom per node (integer)
- *
- * \brief Calculate euclidean norm of the misfit between two fields.
- *
- * \param [in] aNumNodes number of nodes in the mesh
- * \param [in] aFieldOne physical field one
- * \param [in] aFieldTwo physical field two
- *
- * \return euclidean norm scalar
- *
- **********************************************************************************/
-inline Plato::Scalar
-calculate_misfit_euclidean_norm
-(const Plato::ScalarVector& aFieldOne,
- const Plato::ScalarVector& aFieldTwo)
-{
-    Plato::ScalarVector tResidual("residual", aFieldOne.size());
-    Plato::blas1::copy(aFieldTwo, tResidual);
-    Plato::blas1::update(1.0, aFieldOne, -1.0, tResidual);
-    auto tValue = Plato::blas1::norm(tResidual);
-    return tValue;
-}
-// function calculate_misfit_euclidean_norm
-
-
-/******************************************************************************//**
- * \fn inline Plato::Scalar calculate_misfit_inf_norm
- *
- * \tparam DofsPerNode degrees of freedom per node (integer)
- *
- * \brief Calculate infinite norm of the misfit between two fields.
- *
- * \param [in] aNumNodes number of nodes in the mesh
- * \param [in] aFieldOne physical field one
- * \param [in] aFieldTwo physical field two
- *
- * \return euclidean norm scalar
- *
- **********************************************************************************/
-inline Plato::Scalar
-calculate_misfit_inf_norm
-(const Plato::ScalarVector& aFieldOne,
- const Plato::ScalarVector& aFieldTwo)
-{
-    Plato::ScalarVector tResidual("residual", aFieldOne.size());
-    Plato::blas1::copy(aFieldTwo, tResidual);
-    Plato::blas1::update(1.0, aFieldOne, -1.0, tResidual);
-
-    Plato::Scalar tOutput = 0.0;
-    Plato::blas1::abs(tResidual);
-    Plato::blas1::max(tResidual, tOutput);
-
-    return tOutput;
-}
-// function calculate_misfit_inf_norm
-
 }
 // namespace cbs
-
-
-/******************************************************************************//**
- * \fn inline void apply_constraints
- *
- * \tparam DofsPerNode degrees of freedom per node (integer)
- *
- * \brief Apply constraints to system of equations by modifying left and right hand sides.
- *
- * \param [in]     aBcDofs   degrees of freedom (dofs) associated with the boundary conditions
- * \param [in]     aBcValues scalar values forced at the dofs where the boundary conditions are applied
- * \param [in]     aScale    scalar multiplier
- * \param [in/out] aMatrix   left-hand-side matrix
- * \param [in/out] aRhs      right-hand-side vector
- *
- **********************************************************************************/
-template<Plato::OrdinalType DofsPerNode>
-inline void apply_constraints
-(const Plato::LocalOrdinalVector          & aBcDofs,
- const Plato::ScalarVector                & aBcValues,
- const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-       Plato::ScalarVector                & aRhs,
-       Plato::Scalar                        aScale = 1.0)
-{
-    if(aMatrix->isBlockMatrix())
-    {
-        Plato::applyBlockConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
-    }
-    else
-    {
-        Plato::applyConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
-    }
-}
-// function apply_constraints
 
 /******************************************************************************//**
  * \fn inline void set_dofs_values
@@ -1705,7 +1611,7 @@ private:
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentVelocity = aPrimal.vector("current velocity");
         auto tPreviousVelocity = aPrimal.vector("previous velocity");
-        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm(tCurrentVelocity, tPreviousVelocity);
+        auto tMisfitError = Plato::blas1::norm(tCurrentVelocity, tPreviousVelocity);
         auto tCurrentVelNorm = Plato::blas1::norm(tCurrentVelocity);
         auto tOutput = tMisfitError / tCurrentVelNorm;
         return tOutput;
@@ -1724,7 +1630,7 @@ private:
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentPressure = aPrimal.vector("current pressure");
         auto tPreviousPressure = aPrimal.vector("previous pressure");
-        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm(tCurrentPressure, tPreviousPressure);
+        auto tMisfitError = Plato::blas1::norm(tCurrentPressure, tPreviousPressure);
         auto tCurrentNorm = Plato::blas1::norm(tCurrentPressure);
         auto tOutput = tMisfitError / tCurrentNorm;
         return tOutput;
@@ -4720,7 +4626,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
     Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
 
     // call function
-    auto tValue = Plato::cbs::calculate_misfit_euclidean_norm(tCurPressure, tPrevPressure);
+    auto tValue = Plato::blas1::norm(tCurPressure, tPrevPressure);
 
     // test result
     auto tTol = 1e-4;
@@ -4750,7 +4656,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitInfNorm)
 
     // call funciton
     constexpr auto tDofsPerNode = 1;
-    auto tValue = Plato::cbs::calculate_misfit_inf_norm(tCurPressure, tPrevPressure);
+    auto tValue = Plato::blas1::inf_norm(tCurPressure, tPrevPressure);
 
     // test result
     auto tTol = 1e-4;

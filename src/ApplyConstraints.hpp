@@ -139,8 +139,40 @@ applyConstraints(
     Scalar value = aScale*bcValues[bcOrdinal];
     rhs(nodeNumber) = value;
   },"BC imposition");
-
 }
+
+/******************************************************************************//**
+ * \fn inline void apply_constraints
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Apply constraints to system of equations by modifying left and right hand sides.
+ *
+ * \param [in]     aBcDofs   degrees of freedom (dofs) associated with the boundary conditions
+ * \param [in]     aBcValues scalar values forced at the dofs where the boundary conditions are applied
+ * \param [in]     aScale    scalar multiplier
+ * \param [in/out] aMatrix   left-hand-side matrix
+ * \param [in/out] aRhs      right-hand-side vector
+ *
+ **********************************************************************************/
+template<Plato::OrdinalType DofsPerNode>
+inline void apply_constraints
+(const Plato::LocalOrdinalVector          & aBcDofs,
+ const Plato::ScalarVector                & aBcValues,
+ const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+       Plato::ScalarVector                & aRhs,
+       Plato::Scalar                        aScale = 1.0)
+{
+    if(aMatrix->isBlockMatrix())
+    {
+        Plato::applyBlockConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
+    }
+    else
+    {
+        Plato::applyConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
+    }
+}
+// function apply_constraints
 
 } // namespace Plato
 

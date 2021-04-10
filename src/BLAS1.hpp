@@ -85,7 +85,7 @@ inline Plato::Scalar dot(const VecOneT & aVec1, const VecTwoT & aVec2)
 // function dot
 
 /******************************************************************************//**
- * \brief Compute the norm/length of a vector
+ * \brief Compute Euclidean norm of a vector
  * \param [in] aVector 1D Kokkos container
  * \return norm/length
 **********************************************************************************/
@@ -411,6 +411,62 @@ inline void extract(const Plato::ScalarVector& aFromVector, Plato::ScalarVector&
     }, "extract");
 }
 // function extract
+
+/******************************************************************************//**
+ * \fn inline Plato::Scalar inf_norm
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Calculate misfit between two fields and return Inf norm of misfit/residual vector.
+ *
+ * \param [in] aNumNodes number of nodes in the mesh
+ * \param [in] aFieldOne physical field one
+ * \param [in] aFieldTwo physical field two
+ *
+ * \return euclidean norm scalar
+ *
+ **********************************************************************************/
+inline Plato::Scalar inf_norm
+(const Plato::ScalarVector& aFieldOne,
+ const Plato::ScalarVector& aFieldTwo)
+{
+    Plato::ScalarVector tResidual("residual", aFieldOne.size());
+    Plato::blas1::copy(aFieldTwo, tResidual);
+    Plato::blas1::update(1.0, aFieldOne, -1.0, tResidual);
+
+    Plato::Scalar tOutput = 0.0;
+    Plato::blas1::abs(tResidual);
+    Plato::blas1::max(tResidual, tOutput);
+
+    return tOutput;
+}
+// function inf_norm
+
+/******************************************************************************//**
+ * \fn inline Plato::Scalar norm
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Calculate misfit between two fields and return Euclidean norm of misfit/residual vector.
+ *
+ * \param [in] aNumNodes number of nodes in the mesh
+ * \param [in] aFieldOne physical field one
+ * \param [in] aFieldTwo physical field two
+ *
+ * \return Euclidean norm scalar
+ *
+ **********************************************************************************/
+inline Plato::Scalar norm
+(const Plato::ScalarVector& aFieldOne,
+ const Plato::ScalarVector& aFieldTwo)
+{
+    Plato::ScalarVector tResidual("residual", aFieldOne.size());
+    Plato::blas1::copy(aFieldTwo, tResidual);
+    Plato::blas1::update(1.0, aFieldOne, -1.0, tResidual);
+    auto tValue = Plato::blas1::norm(tResidual);
+    return tValue;
+}
+// function norm
 
 }
 // namespace blas1
