@@ -470,41 +470,6 @@ enforce_boundary_condition
 // function enforce_boundary_condition
 
 /******************************************************************************//**
- * \fn inline Plato::ScalarVector calculate_field_misfit
- *
- * \tparam DofsPerNode degrees of freedom per node (integer)
- *
- * \brief Calculate misfit between two fields per degree of freedom.
- *
- * \param [in] aNumNodes number of nodes in the mesh
- * \param [in] aFieldOne physical field one
- * \param [in] aFieldTwo physical field two
- *
- * \return misfit per degree of freedom
- *
- **********************************************************************************/
-template<Plato::OrdinalType DofsPerNode>
-inline Plato::ScalarVector
-calculate_field_misfit
-(const Plato::OrdinalType & aNumNodes,
- const Plato::ScalarVector& aFieldOne,
- const Plato::ScalarVector& aFieldTwo)
-{
-    Plato::ScalarVector tResidual("pressure residual", aNumNodes * DofsPerNode);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
-    {
-        for(Plato::OrdinalType tDof = 0; tDof < DofsPerNode; tDof++)
-        {
-            Plato::OrdinalType tLocalDof = aNode * DofsPerNode + tDof;
-            tResidual(tLocalDof) = aFieldOne(tLocalDof) - aFieldTwo(tLocalDof);
-        }
-    }, "calculate field misfit");
-
-    return tResidual;
-}
-// function calculate_field_misfit
-
-/******************************************************************************//**
  * \fn inline Plato::Scalar calculate_misfit_euclidean_norm
  *
  * \tparam DofsPerNode degrees of freedom per node (integer)
@@ -518,15 +483,14 @@ calculate_field_misfit
  * \return euclidean norm scalar
  *
  **********************************************************************************/
-template
-<Plato::OrdinalType DofsPerNode>
 inline Plato::Scalar
 calculate_misfit_euclidean_norm
-(const Plato::OrdinalType aNumNodes,
- const Plato::ScalarVector& aFieldOne,
+(const Plato::ScalarVector& aFieldOne,
  const Plato::ScalarVector& aFieldTwo)
 {
-    auto tResidual = Plato::cbs::calculate_field_misfit<DofsPerNode>(aNumNodes, aFieldOne, aFieldTwo);
+    Plato::ScalarVector tResidual("residual", aFieldOne.size());
+    Plato::blas1::copy(aFieldTwo, tResidual);
+    Plato::blas1::update(1.0, aFieldOne, -1.0, tResidual);
     auto tValue = Plato::blas1::norm(tResidual);
     return tValue;
 }
@@ -547,19 +511,18 @@ calculate_misfit_euclidean_norm
  * \return euclidean norm scalar
  *
  **********************************************************************************/
-template
-<Plato::OrdinalType DofsPerNode>
 inline Plato::Scalar
 calculate_misfit_inf_norm
-(const Plato::OrdinalType aNumNodes,
- const Plato::ScalarVector& aFieldOne,
+(const Plato::ScalarVector& aFieldOne,
  const Plato::ScalarVector& aFieldTwo)
 {
-    auto tMyResidual = Plato::cbs::calculate_field_misfit<DofsPerNode>(aNumNodes, aFieldOne, aFieldTwo);
+    Plato::ScalarVector tResidual("residual", aFieldOne.size());
+    Plato::blas1::copy(aFieldTwo, tResidual);
+    Plato::blas1::update(1.0, aFieldOne, -1.0, tResidual);
 
     Plato::Scalar tOutput = 0.0;
-    Plato::blas1::abs(tMyResidual);
-    Plato::blas1::max(tMyResidual, tOutput);
+    Plato::blas1::abs(tResidual);
+    Plato::blas1::max(tResidual, tOutput);
 
     return tOutput;
 }
@@ -1742,7 +1705,7 @@ private:
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentVelocity = aPrimal.vector("current velocity");
         auto tPreviousVelocity = aPrimal.vector("previous velocity");
-        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
+        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm(tCurrentVelocity, tPreviousVelocity);
         auto tCurrentVelNorm = Plato::blas1::norm(tCurrentVelocity);
         auto tOutput = tMisfitError / tCurrentVelNorm;
         return tOutput;
@@ -1761,7 +1724,7 @@ private:
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentPressure = aPrimal.vector("current pressure");
         auto tPreviousPressure = aPrimal.vector("previous pressure");
-        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm<mNumPressDofsPerNode>(tNumNodes, tCurrentPressure, tPreviousPressure);
+        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm(tCurrentPressure, tPreviousPressure);
         auto tCurrentNorm = Plato::blas1::norm(tCurrentPressure);
         auto tOutput = tMisfitError / tCurrentNorm;
         return tOutput;
@@ -4757,8 +4720,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
     Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
 
     // call function
-    constexpr auto tDofsPerNode = 1;
-    auto tValue = Plato::cbs::calculate_misfit_euclidean_norm<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
+    auto tValue = Plato::cbs::calculate_misfit_euclidean_norm(tCurPressure, tPrevPressure);
 
     // test result
     auto tTol = 1e-4;
@@ -4788,48 +4750,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitInfNorm)
 
     // call funciton
     constexpr auto tDofsPerNode = 1;
-    auto tValue = Plato::cbs::calculate_misfit_inf_norm<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
+    auto tValue = Plato::cbs::calculate_misfit_inf_norm(tCurPressure, tPrevPressure);
 
     // test result
     auto tTol = 1e-4;
     TEST_FLOATING_EQUALITY(3.2, tValue, tTol);
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
-{
-    // set element characteristic size
-    constexpr auto tNumNodes = 4;
-    Plato::ScalarVector tCurPressure("current pressure", tNumNodes);
-    auto tHostCurPressure = Kokkos::create_mirror(tCurPressure);
-    tHostCurPressure(0) = 1;
-    tHostCurPressure(1) = 2;
-    tHostCurPressure(2) = 3;
-    tHostCurPressure(3) = 4;
-    Kokkos::deep_copy(tCurPressure, tHostCurPressure);
-
-    // set convective velocity
-    Plato::ScalarVector tPrevPressure("previous pressure", tNumNodes);
-    auto tHostPrevPressure = Kokkos::create_mirror(tPrevPressure);
-    tHostPrevPressure(0) = 0.5;
-    tHostPrevPressure(1) = 0.6;
-    tHostPrevPressure(2) = 0.7;
-    tHostPrevPressure(3) = 0.8;
-    Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
-
-    // call function
-    constexpr auto tDofsPerNode = 1;
-    auto tResidual = Plato::cbs::calculate_field_misfit<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
-
-    // test results
-    auto tTol = 1e-4;
-    auto tHostResidual = Kokkos::create_mirror(tResidual);
-    Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {0.5,1.4,2.3,3.2};
-    for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tNode], tHostResidual(tNode), tTol); // @suppress("Invalid arguments")
-    }
-    //Plato::print(tResidual, "residual");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
