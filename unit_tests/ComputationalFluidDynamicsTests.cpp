@@ -12,6 +12,7 @@
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
+#include "UtilsIO.hpp"
 #include "Simplex.hpp"
 #include "Assembly.hpp"
 #include "WorkSets.hpp"
@@ -25,6 +26,7 @@
 #include "EssentialBCs.hpp"
 #include "ProjectToNode.hpp"
 #include "PlatoUtilities.hpp"
+#include "AbstractProblem.hpp"
 #include "SimplexFadTypes.hpp"
 #include "ApplyConstraints.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -63,47 +65,8 @@
 namespace Plato
 {
 
-namespace filesystem
-{
-
-/******************************************************************************//**
- * \fn exist
- *
- * \brief Return true if path exist; else, return false
- * \param [in] aPath directory/file path
- * \return boolean (true or false)
-**********************************************************************************/
-bool exist(const std::string &aPath)
-{
-    struct stat tBuf;
-    int tReturn = stat(aPath.c_str(), &tBuf);
-    return (tReturn == 0 ? true : false);
-}
-// function exist
-
-/******************************************************************************//**
- * \fn exist
- *
- * \brief Delete file/directory if it exist
- * \param [in] aPath directory/file path
-**********************************************************************************/
-void remove(const std::string &aPath)
-{
-    if(Plato::filesystem::exist(aPath))
-    {
-        auto tCommand = std::string("rm -rf ") + aPath;
-        std::system(tCommand.c_str());
-    }
-}
-// function remove
-
-}
-// namespace filesystem
-
-
 namespace Fluids
 {
-
 
 /***************************************************************************//**
  * \tparam PhysicsT    Plato physics type
@@ -253,151 +216,8 @@ private:
 }
 // namespace Fluids
 
-/******************************************************************************//**
- * \fn inline void open_text_file
- *
- * \brief Open text file.
- *
- * \param [in]     aFileName filename
- * \param [in]     aPrint    boolean flag (true = open file, false = do not open)
- * \param [in/out] aTextFile text file macro
- *
- **********************************************************************************/
-inline void open_text_file
-(const std::string & aFileName,
- std::ofstream & aTextFile,
- bool aPrint = true)
-{
-    if (aPrint == false)
-    {
-        return;
-    }
-    aTextFile.open(aFileName);
-}
-// function open_text_file
-
-/******************************************************************************//**
- * \fn inline void close_text_file
- *
- * \brief Close text file.
- *
- * \param [in]     aPrint    boolean flag (true = close file, false = do not close)
- * \param [in/out] aTextFile text file macro
- *
- **********************************************************************************/
-inline void close_text_file
-(std::ofstream & aTextFile,
- bool aPrint = true)
-{
-    if (aPrint == false)
-    {
-        return;
-    }
-    aTextFile.close();
-}
-// function close_text_file
-
-/******************************************************************************//**
- * \fn inline void append_text_to_file
- *
- * \brief Append text to file.
- *
- * \param [in]     aMsg      text message to be appended to file
- * \param [in]     aPrint    boolean flag (true = print message to file, false = do not print message)
- * \param [in/out] aTextFile text file macro
- *
- **********************************************************************************/
-inline void append_text_to_file
-(const std::stringstream & aMsg,
- std::ofstream & aTextFile,
- bool aPrint = true)
-{
-    if (aPrint == false)
-    {
-        return;
-    }
-    aTextFile << aMsg.str().c_str() << std::flush;
-}
-// function append_text_to_file
-
 namespace Fluids
 {
-
-/******************************************************************************//**
- * \class AbstractProblem
- *
- * \brief This pure virtual class provides blueprint for any derived class.
- *   Derived classes define the main interface used to solve a Plato problem.
- *
- **********************************************************************************/
-class AbstractProblem
-{
-public:
-    virtual ~AbstractProblem() {}
-
-    /******************************************************************************//**
-     * \fn void output
-     *
-     * \brief Output interface to permit output of quantities of interests to a visualization file.
-     *
-     * \param [in] aFilePath visualization file path
-     *
-     **********************************************************************************/
-    virtual void output(std::string aFilePath) = 0;
-
-    /******************************************************************************//**
-     * \fn const Plato::DataMap& getDataMap
-     *
-     * \brief Return a constant reference to the Plato output database.
-     * \return constant reference to the Plato output database
-     *
-     **********************************************************************************/
-    virtual const Plato::DataMap& getDataMap() const = 0;
-
-    /******************************************************************************//**
-     * \fn Plato::Solutions solution
-     *
-     * \brief Solve finite element simulation.
-     * \param [in] aControl vector of design/optimization variables
-     * \return Plato database with state solutions
-     *
-     **********************************************************************************/
-    virtual Plato::Solutions solution(const Plato::ScalarVector& aControl) = 0;
-
-    /******************************************************************************//**
-     * \fn Plato::Scalar criterionValue
-     *
-     * \brief Evaluate criterion.
-     * \param [in] aControl vector of design/optimization variables
-     * \param [in] aName    criterion name/identifier
-     * \return criterion evaluation
-     *
-     **********************************************************************************/
-    virtual Plato::Scalar criterionValue(const Plato::ScalarVector & aControl, const std::string& aName) = 0;
-
-    /******************************************************************************//**
-     * \fn Plato::Scalar criterionGradient
-     *
-     * \brief Evaluate criterion gradient with respect to design/optimization variables.
-     * \param [in] aControl vector of design/optimization variables
-     * \param [in] aName    criterion name/identifier
-     * \return criterion gradient with respect to design/optimization variables
-     *
-     **********************************************************************************/
-    virtual Plato::ScalarVector criterionGradient(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
-
-    /******************************************************************************//**
-     * \fn Plato::Scalar criterionGradientX
-     *
-     * \brief Evaluate criterion gradient with respect to configuration variables.
-     * \param [in] aControl vector of design/optimization variables
-     * \param [in] aName    criterion name/identifier
-     * \return criterion gradient with respect to configuration variables
-     *
-     **********************************************************************************/
-    virtual Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
-};
-// class AbstractProblem
 
 /******************************************************************************//**
  * \class QuasiImplicit
@@ -406,7 +226,7 @@ public:
  *
  **********************************************************************************/
 template<typename PhysicsT>
-class QuasiImplicit : public Plato::Fluids::AbstractProblem
+class QuasiImplicit : public Plato::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -516,7 +336,7 @@ public:
     {
         if(Plato::Comm::rank(mMachine) == 0)
         {
-            Plato::close_text_file(mDiagnostics, mPrintDiagnostics);
+            Plato::io::close_text_file(mDiagnostics, mPrintDiagnostics);
         }
     }
 
@@ -1092,7 +912,7 @@ private:
                 tMsg << "* Critical Time Step: " << tHostCriticalTimeStep(0) << "\n";
                 tMsg << "* CFD Quasi-Implicit Solver Iteration: " << tTimeStepIndex << "\n";
                 tMsg << "*************************************************************************************\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -1111,7 +931,7 @@ private:
         auto tFileName = aInputs.get<std::string>("Diagnostics File Name", "cfd_solver_diagnostics.txt");
         if(Plato::Comm::rank(mMachine) == 0)
         {
-            Plato::open_text_file(tFileName, mDiagnostics, mPrintDiagnostics);
+            Plato::io::open_text_file(tFileName, mDiagnostics, mPrintDiagnostics);
         }
     }
 
@@ -1415,7 +1235,7 @@ private:
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
                 tMsg << "-------------------------------------------------------------------------------------\n\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -1799,7 +1619,7 @@ private:
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << "*                           Momentum Corrector Solver                               *\n";
                 tMsg << "-------------------------------------------------------------------------------------\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -1886,7 +1706,7 @@ private:
             {
                 std::stringstream tMsg;
                 tMsg << "Iteration" << std::setw(16) << "Delta(u*)" << std::setw(18) << "Residual\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -1907,7 +1727,7 @@ private:
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << "*                           Momentum Predictor Solver                               *\n";
                 tMsg << "-------------------------------------------------------------------------------------\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -1931,7 +1751,7 @@ private:
                 auto tNormResidual = aPrimal.scalar("norm residual");
                 Plato::OrdinalType tIteration = aPrimal.scalar("newton iteration");
                 tMsg << tIteration << std::setw(24) << std::scientific << tNormStep << std::setw(18) << tNormResidual << "\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -2020,7 +1840,7 @@ private:
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << "*                                Pressure Solver                                    *\n";
                 tMsg << "-------------------------------------------------------------------------------------\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -2109,7 +1929,7 @@ private:
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << "*                             Temperature Solver                                    *\n";
                 tMsg << "-------------------------------------------------------------------------------------\n";
-                Plato::append_text_to_file(tMsg, mDiagnostics);
+                Plato::io::append_text_to_file(tMsg, mDiagnostics);
             }
         }
     }
@@ -2521,6 +2341,19 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OpenTextFile)
+{
+    std::ofstream tFile;
+    Plato::io::open_text_file("open_text_file_test.txt", tFile, false);
+    TEST_ASSERT(tFile.is_open() == false);
+
+    Plato::io::open_text_file("open_text_file_test.txt", tFile, true);
+    TEST_ASSERT(tFile.is_open() == true);
+    Plato::io::close_text_file(tFile);
+
+    std::system("rm -f open_text_file_test.txt");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
 {
