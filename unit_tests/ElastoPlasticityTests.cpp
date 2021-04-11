@@ -2249,7 +2249,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
         tPlasticityProblem.saveStates("ElasticSolution");
     }
 
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2439,7 +2440,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamTraction2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2627,7 +2629,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2817,7 +2820,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -3008,7 +3012,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 #endif
 
@@ -3200,7 +3205,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 #endif
 
@@ -3345,7 +3351,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
 
     if(tDeleteSolverStats)
     {
-        std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+        auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+        if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
     }
 }
 
@@ -3607,7 +3614,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -3772,7 +3780,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_3D)
     {
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -3916,7 +3925,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4055,7 +4065,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
     {
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4178,7 +4189,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4342,7 +4354,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     {
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4485,7 +4498,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4608,7 +4622,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4751,7 +4766,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4884,7 +4900,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -5037,7 +5054,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 //#endif

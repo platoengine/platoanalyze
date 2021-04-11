@@ -184,7 +184,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OpenTextFile)
     TEST_ASSERT(tFile.is_open() == true);
     Plato::io::close_text_file(tFile);
 
-    std::system("rm -f open_text_file_test.txt");
+    auto tSysMsg = std::system("rm -f open_text_file_test.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
@@ -339,8 +340,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
         TEST_FLOATING_EQUALITY(tGoldMinPress[tPreviousIndex], tMinPress, tTol);
     }
 
-    std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -rf solution_history");
+    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
@@ -484,8 +486,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
         TEST_FLOATING_EQUALITY(tGoldMinPress[tIndex], tMinPress, tTol);
     }
 
-    std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -rf solution_history");
+    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
@@ -629,8 +632,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
         TEST_FLOATING_EQUALITY(tGoldMinPress[tIndex], tMinPress, tTol);
     }
 
-    std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -rf solution_history");
+    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
@@ -745,8 +749,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
 	TEST_EQUALITY(tGold[tIndex], tPath.string());
     }
 
-    std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -rf solution_history");
+    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionGradient)
@@ -853,8 +858,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 4, 6);
     TEST_ASSERT(tError < 1e-4);
 
-    std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -rf solution_history");
+    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_CheckCriterionGradient)
@@ -995,8 +1001,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 3, 5);
     TEST_ASSERT(tError < 1e-4);
 
-    std::system("rm -rf solution_history");
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -rf solution_history");
+    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
@@ -1115,7 +1122,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Pressure");
     TEST_FLOATING_EQUALITY(0.0896025, tCriterionValue, tTol);
 
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrinkmanTerm)
@@ -1250,7 +1258,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     TEST_FLOATING_EQUALITY(-0.0519869, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
     
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
@@ -1384,7 +1393,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
     
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
@@ -1536,7 +1546,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
     TEST_FLOATING_EQUALITY(-0.33372, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
     
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1679,7 +1690,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     TEST_FLOATING_EQUALITY(-0.633259, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
     
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1848,7 +1860,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     TEST_FLOATING_EQUALITY(15.077, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
     
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
@@ -2026,7 +2039,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
     TEST_FLOATING_EQUALITY(14.1776, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
     
-    std::system("rm -f cfd_solver_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)

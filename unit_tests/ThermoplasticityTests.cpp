@@ -214,7 +214,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamTractionThermoPlasticity2D_Elastic");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -431,7 +432,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     {
         tPlasticityProblem.saveStates("CantileverBeamTractionForce2D_Plastic");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -682,7 +684,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     {
         tPlasticityProblem.saveStates("CantileverBeamTractionForce3D_Plastic");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -860,7 +863,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
     {
         tPlasticityProblem.saveStates("Thermoplasticity_RodElasticSolution2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1062,7 +1066,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
     {
         tPlasticityProblem.saveStates("Thermoplasticity_RodElasticSolution3D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1246,7 +1251,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     {
         tPlasticityProblem.saveStates("Thermoplasticity_ElasticSolution3D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
