@@ -13,6 +13,7 @@
 #include <Omega_h_mark.hpp>
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_shape.hpp>
+#include <Omega_h_defines.hpp>
 #include <Omega_h_array_ops.hpp>
 #include <Omega_h_filesystem.hpp>
 
