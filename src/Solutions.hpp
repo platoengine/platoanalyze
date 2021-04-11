@@ -74,6 +74,13 @@ public:
      * \param aTag data tag
      ******************************************************************************/
     Plato::ScalarMultiVector get(const std::string& aTag) const;
+
+    /***************************************************************************//**
+     * \fn void print
+     *
+     * \brief Print solutions metadata.
+     ******************************************************************************/
+    void print() const;
 };
 // struct Solutions
 

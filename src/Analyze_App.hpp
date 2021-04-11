@@ -19,6 +19,7 @@
 #include <Plato_SharedField.hpp>
 
 #include "Solutions.hpp"
+#include "AnalyzeAppUtils.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"
@@ -43,22 +44,8 @@ typedef Plato::Geometry::ESP<double, Plato::ScalarVectorT<double>::HostMirror> E
 typedef int ESPType;
 #endif
 
-namespace Plato {
-
-Plato::ScalarVector
-getVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride);
-
-void
-parseInline(Teuchos::ParameterList& params, const std::string& target, Plato::Scalar value);
-
-std::vector<std::string>
-split(const std::string& aInputString, const char aDelimiter);
-
-Teuchos::ParameterList&
-getInnerList(Teuchos::ParameterList& params, std::vector<std::string>& tokens);
-
-void
-setParameterValue(Teuchos::ParameterList& params, std::vector<std::string> tokens, Plato::Scalar value);
+namespace Plato
+{
 
 /******************************************************************************/
 class MPMD_App : public Plato::Application
@@ -406,8 +393,8 @@ public:
         {
 	    auto tState = mGlobalSolution.get("State");
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tScalarField = Plato::getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution X")
@@ -415,7 +402,7 @@ public:
 	    auto tState = mGlobalSolution.get("State");
             const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
+            auto tScalarField = Plato::getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
@@ -438,7 +425,7 @@ public:
         if(mGradientXNameToCriterionName.count(aName))
         {
             auto tStrCriterion = mGradientXNameToCriterionName[aName];
-            auto tScalarField = getVectorComponent(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
+            auto tScalarField = Plato::getVectorComponent(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
     }

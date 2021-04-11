@@ -51,5 +51,13 @@ Plato::ScalarMultiVector Solutions::get(const std::string& aTag) const
     return tItr->second;
 }
 
+void Solutions::print() const
+{
+    if(mSolution.empty())
+    { return; }
+    for(auto& tPair : mSolution)
+    { Plato::print_array_2D(tPair.second, tPair.first); }
+}
+
 }
 // namespace Plato
