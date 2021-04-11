@@ -2094,7 +2094,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitInfNorm)
     Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
 
     // call funciton
-    constexpr auto tDofsPerNode = 1;
     auto tValue = Plato::blas1::inf_norm(tCurPressure, tPrevPressure);
 
     // test result
