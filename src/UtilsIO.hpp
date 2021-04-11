@@ -117,7 +117,7 @@ void remove(const std::string &aPath)
     {
         auto tCommand = std::string("rm -rf ") + aPath;
         auto tOutput = std::system(tCommand.c_str());
-        if(false){ std::cout << std::to_string(tOutput) << "\n"}
+        if(false){ std::cout << std::to_string(tOutput) << "\n";}
     }
 }
 // function remove
