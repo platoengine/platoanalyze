@@ -4,6 +4,7 @@
 
 #include "Analyze_App.hpp"
 #include "AnalyzeOutput.hpp"
+#include "AnalyzeAppUtils.hpp"
 #include "HDF5IO.hpp"
 #include <PlatoProblemFactory.hpp>
 #include <Plato_OperationsUtilities.hpp>
@@ -1428,114 +1429,9 @@ void MPMD_App::exportDataMap(const Plato::data::layout_t & aDataLayout, std::vec
 }
 
 /******************************************************************************/
-Plato::ScalarVector
-getVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride)
-/******************************************************************************/
-{
-  int tNumLocalVals = aFrom.size()/aStride;
-  Plato::ScalarVector tRetVal("vector component", tNumLocalVals);
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumLocalVals), LAMBDA_EXPRESSION(const int & aNodeOrdinal) {
-    tRetVal(aNodeOrdinal) = aFrom(aStride*aNodeOrdinal+aComponent);
-  },"copy component from vector");
-  return tRetVal;
-}
-
-/******************************************************************************/
-Plato::ScalarVector
-setVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride)
-/******************************************************************************/
-{
-  int tNumLocalVals = aFrom.size()/aStride;
-  Plato::ScalarVector tRetVal("vector component", tNumLocalVals);
-  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumLocalVals), LAMBDA_EXPRESSION(const int & aNodeOrdinal) {
-    tRetVal(aNodeOrdinal) = aFrom(aStride*aNodeOrdinal+aComponent);
-  },"copy component from vector");
-  return tRetVal;
-}
-
-
-/******************************************************************************/
 MPMD_App::~MPMD_App()
 /******************************************************************************/
 {
-}
-
-/******************************************************************************/
-std::vector<std::string>
-split( const std::string& aInputString, const char aDelimiter )
-/******************************************************************************/
-{
-  // break aInputString apart by 'aDelimiter' below //
-  // produces a vector of strings: tTokens   //
-  std::vector<std::string> tTokens;
-  {
-    std::istringstream tStream(aInputString);
-    std::string tToken;
-    while (std::getline(tStream, tToken, aDelimiter))
-    {
-      tTokens.push_back(tToken);
-    }
-  }
-  return tTokens;
-}
-/******************************************************************************/
-void
-parseInline( Teuchos::ParameterList& params,
-             const std::string& target,
-             Plato::Scalar value )
-/******************************************************************************/
-{
-  std::vector<std::string> tokens = split(target,':');
-
-  Teuchos::ParameterList& innerList = getInnerList(params, tokens);
-  setParameterValue(innerList, tokens, value);
-
-}
-
-/******************************************************************************/
-Teuchos::ParameterList&
-getInnerList( Teuchos::ParameterList& params,
-              std::vector<std::string>& tokens)
-/******************************************************************************/
-{
-    auto& token = tokens[0];
-    if( token.front() == '[' && token.back()  == ']' )
-    {
-      // listName = token with '[' and ']' removed.
-      std::string listName = token.substr(1,token.size()-2);
-      tokens.erase(tokens.begin());
-      return getInnerList( params.sublist(listName, /*must exist=*/true), tokens );
-    }
-    else
-    {
-      return params;
-    }
-}
-/******************************************************************************/
-void
-setParameterValue( Teuchos::ParameterList& params,
-                   std::vector<std::string> tokens, Plato::Scalar value)
-/******************************************************************************/
-{
-  // if '(int)' then
-  auto& token = tokens[0];
-  auto p1 = token.find("(");
-  auto p2 = token.find(")");
-  if( p1 != std::string::npos && p2 != std::string::npos )
-  {
-      std::string vecName = token.substr(0,p1);
-      auto vec = params.get<Teuchos::Array<Plato::Scalar>>(vecName);
-
-      std::string strVecEntry = token.substr(p1+1,p2-p1-1);
-      int vecEntry = std::stoi(strVecEntry);
-      vec[vecEntry] = value;
-
-      params.set(vecName,vec);
-  }
-  else
-  {
-      params.set<Plato::Scalar>(token,value);
-  }
 }
 
 /******************************************************************************/
@@ -1562,30 +1458,30 @@ void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+        tDeviceData = Plato::getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
     }
     else if(aName == "Solution X")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
     }
     else if(aName == "Solution Y")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
     }
     else if(aName == "Solution Z")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
     }
     else if(mGradientXNameToCriterionName.count(tFieldName))
     {
         auto tStrCriterion = mGradientZNameToCriterionName[tFieldName];
-        tDeviceData = getVectorComponent(mCriterionGradientsX[tStrCriterion],/*component=*/tFieldIndex, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::getVectorComponent(mCriterionGradientsX[tStrCriterion],/*component=*/tFieldIndex, /*stride=*/mNumSpatialDims);
     }
 
     // create a mirror

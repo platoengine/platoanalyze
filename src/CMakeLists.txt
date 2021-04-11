@@ -36,6 +36,7 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     WorkSets.cpp
     Variables.cpp
     Solutions.cpp 
+    AnalyzeAppUtils.cpp 
     ExpressionEvaluator.cpp 
     alg/ParseInput.cpp 
     alg/Basis.cpp 
