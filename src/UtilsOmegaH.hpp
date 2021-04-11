@@ -124,27 +124,36 @@ inline std::string
 get_entity_name
 (const Omega_h::Int aEntityDim)
 {
-    if(aEntityDim == Omega_h::VERT)
+    std::string tOutput;
+    switch(aEntityDim)
     {
-        return "VERTEX";
+        case Omega_h::VERT:
+        {
+            tOutput = "VERTEX";
+            break;
+        }
+        case Omega_h::EDGE:
+        {
+            tOutput = "EDGE";
+            break;
+        }
+        case Omega_h::FACE:
+        {
+            tOutput = "FACE";
+            break;
+        }
+        case Omega_h::REGION:
+        {
+            tOutput = "REGION";
+            break;
+        }
+        default:
+        {
+            THROWERR(std::string("Entity dimension '") + std::to_string(aEntityDim) + "' is not supported. "
+                + "Supported entity dimensions are: Omega_h::VERT=0, Omega_h::EDGE=1, Omega_h::FACE=2, and Omega_h::REGION=3")
+        }
     }
-    else if(aEntityDim == Omega_h::EDGE)
-    {
-        return "EDGE";
-    }
-    else if(aEntityDim == Omega_h::FACE)
-    {
-        return "FACE";
-    }
-    else if(aEntityDim == Omega_h::REGION)
-    {
-        return "REGION";
-    }
-    else
-    {
-        THROWERR(std::string("Entity dimension '") + std::to_string(aEntityDim) + "' is not supported. "
-            + "Supported entity dimensions are: Omega_h::VERT=0, Omega_h::EDGE=1, Omega_h::FACE=2, and Omega_h::REGION=3")
-    }
+    return tOutput;
 }
 // function get_entity_name
 
