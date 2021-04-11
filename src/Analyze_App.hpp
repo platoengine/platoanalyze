@@ -18,15 +18,11 @@
 #include <Plato_SharedData.hpp>
 #include <Plato_SharedField.hpp>
 
-// JR are these needed?
-//#include "Mechanics.hpp"
-//#include "Thermal.hpp"
-
+#include "Solutions.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"
 
-#include "PlatoStaticsTypes.hpp"
 
 #ifdef PLATO_GEOMETRY
 #include "Plato_MLS.hpp"
@@ -230,7 +226,8 @@ public:
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+	    auto tState = mGlobalSolution.get("State");
+            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
             this->copyFieldIntoAnalyze(tStatesSubView, aSharedField);
         }
     }
@@ -407,33 +404,34 @@ public:
         }
         else if(aName == "Solution")
         {
+	    auto tState = mGlobalSolution.get("State");
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution X")
         {
-            auto tNumSolutionDofs = mProblem->getNumSolutionDofs();
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
+	    auto tState = mGlobalSolution.get("State");
+            const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/tNumSolutionDofs);
+            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
-            auto tNumSolutionDofs = mProblem->getNumSolutionDofs();
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/tNumSolutionDofs);
+	    auto tState = mGlobalSolution.get("State");
+            const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
-            auto tNumSolutionDofs = mProblem->getNumSolutionDofs();
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/tNumSolutionDofs);
+	    auto tState = mGlobalSolution.get("State");
+            const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else
@@ -559,7 +557,7 @@ private:
 
     std::shared_ptr<Plato::AbstractProblem> mProblem;
 
-    Plato::Solution          mGlobalSolution;
+    Plato::Solutions         mGlobalSolution;
     Plato::ScalarVector      mControl;
     Plato::ScalarMultiVector mCoords;
 

@@ -294,7 +294,7 @@ createProblem(ProblemDefinition& aDefinition)
 void MPMD_App::resetProblemMetaData()
 /******************************************************************************/
 {
-  mGlobalSolution  = mProblem->getGlobalSolution();
+  //mGlobalSolution  = mProblem->getGlobalSolution();
 
   auto tNumLocalVals = mMesh.nverts();
   if(mControl.extent(0) != tNumLocalVals)
@@ -673,22 +673,20 @@ void MPMD_App::ComputeCriterion::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto& tState  = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradZ  = mMyApp->mCriterionGradientsZ[mStrCriterion];
 
     mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
-
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     tValue -= mTarget;
-    tGradZ = mMyApp->mProblem->criterionGradient(tControl, tState, mStrCriterion);
+    tGradZ = mMyApp->mProblem->criterionGradient(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion Operation - Print Criterion GradientZ.\n");
         Plato::print(tGradZ, "criterion gradient Z");
         std::ostringstream tMsg;
@@ -731,22 +729,20 @@ void MPMD_App::ComputeCriterionX::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto& tState  = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tState = mMyApp->mProblem->solution(tControl);
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     tValue -= mTarget;
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
-
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion X Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion X Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion X Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
         std::ostringstream tMsg;
@@ -787,13 +783,12 @@ void MPMD_App::ComputeCriterionP::operator()()
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
 
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     tValue -= mTarget;
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mapToParameters(tESP, tGradP, tGradX);
@@ -803,7 +798,7 @@ void MPMD_App::ComputeCriterionP::operator()()
         REPORT("Analyze Application - Compute Criterion P Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion P Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion P Operation - Print Criterion GradientX.\n");
         Plato::print(mMyApp->mCriterionGradientsX[mStrCriterion], "criterion gradient X");
         std::ostringstream tMsg;
@@ -841,11 +836,10 @@ void MPMD_App::ComputeCriterionValue::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto& tState   = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
 
     tState = mMyApp->mProblem->solution(tControl);
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     tValue -= mTarget;
 
     if(mMyApp->mDebugAnalyzeApp == true)
@@ -853,7 +847,7 @@ void MPMD_App::ComputeCriterionValue::operator()()
         REPORT("Analyze Application - Compute Criterion Value Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Value Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         std::ostringstream tMsg;
         tMsg << "Analyze Application - Compute Criterion Value Operation - Criterion Value '" << tValue << "'.\n";
         REPORT(tMsg.str().c_str());
@@ -888,17 +882,15 @@ void MPMD_App::ComputeCriterionGradient::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
-    auto& tGradZ   = mMyApp->mCriterionGradientsZ[mStrCriterion];
-
-    tGradZ = mMyApp->mProblem->criterionGradient(tControl, tState, mStrCriterion);
+    auto& tGradZ  = mMyApp->mCriterionGradientsZ[mStrCriterion];
+    tGradZ = mMyApp->mProblem->criterionGradient(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion Gradient Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Gradient Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion Gradient Operation - Print Criterion GradientZ.\n");
         Plato::print(tGradZ, "criterion gradient Z");
     }
@@ -931,17 +923,15 @@ void MPMD_App::ComputeCriterionGradientX::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
-
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion Gradient X Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Gradient X Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion Gradient X Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
     }
@@ -1022,17 +1012,16 @@ void MPMD_App::ComputeCriterionGradientP::operator()()
     }
 #ifdef PLATO_ESP
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
     auto& tGradP  = mMyApp->mValuesMap[mStrGradientP];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
     }
@@ -1081,7 +1070,7 @@ void MPMD_App::ComputeSolution::operator()()
         REPORT("Analyze Application - Compute Solution Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Solution Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
     }
 
     // optionally, write solution
@@ -1537,8 +1526,9 @@ setParameterValue( Teuchos::ParameterList& params,
 }
 
 /******************************************************************************/
-void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
-                                        typename Plato::ScalarVector::HostMirror & aHostMirror)
+void MPMD_App::getScalarFieldHostMirror
+(const    std::string & aName,
+ typename Plato::ScalarVector::HostMirror & aHostMirror)
 /******************************************************************************/
 {
     Plato::ScalarVector tDeviceData;
@@ -1558,27 +1548,19 @@ void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
     }
     else if(aName == "Solution")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+	tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,1/*stride*/);    
     }
     else if(aName == "Solution X")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
+	tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,mNumSpatialDims/*stride*/);    
     }
     else if(aName == "Solution Y")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
+	tDeviceData = Plato::extract_solution(mGlobalSolution, 1/*dof*/,mNumSpatialDims/*stride*/);    
     }
     else if(aName == "Solution Z")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
+	tDeviceData = Plato::extract_solution(mGlobalSolution, 2/*dof*/,mNumSpatialDims/*stride*/);    
     }
     else if(mGradientXNameToCriterionName.count(tFieldName))
     {
@@ -1589,10 +1571,8 @@ void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
     // create a mirror
     aHostMirror = Kokkos::create_mirror(tDeviceData);
 
-
     // copy to host from device
     Kokkos::deep_copy(aHostMirror, tDeviceData);
-
 }
 
 /******************************************************************************/
