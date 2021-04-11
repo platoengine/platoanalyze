@@ -289,7 +289,7 @@ get_entity_ordinals
  *
  * \brief Return total number of entities in the mesh.
  *
- * \param [in] aEntityDim entity dimension (vertex, edge, face, or region)
+ * \param [in] aEntityDim entity dimension (vertex=0, edge=1, face=2, or region=3)
  * \param [in] aMesh      computational mesh metadata
  *
  * \return total number of entities in the mesh
@@ -299,26 +299,15 @@ get_num_entities
 (const Omega_h::Int aEntityDim,
  const Omega_h::Mesh & aMesh)
 {
-    if(aEntityDim == Omega_h::VERT)
+    std::unordered_map<Omega_h::Int, Omega_h::LO> tMap =
+        { {0, aMesh.nverts()}, {1, aMesh.nedges()}, {2, aMesh.nfaces()}, {3, aMesh.nelems()} };
+    auto tItr = tMap.find(aEntityDim);
+    if(tItr == tMap.end())
     {
-        return aMesh.nverts();
+        THROWERR(std::string("Entity with dimension id '") + aEntityDim + " is not supported. "
+            + "Supported options are: Omega_h::VERT=0, Omega_h::EDGE=1, Omega_h::FACE=2, and Omega_h::REGION=3")
     }
-    else if(aEntityDim == Omega_h::EDGE)
-    {
-        return aMesh.nedges();
-    }
-    else if(aEntityDim == Omega_h::FACE)
-    {
-        return aMesh.nfaces();
-    }
-    else if(aEntityDim == Omega_h::REGION)
-    {
-        return aMesh.nelems();
-    }
-    else
-    {
-        THROWERR("Entity is not supported. Supported entities: Omega_h::VERT, Omega_h::EDGE, Omega_h::FACE, and Omega_h::REGION")
-    }
+    return tItr->second;
 }
 // function get_num_entities
 
