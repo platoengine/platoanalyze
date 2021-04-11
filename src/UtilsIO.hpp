@@ -116,7 +116,8 @@ void remove(const std::string &aPath)
     if(Plato::filesystem::exist(aPath))
     {
         auto tCommand = std::string("rm -rf ") + aPath;
-        std::system(tCommand.c_str());
+        auto tOutput = std::system(tCommand.c_str());
+        if(false){ std::cout << std::to_string(tOutput) << "\n"}
     }
 }
 // function remove
