@@ -4438,7 +4438,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
 {
-    Plato::Solutions tSolution;
+    Plato::Solutions tSolution("incompressible cfd");
+    TEST_EQUALITY("incompressible cfd", tSolution.physics());
     constexpr Plato::OrdinalType tNumTimeSteps = 2;
 
     // set velocity

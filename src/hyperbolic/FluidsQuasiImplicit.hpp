@@ -640,7 +640,7 @@ private:
      **********************************************************************************/
     Plato::Solutions setSolution()
     {
-        Plato::Solutions tSolution;
+        Plato::Solutions tSolution("incompressible cfd");
         tSolution.set("velocity", mVelocity);
         tSolution.set("pressure", mPressure);
         if(mCalculateHeatTransfer)

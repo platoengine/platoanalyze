@@ -10,6 +10,15 @@
 namespace Plato
 {
 
+Solutions::Solutions(const std::string & aPhysics) :
+    mPhysics(aPhysics)
+{return;}
+
+std::string Solutions::physics() const
+{
+    return (mPhysics);
+}
+
 Plato::OrdinalType Solutions::size() const
 {
     return (mSolution.size());
