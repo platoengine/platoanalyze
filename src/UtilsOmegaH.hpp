@@ -124,36 +124,15 @@ inline std::string
 get_entity_name
 (const Omega_h::Int aEntityDim)
 {
-    std::string tOutput;
-    switch(aEntityDim)
+    std::unordered_map<Omega_h::Int, std::string> tMap =
+        { {0, "VERTEX"}, {1, "EDGE"}, {2, "FACE"}, {3, "REGION"} };
+    auto tItr = tMap.find(aEntityDim);
+    if(tItr == tMap.end())
     {
-        case Omega_h::VERT:
-        {
-            tOutput = "VERTEX";
-            break;
-        }
-        case Omega_h::EDGE:
-        {
-            tOutput = "EDGE";
-            break;
-        }
-        case Omega_h::FACE:
-        {
-            tOutput = "FACE";
-            break;
-        }
-        case Omega_h::REGION:
-        {
-            tOutput = "REGION";
-            break;
-        }
-        default:
-        {
-            THROWERR(std::string("Entity dimension '") + std::to_string(aEntityDim) + "' is not supported. "
-                + "Supported entity dimensions are: Omega_h::VERT=0, Omega_h::EDGE=1, Omega_h::FACE=2, and Omega_h::REGION=3")
-        }
+        THROWERR(std::string("Entity dimension '") + std::to_string(aEntityDim) + "' is not supported. "
+            + "Supported entity dimensions are: Omega_h::VERT=0, Omega_h::EDGE=1, Omega_h::FACE=2, and Omega_h::REGION=3")
     }
-    return tOutput;
+    return tItr->second;
 }
 // function get_entity_name
 
