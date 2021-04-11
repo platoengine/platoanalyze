@@ -304,7 +304,7 @@ get_num_entities
     auto tItr = tMap.find(aEntityDim);
     if(tItr == tMap.end())
     {
-        THROWERR(std::string("Entity with dimension id '") + aEntityDim + " is not supported. "
+        THROWERR(std::string("Entity with dimension id '") + std::to_string(aEntityDim) + " is not supported. "
             + "Supported options are: Omega_h::VERT=0, Omega_h::EDGE=1, Omega_h::FACE=2, and Omega_h::REGION=3")
     }
     return tItr->second;
