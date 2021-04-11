@@ -127,8 +127,7 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
         mLibOsh(&aArgc, &aArgv, aLocalComm),
         mMachine(aLocalComm),
         mNumSpatialDims(0),
-        mMesh(&mLibOsh),
-        mNumSolutionDofs(0)
+        mMesh(&mLibOsh)
 /******************************************************************************/
 {
   // parse app file
@@ -296,7 +295,6 @@ void MPMD_App::resetProblemMetaData()
 /******************************************************************************/
 {
   mGlobalSolution  = mProblem->getGlobalSolution();
-  mNumSolutionDofs = mProblem->getNumSolutionDofs();
 
   auto tNumLocalVals = mMesh.nverts();
   if(mControl.extent(0) != tNumLocalVals)

@@ -414,23 +414,26 @@ public:
         }
         else if(aName == "Solution X")
         {
+            auto tNumSolutionDofs = mProblem->getNumSolutionDofs();
             const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
+            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/tNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
+            auto tNumSolutionDofs = mProblem->getNumSolutionDofs();
             const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSolutionDofs);
+            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/tNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
+            auto tNumSolutionDofs = mProblem->getNumSolutionDofs();
             const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
+            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/tNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else
@@ -569,7 +572,6 @@ private:
     std::map<std::string, std::string> mGradientXNameToCriterionName;
 
     Plato::OrdinalType mNumSpatialDims;
-    Plato::OrdinalType mNumSolutionDofs;
 
     std::map<std::string,std::shared_ptr<ESPType>> mESP;
     void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
