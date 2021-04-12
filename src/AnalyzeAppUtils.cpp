@@ -115,12 +115,10 @@ extract_solution
     }
 
     auto tTags = aSolution.tags();
-    if(tTags.empty())
-    {
-        THROWERR("Solutions tags array is empty.")
-    }
-    constexpr Plato::OrdinalType tTIME_STEP_INDEX = 0;
+    if(tTags.empty()) { THROWERR("Solutions tags array is empty.") }
     auto tState = aSolution.get(tTags[0]);
+    const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
+    if(tTIME_STEP_INDEX < 0) { THROWERR("Negative time step index. State solution is most likely empty.") }
     auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
     auto tDeviceData = Plato::getVectorComponent(tStatesSubView, aDof, aStride);
     return tDeviceData;

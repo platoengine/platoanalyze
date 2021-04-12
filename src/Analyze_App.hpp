@@ -212,8 +212,9 @@ public:
         }
         else if(aName == "Solution")
         {
+            auto tTags = mGlobalSolution.tags();
+	    auto tState = mGlobalSolution.get(tTags[0]);
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-	    auto tState = mGlobalSolution.get("State");
             auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
             this->copyFieldIntoAnalyze(tStatesSubView, aSharedField);
         }
@@ -391,34 +392,22 @@ public:
         }
         else if(aName == "Solution")
         {
-	    auto tState = mGlobalSolution.get("State");
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = Plato::getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+	    auto tScalarField = Plato::extract_solution(mGlobalSolution, /*dof*/0, /*stride=*/1);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution X")
         {
-	    auto tState = mGlobalSolution.get("State");
-            const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = Plato::getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
+	    auto tScalarField = Plato::extract_solution(mGlobalSolution, /*dof*/0, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
-	    auto tState = mGlobalSolution.get("State");
-            const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
+	    auto tScalarField = Plato::extract_solution(mGlobalSolution, /*dof*/1, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
-	    auto tState = mGlobalSolution.get("State");
-            const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
+	    auto tScalarField = Plato::extract_solution(mGlobalSolution, /*dof*/2, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else
