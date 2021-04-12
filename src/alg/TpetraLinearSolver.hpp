@@ -12,6 +12,8 @@
 #include <Tpetra_MultiVector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
 
+#include <ctime>
+
 namespace Plato {
 
   using Tpetra_Map = Tpetra::Map<int, Plato::OrdinalType>;
@@ -80,7 +82,7 @@ class TpetraLinearSolver : public AbstractSolver
 
     Teuchos::ParameterList mSolverOptions;
     Teuchos::ParameterList mPreconditionerOptions;
-
+    time_t mTimer, mSolverStartTime, mSolverEndTime;
   public:
     /******************************************************************************//**
      * @brief TpetraLinearSolver constructor
@@ -111,6 +113,12 @@ class TpetraLinearSolver : public AbstractSolver
     template<class MV, class OP>
     void
     belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
+
+    /******************************************************************************//**
+     * @brief Setup the Amesos2 solver and solve
+    ********************************************************************* ************/
+    void
+    amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tpetra_MultiVector> X, Teuchos::RCP<Tpetra_MultiVector> B);
 };
 
 } // end namespace Plato

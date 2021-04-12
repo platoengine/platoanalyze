@@ -160,6 +160,11 @@ stabilized_thermoplasticity_output(
         aMesh.add_tag(Omega_h::VERT, "Pressure",      tNumPressPerNode, Omega_h::Reals(tPress));
         aMesh.add_tag(Omega_h::VERT, "Temperature",   tNumTempPerNode,  Omega_h::Reals(tTemp));
 
+        if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+        {
+            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        }
+
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
    }

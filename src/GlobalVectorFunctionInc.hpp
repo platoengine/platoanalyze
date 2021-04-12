@@ -91,7 +91,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return residual workset, i.e. residual for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename Residual::ResultScalarType>
@@ -102,7 +102,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep
+        const Plato::TimeData      & aTimeData
     ) const
     {
         // Workset config
@@ -148,7 +148,7 @@ private:
         mBoundaryLoadsResidualFunction->evaluate_boundary(mSpatialModel, tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                           tCurrentLocalStateWS, tPrevLocalStateWS,
                                                           tProjPressGradWS, tControlWS, tConfigWS,
-                                                          tResidualWS, aTimeStep);
+                                                          tResidualWS, aTimeData);
         return (tResidualWS);
     }
     /***************************************************************************//**
@@ -159,7 +159,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return residual workset, i.e. residual for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename Residual::ResultScalarType>
@@ -170,7 +170,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -220,7 +220,7 @@ private:
         mResidualFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                tCurrentLocalStateWS, tPrevLocalStateWS,
                                                tProjPressGradWS, tControlWS, tConfigWS,
-                                               tResidualWS, aTimeStep);
+                                               tResidualWS, aTimeData);
         return (tResidualWS);
     }
 
@@ -232,7 +232,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to controls for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename GradientZ::ResultScalarType>
@@ -243,7 +243,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -293,7 +293,7 @@ private:
         mJacobianZFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                 tCurrentLocalStateWS, tPrevLocalStateWS,
                                                 tProjPressGradWS, tControlWS, tConfigWS,
-                                                tJacobianWS, aTimeStep);
+                                                tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -305,7 +305,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to configuration for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename GradientX::ResultScalarType>
@@ -316,7 +316,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -366,7 +366,7 @@ private:
         mJacobianXFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                 tCurrentLocalStateWS, tPrevLocalStateWS,
                                                 tProjPressGradWS, tControlWS, tConfigWS,
-                                                tJacobianWS, aTimeStep);
+                                                tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -378,7 +378,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to current global states for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename GlobalJacobianC::ResultScalarType>
@@ -389,7 +389,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -444,7 +444,7 @@ private:
         mJacobianCUFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                  tCurrentLocalStateWS, tPrevLocalStateWS,
                                                  tProjPressGradWS, tControlWS, tConfigWS,
-                                                 tJacobianWS, aTimeStep);
+                                                 tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -456,7 +456,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to previous global states for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename GlobalJacobianP::ResultScalarType>
@@ -467,7 +467,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -517,7 +517,7 @@ private:
         mJacobianPUFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                  tCurrentLocalStateWS, tPrevLocalStateWS,
                                                  tProjPressGradWS, tControlWS, tConfigWS,
-                                                 tJacobianWS, aTimeStep);
+                                                 tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -529,7 +529,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to current local states for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename LocalJacobianC::ResultScalarType>
@@ -540,7 +540,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -590,7 +590,7 @@ private:
         mJacobianCCFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                  tCurrentLocalStateWS, tPrevLocalStateWS,
                                                  tProjPressGradWS, tControlWS, tConfigWS,
-                                                 tJacobianWS, aTimeStep);
+                                                 tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -602,7 +602,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to previous local states for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename LocalJacobianP::ResultScalarType>
@@ -613,7 +613,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -663,7 +663,7 @@ private:
         mJacobianPCFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                  tCurrentLocalStateWS, tPrevLocalStateWS,
                                                  tProjPressGradWS, tControlWS, tConfigWS,
-                                                 tJacobianWS, aTimeStep);
+                                                 tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -675,7 +675,7 @@ private:
      * \param [in] aPrevLocalState     previous local state
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control, i.e. design, variables
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Jacobian of residual with respect to projected pressure gradient for each cell
     *******************************************************************************/
     Plato::ScalarMultiVectorT<typename JacobianPgrad::ResultScalarType>
@@ -686,7 +686,7 @@ private:
         const Plato::ScalarVector  & aPrevLocalState,
         const Plato::ScalarVector  & aProjPressGrad,
         const Plato::ScalarVector  & aControls,
-        const Plato::Scalar        & aTimeStep,
+        const Plato::TimeData      & aTimeData,
         const Plato::SpatialDomain & aDomain
     ) const
     {
@@ -736,7 +736,7 @@ private:
         mJacobianPGFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPrevGlobalStateWS,
                                                  tCurrentLocalStateWS, tPrevLocalStateWS,
                                                  tProjPressGradWS, tControlWS, tConfigWS,
-                                                 tJacobianWS, aTimeStep);
+                                                 tJacobianWS, aTimeData);
         return (tJacobianWS);
     }
 
@@ -902,7 +902,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Assembled residual
     ***************************************************************************/
     Plato::ScalarVector
@@ -912,7 +912,7 @@ public:
           const Plato::ScalarVector & aPrevLocalState,
           const Plato::ScalarVector & aProjPressGrad,
           const Plato::ScalarVector & aControls,
-          Plato::Scalar aTimeStep = 0.0) const
+          const Plato::TimeData     & aTimeData) const
     {
         const auto tTotalNumDofs = mNumGlobalDofsPerNode * mNumNodes;
         Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace>
@@ -925,13 +925,13 @@ public:
 
             auto tResidualWS = this->residualWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                      aCurrentLocalState, aPrevLocalState,
-                                                     aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                     aProjPressGrad, aControls, aTimeData, tDomain);
             mWorksetBase.assembleResidual( tResidualWS, tAssembledResidual, tDomain );
         }
  
         auto tResidualWS = this->residualBoundaryWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                          aCurrentLocalState, aPrevLocalState,
-                                                         aProjPressGrad, aControls, aTimeStep);
+                                                         aProjPressGrad, aControls, aTimeData);
         mWorksetBase.assembleResidual( tResidualWS, tAssembledResidual );
 
         return tAssembledResidual;
@@ -945,7 +945,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Workset of global Jacobian with respect to controls
     ***************************************************************************/
     Plato::ScalarArray3D
@@ -955,7 +955,7 @@ public:
                const Plato::ScalarVector & aPrevLocalState,
                const Plato::ScalarVector & aProjPressGrad,
                const Plato::ScalarVector & aControls,
-               Plato::Scalar aTimeStep = 0.0) const
+               const Plato::TimeData     & aTimeData) const
     {
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian WRT Control", mNumCells, mNumGlobalDofsPerCell, mNumNodesPerCell);
 
@@ -963,7 +963,7 @@ public:
         {
             auto tJacobianWS = this->jacobianControlWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                             aCurrentLocalState, aPrevLocalState,
-                                                            aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                            aProjPressGrad, aControls, aTimeData, tDomain);
             Plato::transform_ad_type_to_pod_3Dview<mNumGlobalDofsPerCell, mNumNodesPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
@@ -977,7 +977,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Workset of global Jacobian with respect to configuration
     ***************************************************************************/
     Plato::ScalarArray3D
@@ -988,7 +988,7 @@ public:
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aProjPressGrad,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar aTimeStep = 0.0) const
+        const Plato::TimeData     & aTimeData) const
     {
         Plato::ScalarArray3D tOutputJacobian("Jacobian WRT Configuration", mNumCells, mNumGlobalDofsPerCell, mNumConfigDofsPerCell);
 
@@ -996,7 +996,7 @@ public:
         {
             auto tJacobianWS = this->jacobianConfigurationWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                                   aCurrentLocalState, aPrevLocalState,
-                                                                  aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                                  aProjPressGrad, aControls, aTimeData, tDomain);
             Plato::transform_ad_type_to_pod_3Dview<mNumGlobalDofsPerCell, mNumConfigDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
@@ -1010,7 +1010,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Workset of global Jacobian with respect to current global states
     ***************************************************************************/
     Plato::ScalarArray3D
@@ -1021,7 +1021,7 @@ public:
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aProjPressGrad,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar aTimeStep = 0.0) const
+        const Plato::TimeData     & aTimeData) const
     {
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
 
@@ -1029,7 +1029,7 @@ public:
         {
             auto tJacobianWS = this->jacobianCurrentGlobalStateWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                                        aCurrentLocalState, aPrevLocalState,
-                                                                       aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                                       aProjPressGrad, aControls, aTimeData, tDomain);
             Plato::transform_ad_type_to_pod_3Dview<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
@@ -1043,7 +1043,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Workset of global Jacobian with respect to previous global states
     ***************************************************************************/
     Plato::ScalarArray3D
@@ -1053,7 +1053,7 @@ public:
                 const Plato::ScalarVector & aPrevLocalState,
                 const Plato::ScalarVector & aProjPressGrad,
                 const Plato::ScalarVector & aControls,
-                Plato::Scalar aTimeStep = 0.0) const
+                const Plato::TimeData     & aTimeData) const
     {
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Global State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
 
@@ -1061,7 +1061,7 @@ public:
         {
             auto tJacobianWS = this->jacobianPreviousGlobalStateWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                                         aCurrentLocalState, aPrevLocalState,
-                                                                        aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                                        aProjPressGrad, aControls, aTimeData, tDomain);
             Plato::transform_ad_type_to_pod_3Dview<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
@@ -1075,7 +1075,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Workset of global Jacobian with respect to current local states
     ***************************************************************************/
     Plato::ScalarArray3D
@@ -1085,14 +1085,14 @@ public:
                const Plato::ScalarVector & aPrevLocalState,
                const Plato::ScalarVector & aProjPressGrad,
                const Plato::ScalarVector & aControls,
-               Plato::Scalar aTimeStep = 0.0) const
+               const Plato::TimeData     & aTimeData) const
     {
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tJacobianWS = this->jacobianCurrentLocalStateWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                                       aCurrentLocalState, aPrevLocalState,
-                                                                      aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                                      aProjPressGrad, aControls, aTimeData, tDomain);
             Plato::transform_ad_type_to_pod_3Dview<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
@@ -1106,7 +1106,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Workset of global Jacobian with respect to previous local states
     ***************************************************************************/
     Plato::ScalarArray3D
@@ -1116,7 +1116,7 @@ public:
                 const Plato::ScalarVector & aPrevLocalState,
                 const Plato::ScalarVector & aProjPressGrad,
                 const Plato::ScalarVector & aControls,
-                Plato::Scalar aTimeStep = 0.0) const
+                const Plato::TimeData     & aTimeData) const
     {
         Plato::ScalarArray3D tOutputJacobian("Jacobian Previous Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
 
@@ -1124,7 +1124,7 @@ public:
         {
             auto tJacobianWS = this->jacobianPreviousLocalStateWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                                        aCurrentLocalState, aPrevLocalState,
-                                                                       aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                                       aProjPressGrad, aControls, aTimeData, tDomain);
             Plato::transform_ad_type_to_pod_3Dview<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
@@ -1138,7 +1138,7 @@ public:
      * \param [in] aPrevLocalState     local state at previous time step
      * \param [in] aProjPressGrad      projected pressure gradient
      * \param [in] aControls           control parameters
-     * \param [in] aTimeStep           current time step
+     * \param [in] aTimeData           current time data
      * \return Assembled transpose of global Jacobian with respect to projected pressure gradient
     ***************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
@@ -1148,7 +1148,7 @@ public:
                            const Plato::ScalarVector & aPrevLocalState,
                            const Plato::ScalarVector & aProjPressGrad,
                            const Plato::ScalarVector & aControls,
-                           Plato::Scalar aTimeStep = 0.0) const
+                           const Plato::TimeData     & aTimeData) const
     {
         // tJacobian has shape (Nc, (Nv x Nd), (Nv x Nn))
         //   Nc: number of cells
@@ -1186,7 +1186,7 @@ public:
         {
             auto tJacobianWS = this->jacobianProjPressGradWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                                   aCurrentLocalState, aPrevLocalState,
-                                                                  aProjPressGrad, aControls, aTimeStep, tDomain);
+                                                                  aProjPressGrad, aControls, aTimeData, tDomain);
 
             // Assemble from the AD-typed result, tJacobianWS, into the POD-typed global matrix, tAssembledTransposeJacobian
             //
@@ -1213,25 +1213,25 @@ public:
      * \param [in] aGlobalStates global states for all time steps
      * \param [in] aLocalStates  local states for all time steps
      * \param [in] aControls     current controls, i.e. design variables
-     * \param [in] aTimeStep     current time step increment
+     * \param [in] aTimeData     current time data
     *******************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
                        const Plato::ScalarMultiVector & aLocalStates,
                        const Plato::ScalarVector & aControls,
-                       Plato::Scalar aTimeStep = 0.0) const
+                       const Plato::TimeData     & aTimeData) const
     {
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
 
-            mResidualFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianCCFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianPCFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianCUFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianPUFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianPGFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+            mResidualFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianCCFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianPCFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianCUFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianPUFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianPGFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
         }
     }
 };
