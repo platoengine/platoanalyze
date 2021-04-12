@@ -1444,19 +1444,19 @@ void MPMD_App::getScalarFieldHostMirror
     }
     else if(aName == "Solution")
     {
-	tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,1/*stride*/);    
+        tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,1/*stride*/);    
     }
     else if(aName == "Solution X")
     {
-	tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,mNumSpatialDims/*stride*/);    
+        tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,mNumSpatialDims/*stride*/);    
     }
     else if(aName == "Solution Y")
     {
-	tDeviceData = Plato::extract_solution(mGlobalSolution, 1/*dof*/,mNumSpatialDims/*stride*/);    
+        tDeviceData = Plato::extract_solution(mGlobalSolution, 1/*dof*/,mNumSpatialDims/*stride*/);    
     }
     else if(aName == "Solution Z")
     {
-	tDeviceData = Plato::extract_solution(mGlobalSolution, 2/*dof*/,mNumSpatialDims/*stride*/);    
+        tDeviceData = Plato::extract_solution(mGlobalSolution, 2/*dof*/,mNumSpatialDims/*stride*/);    
     }
     else if(mGradientXNameToCriterionName.count(tFieldName))
     {
