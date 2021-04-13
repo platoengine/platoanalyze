@@ -340,6 +340,7 @@ public:
 
       Plato::MSIMP tElasticPropertiesSIMP(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
       Plato::MSIMP tPlasticPropertiesSIMP(mPlasticPropertiesPenaltySIMP, mPlasticPropertiesMinErsatzSIMP);
+
       // Views needed in all three loops.
       Plato::ScalarVectorT<StressT>      tDevStressMinusBackstressNorm("norm(deviatoric_stress - backstress)", tNumCells);
       Plato::ScalarMultiVectorT<StressT> tYieldSurfaceNormal("yield surface normal", tNumCells, mNumStressTerms);
@@ -359,10 +360,10 @@ public:
         {
           // Views needed for just the first loop.
           Plato::ScalarVectorT<ConfigT>             tCellVolume("cell volume unused", tNumCells);
-          Plato::ScalarArray3DT<ConfigT>            tGradient("gradient", tNumCells,mNumNodesPerCell,mSpaceDim);
-          Plato::ScalarMultiVectorT<TotalStrainT>   tTotalStrain("total strain",tNumCells,mNumStressTerms);
-          Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumStressTerms);
-          Plato::ScalarMultiVectorT<StressT>        tDeviatoricStress("deviatoric stress", tNumCells,mNumStressTerms);
+          Plato::ScalarArray3DT<ConfigT>            tGradient("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+          Plato::ScalarMultiVectorT<TotalStrainT>   tTotalStrain("total strain", tNumCells, mNumStressTerms);
+          Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
+          Plato::ScalarMultiVectorT<StressT>        tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
 
           // First parallel_for loop.
           Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -407,11 +408,6 @@ public:
         tComputeYieldStress( tYieldStress, aLocalState,
                              tPenalizedInitialYieldStress,
                              tPenalizedHardeningModulusIsotropic );
-
-        // compute yield stress
-        // ResultT tYieldStress = tPenalizedInitialYieldStress(aCellOrdinal) +
-        //        tPenalizedHardeningModulusIsotropic(aCellOrdinal) *
-        //        aLocalState(aCellOrdinal, 0);
       }
 
       // Third parallel_for loop.
@@ -451,10 +447,8 @@ public:
 
           // Residual: Backstress, DOF: Backstress
           tJ2PlasticityUtils.fillBackstressTensorResidualPlasticStep
-            (aCellOrdinal,
-             tPenalizedHardeningModulusKinematic(aCellOrdinal),
-             aLocalState,         aPrevLocalState,
-             tYieldSurfaceNormal, aResult);
+            (aCellOrdinal, tPenalizedHardeningModulusKinematic(aCellOrdinal),
+             aLocalState, aPrevLocalState, tYieldSurfaceNormal, aResult);
         }
       }, "Compute cell local residuals - part 2");
     }
@@ -482,7 +476,7 @@ public:
       auto tNumCells = mSpatialDomain.numCells();
 
       // J2 Utility Functions Object
-      Plato::J2PlasticityUtilities<mSpaceDim>   tJ2PlasticityUtils;
+      Plato::J2PlasticityUtilities<mSpaceDim> tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
       Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
@@ -535,11 +529,11 @@ public:
         // out of scope and are de-referenced immediately.
         {
           // Views needed for just the first loop.
-          Plato::ScalarVector      tCellVolume("cell volume unused",tNumCells);
-          Plato::ScalarArray3D     tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
-          Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress",tNumCells,mNumStressTerms);
-          Plato::ScalarMultiVector tTotalStrain("total strain",tNumCells,mNumStressTerms);
-          Plato::ScalarMultiVector tElasticStrain("elastic strain",tNumCells,mNumStressTerms);
+          Plato::ScalarVector      tCellVolume("cell volume unused", tNumCells);
+          Plato::ScalarArray3D     tGradient("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+          Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
+          Plato::ScalarMultiVector tTotalStrain("total strain", tNumCells, mNumStressTerms);
+          Plato::ScalarMultiVector tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
 
           // First parallel_for loop.
           Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -585,19 +579,13 @@ public:
             tPenalizedHardeningModulusIsotropic(aCellOrdinal) = tPlasticParamsPenalty * tHardeningModulusIsotropic;
             tPenalizedHardeningModulusKinematic(aCellOrdinal) = tPlasticParamsPenalty * tHardeningModulusKinematic;
           }, "Update local state dofs - part 1");
-        }
+        }  // first scoping brace
 
         // compute yield stress - separate loop in the functor.
         tComputeYieldStress(tYieldStress, aLocalState,
                             tPenalizedInitialYieldStress,
                             tPenalizedHardeningModulusIsotropic );
-
-        // compute yield stress
-        // Plato::Scalar tYieldStress =
-        //   tPenalizedInitialYieldStress(aCellOrdinal) +
-        //   tPenalizedHardeningModulusIsotropic(aCellOrdinal) *
-        //   aLocalState(aCellOrdinal, 0);
-      }
+      }  // second scoping brace
 
       // Third parallel_for loop.
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -605,7 +593,7 @@ public:
         // compute the yield function at the trial state
         Plato::Scalar tTrialStateYieldFunction = tSqrt3Over2 * tDevStressMinusBackstressNorm(aCellOrdinal) - tYieldStress(aCellOrdinal, 0);
 
-        if (tTrialStateYieldFunction > 0.0) // plastic step
+        if (tTrialStateYieldFunction > static_cast<Plato::Scalar>(1.0e-10)) // plastic step
         {
           // Plastic Multiplier Increment (for J2 w/ linear isotropic/kinematic hardening -> analytical return mapping)
           aLocalState(aCellOrdinal, 1) = tTrialStateYieldFunction /
