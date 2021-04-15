@@ -51,7 +51,7 @@ private:
 
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
 
-    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< Thermal Expansivity */
     Plato::Scalar mReferenceTemperature;           /*!< reference temperature */
     Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
@@ -155,7 +155,7 @@ private:
         {
           auto tThermoelasticSubList = aMaterialParams.sublist("Isotropic Linear Thermoelastic");
 
-          mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+          mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansivity");
           mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
 
           auto tElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");

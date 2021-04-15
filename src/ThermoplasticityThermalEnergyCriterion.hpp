@@ -52,7 +52,7 @@ private:
     using FunctionBaseType = Plato::AbstractLocalScalarFunctionInc<EvaluationType>;
     using Plato::AbstractLocalScalarFunctionInc<EvaluationType>::mSpatialDomain;
 
-    Plato::Scalar mThermalConductivityCoefficient;    /*!< thermal conductivity coefficient */
+    Plato::Scalar mThermalConductivityCoefficient;    /*!< Thermal Conductivity */
     Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
     Plato::Scalar mPenaltySIMP;                /*!< SIMP penalty for elastic properties */
@@ -266,7 +266,7 @@ private:
         if (aMaterialParams.isSublist("Isotropic Linear Thermoelastic"))
         {
             auto tThermoelasticSubList = aMaterialParams.sublist("Isotropic Linear Thermoelastic");
-            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
+            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity");
         }
         else
         {

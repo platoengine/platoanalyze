@@ -82,8 +82,8 @@ private:
     Plato::Scalar mTemperatureScaling;             /*!< Temperature scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
-    Plato::Scalar mThermalConductivityCoefficient; /*!< thermal conductivity coefficient */
-    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mThermalConductivityCoefficient; /*!< Thermal Conductivity */
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< Thermal Expansivity */
     Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
 
     Plato::Scalar mPenaltySIMP;               /*!< SIMP penalty for elastic properties */
@@ -233,9 +233,9 @@ private:
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
 
-            mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+            mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansivity");
             mReferenceTemperature           = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
-            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
+            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity");
         }
         else
         {
