@@ -13,7 +13,6 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array.hpp>
 #include <Omega_h_assoc.hpp>
-#include <Omega_h_teuchos.hpp>
 
 #include "AnalyzeOutput.hpp"
 #include "PlatoUtilities.hpp"
@@ -77,16 +76,9 @@ void driver(Omega_h::Library*        aLibOSH,
     tMesh.set_parting(Omega_h_Parting::OMEGA_H_GHOSTED);
 
     Omega_h::Assoc tAssoc;
-    if (aInputData.isSublist("Associations"))
-    {
-      auto& tAssocParamList = aInputData.sublist("Associations");
-      Omega_h::update_assoc(&tAssoc, tAssocParamList);
-    } 
-    else {
-      tAssoc[Omega_h::ELEM_SET] = tMesh.class_sets;
-      tAssoc[Omega_h::NODE_SET] = tMesh.class_sets;
-      tAssoc[Omega_h::SIDE_SET] = tMesh.class_sets;
-    }
+    tAssoc[Omega_h::ELEM_SET] = tMesh.class_sets;
+    tAssoc[Omega_h::NODE_SET] = tMesh.class_sets;
+    tAssoc[Omega_h::SIDE_SET] = tMesh.class_sets;
     Omega_h::MeshSets tMeshSets = Omega_h::invert(&tMesh, tAssoc);
     
     Plato::run<SpatialDim>(aInputData, aMachine, tMesh, tMeshSets);

@@ -200,6 +200,7 @@ getDataAsNonBlock( const Teuchos::RCP<Plato::CrsMatrixType>       & aMatrix,
     auto tNumColsPerBlock = aMatrix->numColsPerBlock();
     auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
 
+
     // generate non block row map
     //
     aMatrixRowMap = Plato::ScalarVectorT<Plato::OrdinalType>("non block row map", tNumMatrixRows+1);
@@ -548,6 +549,7 @@ MatrixMinusMatrix(      Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
 
     KernelHandle tKernel;
     tKernel.create_spadd_handle(/*sort rows=*/ false);
+    auto tAddHandle = tKernel.get_spadd_handle();
     KokkosSparse::Experimental::spadd_symbolic< KernelHandle,
       OrdinalView, OrdinalView,
       OrdinalView, OrdinalView,
@@ -559,11 +561,10 @@ MatrixMinusMatrix(      Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
       tOutRowMap
     );
 
-    auto tAddHandle = tKernel.get_spadd_handle();
+    auto t_nnz = tAddHandle->get_c_nnz();
 
-    size_t tNumOutValues = tAddHandle->get_max_result_nnz();
-    OrdinalView tOutColMap("out column map", tNumOutValues);
-    ScalarView  tOutValues("out values",  tNumOutValues);
+    OrdinalView tOutColMap("output graph", t_nnz);
+    ScalarView  tOutValues("output values", t_nnz);
     KokkosSparse::Experimental::spadd_numeric< KernelHandle,
       OrdinalView, OrdinalView, Scalar, ScalarView,
       OrdinalView, OrdinalView, Scalar, ScalarView,

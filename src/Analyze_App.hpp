@@ -8,7 +8,6 @@
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
-#include <Omega_h_teuchos.hpp>
 
 #include <Plato_InputData.hpp>
 #include <Plato_Application.hpp>

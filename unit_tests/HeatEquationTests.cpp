@@ -8,7 +8,6 @@
 #include "Omega_h_map.hpp"
 #include "Omega_h_matrix.hpp"
 #include "Omega_h_file.hpp"
-#include "Omega_h_teuchos.hpp"
 
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>
@@ -202,21 +201,19 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
   auto tTemperature_Host = Kokkos::create_mirror_view( tTemperature );
   Kokkos::deep_copy( tTemperature_Host, tTemperature );
 
-  std::vector<std::vector<Plato::Scalar>> tTemperature_gold = { 
-    { 8.5 },{ 7.0 },{ 5.25},{ 9.75},
-    { 8.75},{ 6.5 },{ 6.25},{10.75},
-    {11.00},{ 8.25},{ 7.75},{10.0 },
-    {11.75},{10.25},{ 9.25},{11.0 }
+  std::vector<Plato::Scalar> tTemperature_gold = { 
+     8.5 ,  7.0 , 5.25,  9.75,
+     8.75,  6.5 , 6.25, 10.75,
+    11.00,  8.25, 7.75, 10.0 ,
+    11.75, 10.25, 9.25, 11.0 
   };
 
   numGoldCells=tTemperature_gold.size();
   for(int iCell=0; iCell<numGoldCells; iCell++){
-    for(int iDof=0; iDof<dofsPerNode; iDof++){
-      if(tTemperature_gold[iCell][iDof] == 0.0){
-        TEST_ASSERT(fabs(tTemperature_Host(iCell,iDof)) < 1e-12);
-      } else {
-        TEST_FLOATING_EQUALITY(tTemperature_Host(iCell,iDof), tTemperature_gold[iCell][iDof], 1e-13);
-      }
+    if(tTemperature_gold[iCell] == 0.0){
+      TEST_ASSERT(fabs(tTemperature_Host(iCell)) < 1e-12);
+    } else {
+      TEST_FLOATING_EQUALITY(tTemperature_Host(iCell), tTemperature_gold[iCell], 1e-13);
     }
   }
 
@@ -225,24 +222,21 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
   auto thermalContent_Host = Kokkos::create_mirror_view( thermalContent );
   Kokkos::deep_copy( thermalContent_Host, thermalContent );
 
-  std::vector<std::vector<Plato::Scalar>> thermalContent_gold = { 
-    { 2.550e6},{ 2.100e6},{ 1.575e6},{ 2.925e6},
-    { 2.625e6},{ 1.950e6},{ 1.875e6},{ 3.225e6},
-    { 3.300e6},{ 2.475e6},{ 2.325e6},{ 3.000e6},
-    { 3.525e6},{ 3.075e6},{ 2.775e6},{ 3.300e6}
+  std::vector<Plato::Scalar> thermalContent_gold = { 
+     2.550e6, 2.100e6, 1.575e6, 2.925e6,
+     2.625e6, 1.950e6, 1.875e6, 3.225e6,
+     3.300e6, 2.475e6, 2.325e6, 3.000e6,
+     3.525e6, 3.075e6, 2.775e6, 3.300e6
   };
 
   numGoldCells=thermalContent_gold.size();
   for(int iCell=0; iCell<numGoldCells; iCell++){
-    for(int iDof=0; iDof<dofsPerNode; iDof++){
-      if(thermalContent_gold[iCell][iDof] == 0.0){
-        TEST_ASSERT(fabs(thermalContent_Host(iCell,iDof)) < 1e-12);
+      if(thermalContent_gold[iCell] == 0.0){
+        TEST_ASSERT(fabs(thermalContent_Host(iCell)) < 1e-12);
       } else {
-        TEST_FLOATING_EQUALITY(thermalContent_Host(iCell,iDof), thermalContent_gold[iCell][iDof], 1e-13);
+        TEST_FLOATING_EQUALITY(thermalContent_Host(iCell), thermalContent_gold[iCell], 1e-13);
       }
-    }
   }
-
 
   // test gradient operator
   //

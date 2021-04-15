@@ -1143,7 +1143,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_RowSummedInverseMultip
 /******************************************************************************/
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_1)
 {
-
   const int Nf = 4;
   const int Nn = 1;
   const int Nm = 3;
@@ -1223,7 +1222,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_1)
   TEST_ASSERT(is_equivalent(tA->rowMap(),
                             tA->columnIndices(), tA->entries(),
                             tA_SlowDumb->columnIndices(), tA_SlowDumb->entries()));
-
 }
 /******************************************************************************/
 /*! 
@@ -1291,7 +1289,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_2)
   TEST_ASSERT(is_equivalent(t_dg_du_T->rowMap(),
                             t_dg_du_T->columnIndices(), t_dg_du_T->entries(),
                             t_dg_du_T_sd->columnIndices(), t_dg_du_T_sd->entries()));
-
 }
 
 /******************************************************************************/

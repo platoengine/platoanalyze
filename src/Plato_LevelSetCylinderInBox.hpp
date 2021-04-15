@@ -62,6 +62,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <mpi.h>
 
 #include "BLAS1.hpp"
 #include "Plato_GeometryModel.hpp"
@@ -161,7 +162,7 @@ public:
      **********************************************************************************/
     explicit LevelSetCylinderInBox(MPI_Comm aComm = MPI_COMM_WORLD) :
             mTimes(),
-            mLibOmegaH(std::make_shared<Omega_h::Library>(nullptr, nullptr, aComm))
+            mLibOmegaH(std::make_shared<Omega_h::Library>(nullptr, nullptr))
     {
     }
 

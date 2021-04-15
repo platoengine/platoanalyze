@@ -70,8 +70,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Kinematics3D)
     Kokkos::deep_copy(tHostStrains, tStrains);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tStrains.dimension_0();
-    const Plato::OrdinalType tDim1 = tStrains.dimension_1();
+    const Plato::OrdinalType tDim0 = tStrains.extent(0);
+    const Plato::OrdinalType tDim1 = tStrains.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -204,8 +204,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Kokkos::deep_copy(tHostState, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tState.dimension_0();
-    const Plato::OrdinalType tDim1 = tState.dimension_1();
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
