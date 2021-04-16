@@ -39,6 +39,12 @@ public:
     }
 
     /******************************************************************************//**
+     * \brief Output solution to visualization file.
+     * \param [in] aFilename output file name
+    **********************************************************************************/
+    virtual void output(const std::string& aFilename) = 0;
+
+    /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControl 1D container of control variables
      * \param [in] aSolution solution database

@@ -15,6 +15,7 @@
 #include "Geometrical.hpp"
 #include "ComputedField.hpp"
 #include "SpatialModel.hpp"
+#include "AnalyzeOutput.hpp"
 #include "parabolic/TrapezoidIntegrator.hpp"
 #include "parabolic/VectorFunction.hpp"
 #include "parabolic/ScalarFunctionBase.hpp"
@@ -41,7 +42,7 @@ namespace Parabolic
         using LinearCriterion = std::shared_ptr<Plato::Geometric::ScalarFunctionBase>;
         using LinearCriteria  = std::map<std::string, LinearCriterion>;
 
-        static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims;
+        static constexpr Plato::OrdinalType mSpatialDim = SimplexPhysics::mNumSpatialDims;
         static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
         Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
@@ -72,12 +73,14 @@ namespace Parabolic
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianU;
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianV;
 
-        Teuchos::RCP<Plato::ComputedFields<SpatialDim>> mComputedFields;
+        Teuchos::RCP<Plato::ComputedFields<mSpatialDim>> mComputedFields;
 
         Plato::LocalOrdinalVector mStateBcDofs;
         Plato::ScalarVector mStateBcValues;
 
         rcp<Plato::AbstractSolver> mSolver;
+
+        std::string mPDE; /*!< partial differential equation type */
         std::string mPhysics; /*!< physics used for the simulation */
 
       public:
@@ -96,12 +99,13 @@ namespace Parabolic
             mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aProblemParams, "Newton Iteration", "Maximum Iterations",  1  )),
             mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Increment Tolerance", 0.0)),
             mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Residual Tolerance",  0.0)),
-            mSaveState    (aProblemParams.sublist("Parabolic").isType<Teuchos::Array<std::string>>("Plottable")),
-            mResidual     ("MyResidual", mPDEConstraint.size()),
-            mState        ("State",      mNumSteps, mPDEConstraint.size()),
-            mStateDot     ("StateDot",   mNumSteps, mPDEConstraint.size()),
-            mJacobianU    (Teuchos::null),
-            mJacobianV    (Teuchos::null),
+            mSaveState     (aProblemParams.sublist("Parabolic").isType<Teuchos::Array<std::string>>("Plottable")),
+            mResidual      ("MyResidual", mPDEConstraint.size()),
+            mState         ("State",      mNumSteps, mPDEConstraint.size()),
+            mStateDot      ("StateDot",   mNumSteps, mPDEConstraint.size()),
+            mJacobianU     (Teuchos::null),
+            mJacobianV     (Teuchos::null),
+            mPDE           (aProblemParams.get<std::string>("PDE Constraint")),
             mPhysics       (aProblemParams.get<std::string>("Physics"))
         /******************************************************************************/
         {
@@ -116,7 +120,7 @@ namespace Parabolic
             if(aProblemParams.isSublist("Criteria"))
             {
                 Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
-                Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tLinearFunctionBaseFactory;
+                Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<mSpatialDim>> tLinearFunctionBaseFactory;
 
                 auto tCriteriaParams = aProblemParams.sublist("Criteria");
                 for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
@@ -156,7 +160,7 @@ namespace Parabolic
             //
             if(aProblemParams.isSublist("Computed Fields"))
             {
-              mComputedFields = Teuchos::rcp(new Plato::ComputedFields<SpatialDim>(aMesh, aProblemParams.sublist("Computed Fields")));
+              mComputedFields = Teuchos::rcp(new Plato::ComputedFields<mSpatialDim>(aMesh, aProblemParams.sublist("Computed Fields")));
             }
 
             // parse initial state
@@ -219,6 +223,17 @@ namespace Parabolic
             }
         }
 
+        /******************************************************************************/ /**
+        * \brief Output solution to visualization file.
+        * \param [in] aFilepath output/visualizaton file path
+        **********************************************************************************/
+        void output(const std::string &aFilepath) override
+        {
+            auto tDataMap = this->getDataMap();
+            auto tSolution = this->getSolution();
+            Plato::output<mSpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+        }
+
         /******************************************************************************//**
          * \brief Update physics-based parameters within optimization iterations
          * \param [in] aState 2D container of state variables
@@ -226,6 +241,7 @@ namespace Parabolic
         **********************************************************************************/
         void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution)
         { return; }
+
         /******************************************************************************/
         Plato::Solutions
         solution(
@@ -707,7 +723,7 @@ namespace Parabolic
         **********************************************************************************/
         Plato::Solutions getSolution() const
         {
-            Plato::Solutions tSolution(mPhysics);
+            Plato::Solutions tSolution(mPhysics, mPDE);
             tSolution.set("State", mState);
             tSolution.set("StateDot", mStateDot);
             return tSolution;

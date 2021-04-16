@@ -13,6 +13,7 @@
 #include "Solutions.hpp"
 #include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
+#include "AnalyzeOutput.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 #include "SpatialModel.hpp"
@@ -53,7 +54,7 @@ private:
     using LinearCriterion = std::shared_ptr<Plato::Geometric::ScalarFunctionBase>;
     using LinearCriteria  = std::map<std::string, LinearCriterion>;
 
-    static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
+    static constexpr Plato::OrdinalType mSpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
     using VectorFunctionType = Plato::Elliptic::VectorFunction<SimplexPhysics>;
 
@@ -83,6 +84,8 @@ private:
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
     rcp<Plato::AbstractSolver> mSolver;
+
+    std::string mPDEType; /*!< partial differential equation type */
     std::string mPhysics; /*!< physics used for the simulation */
 
 public:
@@ -108,6 +111,7 @@ public:
       mStates        ("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
       mJacobian      (Teuchos::null),
       mIsSelfAdjoint (aProblemParams.get<bool>("Self-Adjoint", false)),
+      mPDEType       (aProblemParams.get<std::string>("PDE Constraint")),
       mPhysics       (aProblemParams.get<std::string>("Physics"))
     {
         this->initialize(aProblemParams);
@@ -154,10 +158,17 @@ public:
         return (tNumControlsPerNode);
     }
 
-    void applyConstraints(
-      const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-      const Plato::ScalarVector & aVector
-    ){}
+    /******************************************************************************//**
+     * \brief Output solution to visualization file.
+     * \param [in] aFilepath output/visualizaton file path
+    **********************************************************************************/
+    void output(const std::string & aFilepath) override
+    {
+        auto tDataMap = this->getDataMap();
+        auto tSolution = this->getSolution();
+        Plato::output<mSpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+    }
+
     /******************************************************************************//**
      * \brief Apply Dirichlet constraints
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
@@ -258,8 +269,7 @@ public:
             mDataMap.saveState();
         }
 
-        Plato::Solutions tSolution(mPhysics);
-        tSolution.set("State", mStates);
+        auto tSolution = this->getSolution();
         return tSolution;
     }
 
@@ -623,7 +633,7 @@ private:
 
         if(aProblemParams.isSublist("Criteria"))
         {
-            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tLinearFunctionBaseFactory;
+            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<mSpatialDim>> tLinearFunctionBaseFactory;
             Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tNonlinearFunctionBaseFactory;
 
             auto tCriteriaParams = aProblemParams.sublist("Criteria");
@@ -674,6 +684,16 @@ private:
         }
     }
 
+    /******************************************************************************/ /**
+    * \brief Return solution database.
+    * \return solution database
+    **********************************************************************************/
+    Plato::Solutions getSolution() const
+    {
+        Plato::Solutions tSolution(mPhysics, mPDEType);
+        tSolution.set("State", mStates);
+        return tSolution;
+    }
 };
 // class Problem
 

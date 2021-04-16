@@ -1022,7 +1022,7 @@ void MPMD_App::ComputeCriterionGradientP::operator()()
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Global State.\n");
-	mMyApp->mGlobalSolution.print();
+	    mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
     }
@@ -1071,14 +1071,13 @@ void MPMD_App::ComputeSolution::operator()()
         REPORT("Analyze Application - Compute Solution Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Solution Operation - Print Global State.\n");
-	mMyApp->mGlobalSolution.print();
+	    mMyApp->mGlobalSolution.print();
     }
 
     // optionally, write solution
     if(mWriteNativeOutput)
     {
-        auto tStateDataMap = mMyApp->mProblem->getDataMap();
-        Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalSolution, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
+        mMyApp->mProblem->output(mVizFilePath);
     }
 }
 
@@ -1322,33 +1321,13 @@ MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode
         LocalOp(aMyApp, aNode, aOpDef)
 {
     mOutputFile = Plato::Get::String(aNode, "OutputFile");
-
 }
 /******************************************************************************/
 
 /******************************************************************************/
 void MPMD_App::Visualization::operator()()
 {
-    /*
-    std::string tProblemPhysics     = mMyApp->mDefaultProblem->params.get<std::string>("Physics");
-    auto tSolution = mMyApp->mProblem->getGlobalSolution();
-    Plato::DataMap tDataMap = mMyApp->mProblem->getDataMap();
-
-    if (mMyApp->mNumSpatialDims == 3)
-    {
-        Plato::output<3>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
-    }
-    else
-    if (mMyApp->mNumSpatialDims == 2)
-    {
-        Plato::output<2>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
-    }
-    else
-    if (mMyApp->mNumSpatialDims == 1)
-    {
-        Plato::output<1>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
-    }*/
-
+    mMyApp->mProblem->output(mOutputFile);
 }
 /******************************************************************************/
 void MPMD_App::finalize() { }

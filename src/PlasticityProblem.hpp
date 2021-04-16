@@ -196,7 +196,7 @@ public:
      * \brief Save states to visualization file
      * \param [in] aFilepath output/viz directory path
     *******************************************************************************/
-    void saveStates(const std::string& aFilepath)
+    void output(const std::string& aFilepath)
     {
         auto tMesh = mSpatialModel.Mesh;
 

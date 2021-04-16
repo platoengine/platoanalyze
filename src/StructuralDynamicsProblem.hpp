@@ -198,6 +198,8 @@ public:
         mNumIterationsAmgX = aInput;   
     }
 
+    void output(const std::string& aFilepath) override { return; }
+    
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aGlobalState 2D container of state variables

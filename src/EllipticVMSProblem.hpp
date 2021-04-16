@@ -80,6 +80,8 @@ private:
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
     rcp<Plato::AbstractSolver> mSolver;
+
+    std::string mPDE; /*!< partial differential equation type */
     std::string mPhysics; /*!< physics used for the simulation */
 
 public:
@@ -108,6 +110,7 @@ public:
       mProjPGrad       ("Projected PGrad", mStateProjection.size()),
       mProjectState    ("Project State", aMesh.nverts()),
       mProjJacobian    (Teuchos::null),
+      mPDE             (aInputParams.get<std::string>("PDE Constraint")),
       mPhysics         (aInputParams.get<std::string>("Physics"))
     {
         this->initialize(aInputParams);
@@ -121,25 +124,26 @@ public:
      * \param [in] aFilepath output/viz directory path
      * \param [in] aMesh     Omega_h mesh database
     *******************************************************************************/
-    void saveStates(const std::string& aFilepath, Omega_h::Mesh& aMesh)
+    void output(const std::string& aFilepath)
     {
+        auto tMesh = mSpatialModel.Mesh;
         auto tNumNodes = mPDEConstraint.numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalState.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalState.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalState, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalState, tDisplacements);
 
-        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &aMesh, mSpaceDim);
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
         for(Plato::OrdinalType tSnapshot = 1; tSnapshot < tDisplacements.extent(0); tSnapshot++)
         {
             auto tPressSubView = Kokkos::subview(tPressure, tSnapshot, Kokkos::ALL());
             auto tPressSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(),tPressSubView);
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             auto tDispSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(),tDispSubView);
-            aMesh.add_tag(Omega_h::VERT, "Pressure", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tPressSubViewDefaultMirror)));
-            aMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
-            Plato::omega_h::add_element_state_tags(aMesh, mDataMap, tSnapshot);
-            auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, mSpaceDim);
+            tMesh.add_tag(Omega_h::VERT, "Pressure", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tPressSubViewDefaultMirror)));
+            tMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
+            Plato::omega_h::add_element_state_tags(tMesh, mDataMap, tSnapshot);
+            auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mTimeStep * static_cast<Plato::Scalar>(tSnapshot);
             tWriter.write(tSnapshot, tTime, tTags);
         }
@@ -294,7 +298,7 @@ public:
 
         }
 
-        Plato::Solutions tSolution(mPhysics);
+        Plato::Solutions tSolution(mPhysics, mPDE);
         tSolution.set("State", mGlobalState);
         return tSolution;
     }

@@ -5,6 +5,7 @@
 #include "Solutions.hpp"
 #include "EssentialBCs.hpp"
 #include "SpatialModel.hpp"
+#include "AnalyzeOutput.hpp"
 #include "AnalyzeMacros.hpp"
 #include "SimplexMechanics.hpp"
 #include "PlatoAbstractProblem.hpp"
@@ -74,6 +75,7 @@ namespace Plato
         Plato::ScalarVector mStateBcValues;
 
         rcp<Plato::AbstractSolver> mSolver;
+        std::string mPDE; /*!< partial differential equation type */
         std::string mPhysics; /*!< physics used for the simulation */
 
       public:
@@ -101,6 +103,7 @@ namespace Plato
             mJacobianV     (Teuchos::null),
             mJacobianA     (Teuchos::null),
             mStateBoundaryConditions(aProblemParams.sublist("Displacement Boundary Conditions",false), aMeshSets),
+            mPDE           (aProblemParams.get<std::string>("PDE Constraint")),
             mPhysics       (aProblemParams.get<std::string>("Physics"))
         /******************************************************************************/
         {
@@ -201,6 +204,13 @@ namespace Plato
 
             mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
 
+        }
+
+        void output(const std::string& aFilepath)
+        {
+            auto tDataMap = getDataMap();
+            auto tSolution = getSolution();
+            Plato::output<SpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
         }
 
         /******************************************************************************/
@@ -788,7 +798,7 @@ namespace Plato
         **********************************************************************************/
         Plato::Solutions getSolution() const
         {
-            Plato::Solutions tSolution(mPhysics);
+            Plato::Solutions tSolution(mPhysics, mPDE);
             tSolution.set("State", mDisplacement);
             tSolution.set("StateDot", mVelocity);
             tSolution.set("StateDotDot", mAcceleration);

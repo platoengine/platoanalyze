@@ -22,6 +22,7 @@ namespace Plato
 struct Solutions
 {
 private:
+    std::string mPDE; /*!< partial differential equation constraint */
     std::string mPhysics; /*!< physics to be analyzed/simulated */
     std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution; /*!< map from state solution name to 2D POD array */
 
@@ -31,8 +32,17 @@ public:
      *
      * \brief Constructor.
      * \param [in] aPhysics physics to be analyzed/simulated
+     * \param [in] aPDE     partial differential equation constraint type
      ******************************************************************************/
-    explicit Solutions(std::string aPhysics = "undefined");
+    explicit Solutions(std::string aPhysics = "undefined", std::string aPDE = "undefined");
+
+    /***************************************************************************//**
+     * \fn std::string pde
+     *
+     * \brief Return partial differential equation (pde) constraint type.
+     * \return pde (string)
+     ******************************************************************************/
+    std::string pde() const;
 
     /***************************************************************************//**
      * \fn std::string physics

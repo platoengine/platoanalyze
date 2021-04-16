@@ -10,9 +10,17 @@
 namespace Plato
 {
 
-Solutions::Solutions(std::string aPhysics) :
+Solutions::Solutions
+(std::string aPhysics,
+ std::string aPDE) :
+    mPDE(aPDE),
     mPhysics(aPhysics)
 {return;}
+
+std::string Solutions::pde() const
+{
+    return (mPDE);
+}
 
 std::string Solutions::physics() const
 {

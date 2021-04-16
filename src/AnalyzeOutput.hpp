@@ -15,7 +15,6 @@
 #include "Solutions.hpp"
 #include "UtilsOmegaH.hpp"
 #include "PlatoUtilities.hpp"
-#include "PlatoProblemFactory.hpp"
 
 namespace Plato
 {
@@ -203,7 +202,7 @@ namespace Plato
                 constexpr auto tNumStatePerNode = SpatialDim;
                 Omega_h::Write<Omega_h::Real> tStateData(tNumState, "State");
                 Plato::copy<tNumDofsPerNode, tNumStatePerNode>(/*stride=*/0, tNumVertices, tSubView, tStateData);
-                aMesh.add_tag(Omega_h::VERT, tTag, tNumStatePerNode, Omega_h::Reals(tStateData));
+                aMesh.add_tag(Omega_h::VERT, "Displacements", tNumStatePerNode, Omega_h::Reals(tStateData));
 
                 if (aStateDataMap.stateDataMaps.size() > tStepIndex)
                 {
@@ -318,26 +317,22 @@ namespace Plato
     // function thermal_output
 
     /******************************************************************************/ /**
- * \brief Output data associated with a Plato Analyze simulation.
- * \param [in] aInputData       input parameters list
- * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
- * \param [in] aStateDataMap    Plato Analyze data map
- * \param [in] aMesh            mesh database
- **********************************************************************************/
-    template <const Plato::OrdinalType SpatialDim>
-    void
-    output(
-        Teuchos::ParameterList &aInputData,
-        const std::string      &aOutputFilePath,
-        const Plato::Solutions &aSolution,
-        const Plato::DataMap   &aStateDataMap,
-            Omega_h::Mesh      &aMesh)
+    * \brief Output data associated with a Plato Analyze simulation.
+    * \param [in] aOutputFilePath  output viz file path
+    * \param [in] aState           global state data
+    * \param [in] aStateDataMap    Plato Analyze data map
+    * \param [in] aMesh            mesh database
+    **********************************************************************************/
+    template 
+    <const Plato::OrdinalType SpatialDim>
+    void output
+    (const std::string      &aOutputFilePath,
+     const Plato::Solutions &aSolution,
+     const Plato::DataMap   &aStateDataMap,
+           Omega_h::Mesh    &aMesh)
     {
-        auto tProblemSpecs = aInputData.sublist("Plato Problem");
-        assert(tProblemSpecs.isParameter("Physics"));
-        auto tPhysics = tProblemSpecs.get<std::string>("Physics");
-        auto tPDE = tProblemSpecs.get<std::string>("PDE Constraint");
+        auto tPDE = aSolution.pde();
+        auto tPhysics = aSolution.physics();
 
         auto tLowerPDE = Plato::tolower(tPDE);
         auto tLowerPhysics = Plato::tolower(tPhysics);
@@ -377,56 +372,6 @@ namespace Plato
         }
     }
     // function output
-
-    /******************************************************************************/ /**
- * \brief Write data associated with a Plato Analyze simulation to an output file.
- * \param [in] aInputData       input parameters list
- * \param [in] aOutputFilePath  output viz file path
- * \param [in] aSolution        global solution data
- * \param [in] aStateDataMap    Plato Analyze data map
- * \param [in] aMesh            mesh database
- **********************************************************************************/
-    inline void
-    write(
-              Teuchos::ParameterList &aInputData,
-        const std::string            &aOutputFilePath,
-        const Plato::Solutions       &aSolution,
-        const Plato::ScalarVector    &aControl,
-        const Plato::DataMap         &aStateDataMap,
-              Omega_h::Mesh          &aMesh)
-    {
-        auto tNumVertices = aMesh.nverts();
-        Omega_h::Write<Omega_h::Real> tControl(tNumVertices, "Control");
-        Plato::copy<1, 1>(/*tStride=*/0, tNumVertices, aControl, tControl);
-        aMesh.add_tag(Omega_h::VERT, "Control", 1, Omega_h::Reals(tControl));
-
-        const Plato::OrdinalType tSpaceDim = aInputData.get<Plato::OrdinalType>("Spatial Dimension", 3);
-        if (tSpaceDim == static_cast<Plato::OrdinalType>(1))
-        {
-#ifdef PLATOANALYZE_1D
-            Plato::output<1>(aInputData, aOutputFilePath, aSolution, aStateDataMap, aMesh);
-#else
-            throw std::runtime_error("1D physics is not compiled.");
-#endif
-        }
-        else if (tSpaceDim == static_cast<Plato::OrdinalType>(2))
-        {
-#ifdef PLATOANALYZE_2D
-            Plato::output<2>(aInputData, aOutputFilePath, aSolution, aStateDataMap, aMesh);
-#else
-            throw std::runtime_error("2D physics is not compiled.");
-#endif
-        }
-        else if (tSpaceDim == static_cast<Plato::OrdinalType>(3))
-        {
-#ifdef PLATOANALYZE_3D
-            Plato::output<3>(aInputData, aOutputFilePath, aSolution, aStateDataMap, aMesh);
-#else
-            throw std::runtime_error("3D physics is not compiled.");
-#endif
-        }
-    }
-    // function write
 
 }
 // namespace Plato

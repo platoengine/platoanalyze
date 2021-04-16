@@ -218,7 +218,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        tEllipticVMSProblem.saveStates("Output", *tMesh);
+        tEllipticVMSProblem.output("Output");
     }
 }
 

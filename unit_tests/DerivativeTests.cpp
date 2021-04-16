@@ -2522,7 +2522,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
                                         2e-4, -2.5714285714e-4, 2e-4, -1.7142857143e-4, 4e-4, -1.7142857143e-4, 4e-4, -2.5714285714e-4, 6e-4, -2.5714285714e-4,
                                         6e-4, -1.7142857143e-4, 6e-4, -8.5714285714e-5, 4e-4, -8.5714285714e-5, 4e-4, 0.0, 6e-4, 0.0};
 
-    constexpr Plato::Scalar tTolerance = 1e-8;
+    constexpr Plato::Scalar tTolerance = 1e-4;
     for(Plato::OrdinalType tDofIndex=0; tDofIndex < tHostSolution.size(); tDofIndex++)
     {
         if(tGold[tDofIndex] == 0.0){

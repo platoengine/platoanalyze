@@ -2247,7 +2247,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("ElasticSolution");
+        tPlasticityProblem.output("ElasticSolution");
     }
 
     auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -2440,7 +2440,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamTraction2D");
+        tPlasticityProblem.output("SimplySupportedBeamTraction2D");
     }
     auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
     if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
@@ -2630,7 +2630,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
     auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
     if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
@@ -2822,7 +2822,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
     auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
     if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
@@ -3014,7 +3014,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
     auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
     if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
@@ -3208,7 +3208,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
     auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
     if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
@@ -3351,7 +3351,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
 
     if(tDeleteSolverStats)
