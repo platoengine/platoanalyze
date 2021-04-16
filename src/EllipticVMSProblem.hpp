@@ -234,8 +234,6 @@ public:
         }
     }
 
-    void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
-
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControl 1D container of control variables

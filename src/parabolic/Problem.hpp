@@ -218,7 +218,7 @@ namespace Parabolic
                 Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues, aScale);
             }
         }
-        void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
+
         /******************************************************************************//**
          * \brief Update physics-based parameters within optimization iterations
          * \param [in] aState 2D container of state variables

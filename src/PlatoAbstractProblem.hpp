@@ -39,26 +39,6 @@ public:
     }
 
     /******************************************************************************//**
-     * \brief Apply Dirichlet constraints
-     * \param [in] aMatrix Compressed Row Storage (CRS) matrix
-     * \param [in] aVector 1D view of Right-Hand-Side forces
-    **********************************************************************************/
-    virtual void
-    applyConstraints(
-        const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-        const Plato::ScalarVector                & aVector
-    )=0;
-
-    /******************************************************************************//**
-     * \brief Apply boundary forces
-     * \param [in/out] aForce 1D view of forces
-    **********************************************************************************/
-    virtual void
-    applyBoundaryLoads(
-        const Plato::ScalarVector & aForce
-    )=0;
-
-    /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControl 1D container of control variables
      * \param [in] aSolution solution database

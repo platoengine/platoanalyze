@@ -180,8 +180,6 @@ public:
         }
     }
 
-    void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
-
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aGlobalState 2D container of state variables

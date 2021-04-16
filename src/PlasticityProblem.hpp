@@ -247,11 +247,6 @@ public:
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector) {return;}
 
     /***************************************************************************//**
-     * \brief Fill right-hand-side vector values
-    *******************************************************************************/
-    void applyBoundaryLoads(const Plato::ScalarVector & aForce) override { return; }
-
-    /***************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControls 1D container of control variables
      * \param [in] aSolution solution database
