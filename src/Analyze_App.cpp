@@ -634,7 +634,7 @@ updateParameters(std::string aName, Plato::Scalar aValue)
         // if a target is given, update the problem definition
         if(tParam->mTarget.empty() == false)
         {
-            parseInline(mDef->params, tParam->mTarget, tParam->mValue);
+            parse_inline(mDef->params, tParam->mTarget, tParam->mValue);
             mDef->modified = true;
         }
     }
@@ -1462,7 +1462,7 @@ void MPMD_App::getScalarFieldHostMirror
     else if(mGradientXNameToCriterionName.count(tFieldName))
     {
         auto tStrCriterion = mGradientZNameToCriterionName[tFieldName];
-        tDeviceData = Plato::getVectorComponent(mCriterionGradientsX[tStrCriterion],/*component=*/tFieldIndex, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::get_vector_component(mCriterionGradientsX[tStrCriterion],/*component=*/tFieldIndex, /*stride=*/mNumSpatialDims);
     }
 
     // create a mirror

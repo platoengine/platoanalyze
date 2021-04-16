@@ -13,30 +13,74 @@
 namespace Plato
 {
 
+/******************************************************************************//**
+ *
+ * \brief Extract vector solution from input scalar vector.
+ *
+ * \param [in] aFrom scalar vector
+ * \param [in] aDof    degree of freedom
+ * \param [in] aStride locations in memory between beginnings of successive array elements
+ * 
+ * \return scalar vector
+**********************************************************************************/
 Plato::ScalarVector
-getVectorComponent
+get_vector_component
 (Plato::ScalarVector aFrom,
  Plato::OrdinalType aDof,
  Plato::OrdinalType aStride);
 
+/******************************************************************************//**
+ *
+ * \brief Parse parameter list inline and set value of parsed parameter
+ *
+ * \param [in] aParams parameter list
+ * \param [in] aTarget parameter tag
+ * \param [in] aValue  parameter value
+**********************************************************************************/
 void
-parseInline
+parse_inline
 (Teuchos::ParameterList& aParams,
  const std::string& aTarget,
  Plato::Scalar aValue);
 
+/******************************************************************************//**
+ *
+ * \brief Break input string apart by 'aDelimiter'.
+ *
+ * \param [in] aInputString input string
+ * \param [in] aDelimiter   delimiter
+ * 
+ * \return vector of strings: tTokens 
+**********************************************************************************/
 std::vector<std::string>
 split
 (const std::string& aInputString,
  const char aDelimiter);
 
+/******************************************************************************//**
+ *
+ * \brief Return inner parameter list.
+ *
+ * \param [in] aParams parameter list
+ * \param [in] aTokens tokens for parsing
+ * 
+ * \return parameter list
+**********************************************************************************/
 Teuchos::ParameterList&
-getInnerList
+get_inner_list
 (Teuchos::ParameterList& aParams,
  std::vector<std::string>& aTokens);
 
+/******************************************************************************//**
+ *
+ * \brief Set parameter value in parameter list.
+ *
+ * \param [in] aParams parameter list
+ * \param [in] aTokens tokens for parsing
+ * \param [in] aValue  parameter value
+**********************************************************************************/
 void
-setParameterValue
+set_parameter_value
 (Teuchos::ParameterList& aParams,
  std::vector<std::string> aTokens,
  Plato::Scalar aValue);
@@ -62,7 +106,7 @@ find_solution_tag
  * \param [in] aName     solution name
  * \param [in] aSolution solutions database
  * \param [in] aDof      degree of freedom
- * \param [in] aStride   spatial dimensions
+ * \param [in] aStride   locations in memory between beginnings of successive array elements
  * 
  * \return scalar vector of state solutions
 **********************************************************************************/

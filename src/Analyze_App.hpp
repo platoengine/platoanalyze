@@ -414,7 +414,7 @@ public:
         if(mGradientXNameToCriterionName.count(aName))
         {
             auto tStrCriterion = mGradientXNameToCriterionName[aName];
-            auto tScalarField = Plato::getVectorComponent(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
+            auto tScalarField = Plato::get_vector_component(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
     }

@@ -11,7 +11,7 @@ namespace Plato
 {
 
 Plato::ScalarVector
-getVectorComponent
+get_vector_component
 (Plato::ScalarVector aFrom,
  Plato::OrdinalType aDof,
  Plato::OrdinalType aStride)
@@ -24,18 +24,18 @@ getVectorComponent
     }, "copy component from vector");
     return tRetVal;
 }
-// function getVectorComponent
+// function get_vector_component
 
-void parseInline
+void parse_inline
 (Teuchos::ParameterList& aParams,
  const std::string& aTarget,
  Plato::Scalar aValue)
 {
     std::vector<std::string> tokens = split(aTarget, ':');
-    Teuchos::ParameterList& innerList = getInnerList(aParams, tokens);
-    Plato::setParameterValue(innerList, tokens, aValue);
+    Teuchos::ParameterList& innerList = get_inner_list(aParams, tokens);
+    Plato::set_parameter_value(innerList, tokens, aValue);
 }
-// function parseInline
+// function parse_inline
 
 std::vector<std::string> split
 (const std::string& aInputString,
@@ -57,7 +57,7 @@ std::vector<std::string> split
 // function split
 
 Teuchos::ParameterList&
-getInnerList
+get_inner_list
 (Teuchos::ParameterList& aParams,
  std::vector<std::string>& aTokens)
 {
@@ -67,16 +67,16 @@ getInnerList
         // listName = token with '[' and ']' removed.
         std::string listName = token.substr(1, token.size() - 2);
         aTokens.erase(aTokens.begin());
-        return getInnerList(aParams.sublist(listName, /*must exist=*/true), aTokens);
+        return get_inner_list(aParams.sublist(listName, /*must exist=*/true), aTokens);
     }
     else
     {
         return aParams;
     }
 }
-// function getInnerList
+// function get_inner_list
 
-void setParameterValue
+void set_parameter_value
 (Teuchos::ParameterList& aParams,
  std::vector<std::string> aTokens,
  Plato::Scalar aValue)
@@ -101,7 +101,7 @@ void setParameterValue
         aParams.set<Plato::Scalar>(token, aValue);
     }
 }
-// function setParameterValue
+// function set_parameter_value
 
 std::string 
 find_solution_tag
@@ -132,7 +132,7 @@ extract_solution
     const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
     if(tTIME_STEP_INDEX < 0) { THROWERR("Negative time step index. State solution is most likely empty.") }
     auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
-    auto tDeviceData = Plato::getVectorComponent(tStatesSubView, aDof, aStride);
+    auto tDeviceData = Plato::get_vector_component(tStatesSubView, aDof, aStride);
     return tDeviceData;
 }
 // function extract_solution
