@@ -476,7 +476,7 @@ namespace PlatoTestMeshMap
 
 
 /***************************************************************************//**
-* @brief Convert sparse matrix to full matrix
+* \brief Convert sparse matrix to full matrix
 *******************************************************************************/
 std::vector<std::vector<Plato::Scalar>>
 toFull( SparseMatrix aInMatrix )

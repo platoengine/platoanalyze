@@ -15,6 +15,7 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 
+#include "Solutions.hpp"
 #include "VectorFunctionVMS.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
@@ -79,6 +80,7 @@ private:
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
     rcp<Plato::AbstractSolver> mSolver;
+    std::string mPhysics; /*!< physics used for the simulation */
 
 public:
     /******************************************************************************//**
@@ -105,7 +107,8 @@ public:
       mProjResidual    ("MyProjResidual", mStateProjection.size()),
       mProjPGrad       ("Projected PGrad", mStateProjection.size()),
       mProjectState    ("Project State", aMesh.nverts()),
-      mProjJacobian    (Teuchos::null)
+      mProjJacobian    (Teuchos::null),
+      mPhysics         (aInputParams.get<std::string>("Physics"))
     {
         this->initialize(aInputParams);
 
@@ -140,44 +143,6 @@ public:
             auto tTime = mTimeStep * static_cast<Plato::Scalar>(tSnapshot);
             tWriter.write(tSnapshot, tTime, tTags);
         }
-    }
-
-    /******************************************************************************//**
-     * \brief Return number of degrees of freedom in solution.
-     * \return Number of degrees of freedom
-    **********************************************************************************/
-    Plato::OrdinalType getNumSolutionDofs()
-    {
-        return SimplexPhysics::mNumDofsPerNode;
-    }
-
-    /******************************************************************************//**
-     * \brief Set state variables
-     * \param [in] aGlobalState 2D view of state variables
-    **********************************************************************************/
-    void setGlobalSolution(const Plato::Solution & aSolution)
-    {
-        assert(aSolution.State.extent(0) == mGlobalState.extent(0));
-        assert(aSolution.State.extent(1) == mGlobalState.extent(1));
-        Kokkos::deep_copy(mGlobalState, aSolution.State);
-    }
-
-    /******************************************************************************//**
-     * \brief Return 2D view of state variables
-     * \return aGlobalState 2D view of state variables
-    **********************************************************************************/
-    Plato::Solution getGlobalSolution()
-    {
-        return Plato::Solution(mGlobalState);
-    }
-
-    /******************************************************************************//**
-     * \brief Return 2D view of adjoint variables
-     * \return 2D view of adjoint variables
-    **********************************************************************************/
-    Plato::Adjoint getAdjoint()
-    {
-        return Plato::Adjoint(mLambda);
     }
 
     /***************************************************************************//**
@@ -276,15 +241,15 @@ public:
      * \param [in] aControl 1D container of control variables
      * \param [in] aGlobalState 2D container of state variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aGlobalSolution)
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solutions & aGlobalSolution)
     { return; }
 
     /******************************************************************************//**
      * \brief Solve system of equations
      * \param [in] aControl 1D view of control variables
-     * \return Plato::Solution composed of state variables
+     * \return Plato::Solutions composed of state variables
     **********************************************************************************/
-    Plato::Solution
+    Plato::Solutions
     solution(
         const Plato::ScalarVector & aControl
     ) override
@@ -330,20 +295,23 @@ public:
             mResidual = mPDEConstraint.value(tState, mProjPGrad, aControl);
 
         }
-        return Plato::Solution(mGlobalState);
+
+        Plato::Solutions tSolution(mPhysics);
+        tSolution.set("State", mGlobalState);
+        return tSolution;
     }
 
     /******************************************************************************//**
      * \brief Evaluate criterion function
      * \param [in] aControl 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return criterion function value
     **********************************************************************************/
     Plato::Scalar
     criterionValue(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -378,8 +346,10 @@ public:
     {
         if( mCriteria.count(aName) )
         {
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mGlobalState);
             Criterion tCriterion = mCriteria[aName];
-            return tCriterion->value(Plato::Solution(mGlobalState), aControl);
+            return tCriterion->value(tSolution, aControl);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -407,8 +377,10 @@ public:
     {
         if( mCriteria.count(aName) )
         {
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mGlobalState);
             Criterion tCriterion = mCriteria[aName];
-            return criterionGradient(aControl, Plato::Solution(mGlobalState), tCriterion);
+            return criterionGradient(aControl, tSolution, tCriterion);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -425,14 +397,14 @@ public:
     /******************************************************************************//**
      * \brief Evaluate criterion gradient wrt control variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aSolution Plato::Solution containing state
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return 1D view - criterion gradient wrt control variables
     **********************************************************************************/
     Plato::ScalarVector
     criterionGradient(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -456,14 +428,14 @@ public:
     /******************************************************************************//**
      * \brief Evaluate criterion gradient wrt control variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution databse
      * \param [in] aCriterion criterion to be evaluated
      * \return 1D view - criterion gradient wrt control variables
     **********************************************************************************/
     Plato::ScalarVector
     criterionGradient(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
               Criterion             aCriterion
     )
     {
@@ -471,9 +443,9 @@ public:
         {
             THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+            THROWERR("\nSolutions database is empty.\n");
         }
         if(aCriterion == nullptr)
         {
@@ -484,6 +456,7 @@ public:
         auto t_df_dz = aCriterion->gradient_z(aSolution, aControl, mTimeStep);
 
         // outer loop for load/time steps
+        auto tState = aSolution.get("State");
         auto tLastStepIndex = mNumSteps - 1;
         for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
@@ -492,7 +465,7 @@ public:
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_df_du);
 
             // compute nodal projection of pressure gradient
-            Plato::ScalarVector tStateAtStepK = Kokkos::subview(aSolution.State, tStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tStateAtStepK = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
             // extract projection state
             Plato::blas1::extract<SimplexPhysics::mNumDofsPerNode,
@@ -558,8 +531,10 @@ public:
     {
         if( mCriteria.count(aName) )
         {
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mGlobalState);
             Criterion tCriterion = mCriteria[aName];
-            return criterionGradientX(aControl, Plato::Solution(mGlobalState), tCriterion);
+            return criterionGradientX(aControl, tSolution, tCriterion);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -576,14 +551,14 @@ public:
     /******************************************************************************//**
      * \brief Evaluate criterion gradient wrt configuration variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aSolution Plato::Solution containing state
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return 1D view - criterion gradient wrt control variables
     **********************************************************************************/
     Plato::ScalarVector
     criterionGradientX(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -607,23 +582,23 @@ public:
     /******************************************************************************//**
      * \brief Evaluate criterion gradient wrt configuration variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aCriterion criterion to be evaluated
      * \return 1D view - criterion gradient wrt configuration variables
     **********************************************************************************/
     Plato::ScalarVector
     criterionGradientX(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
               Criterion             aCriterion)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+            THROWERR("\nSolution database is empty.\n");
         }
         if(aCriterion == nullptr)
         {
@@ -634,6 +609,7 @@ public:
         auto t_df_dx = aCriterion->gradient_x(aSolution, aControl, mTimeStep);
 
         // outer loop for load/time steps
+        auto tState = aSolution.get("State");
         auto tLastStepIndex = mNumSteps - 1;
         for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
@@ -642,7 +618,7 @@ public:
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_df_du);
 
             // compute nodal projection of pressure gradient
-            Plato::ScalarVector tStateAtStepK = Kokkos::subview(aSolution.State, tStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tStateAtStepK = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
             auto mProjResidual = mStateProjection.value      (mProjPGrad, tStateAtStepK, aControl);
             auto mProjJacobian = mStateProjection.gradient_u (mProjPGrad, tStateAtStepK, aControl);

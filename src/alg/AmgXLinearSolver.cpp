@@ -8,7 +8,7 @@
 namespace Plato {
 
 /******************************************************************************//**
- * @brief Load AmgX configuration string from file
+ * \brief Load AmgX configuration string from file
 **********************************************************************************/
 std::string
 AmgXLinearSolver::loadConfigString(std::string aConfigFile)
@@ -76,7 +76,7 @@ AmgXLinearSolver::loadConfigString(std::string aConfigFile)
 }
 
 /******************************************************************************//**
- * @brief AmgXLinearSolver constructor
+ * \brief AmgXLinearSolver constructor
 **********************************************************************************/
 AmgXLinearSolver::AmgXLinearSolver(
     const Teuchos::ParameterList& aSolverParams,
@@ -111,7 +111,7 @@ AmgXLinearSolver::AmgXLinearSolver(
 }
 
 /******************************************************************************//**
- * @brief AmgXLinearSolver constructor
+ * \brief AmgXLinearSolver constructor
 **********************************************************************************/
 void
 AmgXLinearSolver::solve(
@@ -146,7 +146,7 @@ AmgXLinearSolver::solve(
 }
 
 /******************************************************************************//**
- * @brief AmgXLinearSolver constructor
+ * \brief AmgXLinearSolver constructor
 **********************************************************************************/
 AmgXLinearSolver::
 ~AmgXLinearSolver()
@@ -163,7 +163,7 @@ AmgXLinearSolver::
 }
 
 /******************************************************************************//**
- * @brief sanity check for solve() arguments
+ * \brief sanity check for solve() arguments
 **********************************************************************************/
 void
 AmgXLinearSolver::

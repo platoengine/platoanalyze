@@ -10,6 +10,7 @@
 
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
+#include "Solutions.hpp"
 #include "UtilsOmegaH.hpp"
 #include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
@@ -94,6 +95,7 @@ private:
 
     bool mStopOptimization; /*!< stops optimization problem if Newton-Raphson solver fails to converge during an optimization run */
     bool mMaxNumPseudoTimeStepsReached; /*!< use to check if maximum number of allowable pseudo time steps has been reached */
+    std::string mPhysics; /*!< simulated physics */
 
 // public functions
 public:
@@ -134,7 +136,8 @@ public:
       mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
-      mMaxNumPseudoTimeStepsReached(false)
+      mMaxNumPseudoTimeStepsReached(false),
+      mPhysics(aInputs.get<std::string>("Physics"))
     {
         this->initialize(aInputs);
     }
@@ -237,65 +240,6 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Return number of global degrees of freedom in solution.
-     * \return Number of global degrees of freedom
-    *******************************************************************************/
-    Plato::OrdinalType getNumSolutionDofs() override
-    {
-        return (mGlobalEquation->size());
-    }
-
-    /***************************************************************************//**
-     * \brief Set global state variables
-     * \param [in] aSolution Plato::Solution composed of global state variables
-    *******************************************************************************/
-    void setGlobalSolution(const Plato::Solution & aSolution) override
-    {
-        auto tGlobalState = aSolution.State;
-        assert(tGlobalState.extent(0) == mGlobalStates.extent(0));
-        assert(tGlobalState.extent(1) == mGlobalStates.extent(1));
-        Kokkos::deep_copy(mGlobalStates, tGlobalState);
-    }
-
-    /***************************************************************************//**
-     * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
-     * \return 2D view of global state variables
-    *******************************************************************************/
-    Plato::Solution getGlobalSolution() override
-    {
-        return Plato::Solution(mGlobalStates);
-    }
-
-    /***************************************************************************//**
-     * \brief Set local state variables
-     * \param [in] aLocalState 2D view of local state variables, e.g. LS(NumTimeSteps, TotalDofs)
-    *******************************************************************************/
-    void setLocalState(const Plato::ScalarMultiVector & aLocalState) override
-    {
-        assert(aLocalState.extent(0) == mLocalStates.extent(0));
-        assert(aLocalState.extent(1) == mLocalStates.extent(1));
-        Kokkos::deep_copy(mLocalStates, aLocalState);
-    }
-
-    /***************************************************************************//**
-     * \brief Return 2D view of local state variables, e.g. LS(NumTimeSteps, TotalDofs)
-     * \return 2D view of global state variables
-    *******************************************************************************/
-    Plato::ScalarMultiVector getLocalState() override
-    {
-        return mLocalStates;
-    }
-
-    /***************************************************************************//**
-     * \brief Return 2D view of global adjoint variables - (2, TotalDofs)
-     * \return 2D view of global adjoint variables
-    *******************************************************************************/
-    Plato::Solution getAdjoint() override
-    {
-        THROWERR("PLASTICITY PROBLEM: ADJOINT MEMBER DATA IS NOT DEFINED");
-    }
-
-    /***************************************************************************//**
      * \brief Apply Dirichlet constraints
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
      * \param [in] aVector 1D view of Right-Hand-Side forces
@@ -310,12 +254,12 @@ public:
     /***************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControls 1D container of control variables
-     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aSolution solution database
     *******************************************************************************/
     void updateProblem(const Plato::ScalarVector & aControls,
-                       const Plato::Solution     & aSolution) override
+                       const Plato::Solutions    & aSolution) override
     {
-        auto tGlobalState = aSolution.State;
+        auto tGlobalState = aSolution.get("State");
         mLocalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         mProjectionEquation->updateProblem(tGlobalState, aControls, mCurrentPseudoTimeStep);
@@ -329,9 +273,9 @@ public:
     /***************************************************************************//**
      * \brief Solve system of equations
      * \param [in] aControls 1D view of control variables
-     * \return Plato::Solution composed of state variables
+     * \return solution database
     *******************************************************************************/
-    Plato::Solution solution(const Plato::ScalarVector &aControls) override
+    Plato::Solutions solution(const Plato::ScalarVector &aControls) override
     {
         // TODO: NOTES
         // 1. WRITE LOCAL STATES, PRESSURE, AND GLOBAL STATES HISTORY TO FILE - MEMORY CONCERNS
@@ -377,22 +321,23 @@ public:
             }
         }
 
-        return Plato::Solution(mGlobalStates);
+        Plato::Solutions tSolution(mPhysics);
+        tSolution.set("State", mGlobalStates);
+        return tSolution;
     }
 
     /***************************************************************************//**
-     * \fn Plato::Scalar criterionValue(const Plato::ScalarVector & aControls,
-     *                                  const Plato::Solution     & aSolution)
+     * \fn Plato::Scalar criterionValue
      * \brief Evaluate criterion function and return its value
      * \param [in] aControls 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return criterion function value
     *******************************************************************************/
     Plato::Scalar
     criterionValue(
         const Plato::ScalarVector & aControls,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -400,9 +345,9 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
+            THROWERR("PLASTICITY PROBLEM: SOLUTION DATABASE IS EMPTY.");
         }
 
         if( mCriteria.count(aName) )
@@ -410,7 +355,8 @@ public:
             Criterion tCriterion = mCriteria[aName];
 
             this->shouldOptimizationProblemStop();
-            auto tOutput = this->evaluateCriterion(*tCriterion, aSolution.State, mLocalStates, aControls);
+            auto tGlobalState = aSolution.get("State"); 
+            auto tOutput = this->evaluateCriterion(*tCriterion, tGlobalState, mLocalStates, aControls);
 
             return (tOutput);
         }
@@ -474,8 +420,10 @@ public:
         {
             Criterion tCriterion = mCriteria[aName];
 
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mGlobalStates);
             this->shouldOptimizationProblemStop();
-            auto tTotalDerivative = this->criterionGradient(aControls, Plato::Solution(mGlobalStates), tCriterion);
+            auto tTotalDerivative = this->criterionGradient(aControls, tSolution, tCriterion);
 
             return tTotalDerivative;
         }
@@ -488,14 +436,14 @@ public:
     /***************************************************************************//**
      * \brief Evaluate criterion gradient wrt control variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return 1D view of the criterion gradient wrt control variables
     *******************************************************************************/
     Plato::ScalarVector
     criterionGradient(
         const Plato::ScalarVector & aControls,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -503,9 +451,9 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
+            THROWERR("PLASTICITY PROBLEM: SOLUTION DATABASE IS EMPTY.");
         }
 
         if( mCriteria.count(aName) )
@@ -526,14 +474,14 @@ public:
     /***************************************************************************//**
      * \brief Evaluate criterion gradient wrt control variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return 1D view of the criterion gradient wrt control variables
     *******************************************************************************/
     Plato::ScalarVector
     criterionGradient(
         const Plato::ScalarVector & aControls,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
               Criterion             aCriterion
     )
     {
@@ -541,9 +489,9 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
+            THROWERR("PLASTICITY PROBLEM: SOLUTION DATABASE IS EMPTY.");
         }
 
         this->shouldOptimizationProblemStop();
@@ -577,9 +525,11 @@ public:
         if( mCriteria.count(aName) )
         {
             Criterion tCriterion = mCriteria[aName];
-
+            
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mGlobalStates);
             this->shouldOptimizationProblemStop();
-            auto tTotalDerivative = this->criterionGradientX(aControls, Plato::Solution(mGlobalStates), tCriterion);
+            auto tTotalDerivative = this->criterionGradientX(aControls, tSolution, tCriterion);
 
             return tTotalDerivative;
         }
@@ -593,14 +543,14 @@ public:
     /***************************************************************************//**
      * \brief Evaluate criterion gradient wrt configuration variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return 1D view of the criterion gradient wrt control variables
     *******************************************************************************/
     Plato::ScalarVector
     criterionGradientX(
         const Plato::ScalarVector & aControls,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -608,9 +558,9 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
+            THROWERR("PLASTICITY PROBLEM: SOLUTIONS DATABASE IS EMPTY.");
         }
 
         if( mCriteria.count(aName) )
@@ -629,14 +579,14 @@ public:
     /***************************************************************************//**
      * \brief Evaluate criterion gradient wrt configuration variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aSolution solution database
      * \param [in] aName Name of criterion.
      * \return 1D view of the criterion gradient wrt control variables
     *******************************************************************************/
     Plato::ScalarVector
     criterionGradientX(
         const Plato::ScalarVector & aControls,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
               Criterion             aCriterion
     )
     {
@@ -644,9 +594,9 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.empty())
         {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
+            THROWERR("PLASTICITY PROBLEM: SOLUTION DATABASE IS EMPTY.");
         }
 
 

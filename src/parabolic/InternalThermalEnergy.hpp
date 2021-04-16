@@ -25,7 +25,7 @@ namespace Parabolic
 {
 
 /******************************************************************************//**
- * @brief Internal energy criterion, given by /f$ f(z) = u^{T}K(z)u /f$
+ * \brief Internal energy criterion, given by /f$ f(z) = u^{T}K(z)u /f$
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
  * @tparam IndicatorFunctionType penalty function (e.g. simp)

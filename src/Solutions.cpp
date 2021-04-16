@@ -10,7 +10,7 @@
 namespace Plato
 {
 
-Solutions::Solutions(const std::string & aPhysics) :
+Solutions::Solutions(std::string aPhysics) :
     mPhysics(aPhysics)
 {return;}
 
@@ -57,6 +57,22 @@ void Solutions::print() const
     { return; }
     for(auto& tPair : mSolution)
     { Plato::print_array_2D(tPair.second, tPair.first); }
+}
+
+bool Solutions::defined(const std::string & aTag) const
+{
+    auto tLowerTag = Plato::tolower(aTag);
+    auto tItr = mSolution.find(tLowerTag);
+    if(tItr == mSolution.end())
+    {
+        return false;
+    }
+    return true;
+}
+
+bool Solutions::empty() const
+{
+    return mSolution.empty();
 }
 
 }

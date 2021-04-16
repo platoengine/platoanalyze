@@ -21,7 +21,7 @@ namespace Elliptic
 {
 
 /******************************************************************************//**
- * @brief Mass moment class
+ * \brief Mass moment class
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
 **********************************************************************************/
@@ -49,10 +49,10 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
 
   public:
     /******************************************************************************//**
-     * @brief Primary constructor
-     * @param [in] aSpatialDomain Plato Analyze spatial domain 
-     * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aInputParams input parameters database
+     * \brief Primary constructor
+     * \param [in] aSpatialDomain Plato Analyze spatial domain 
+     * \param [in] aDataMap Plato Analyze data map
+     * \param [in] aInputParams input parameters database
      **********************************************************************************/
     MassMoment(
         const Plato::SpatialDomain   & aSpatialDomain,
@@ -69,8 +69,8 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     }
 
     /******************************************************************************//**
-     * @brief Unit testing constructor
-     * @param [in] aDataMap PLATO Engine and Analyze data map
+     * \brief Unit testing constructor
+     * \param [in] aDataMap PLATO Engine and Analyze data map
      **********************************************************************************/
     MassMoment(
         const Plato::SpatialDomain   & aSpatialDomain,
@@ -82,8 +82,8 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     /**************************************************************************/
 
     /******************************************************************************//**
-     * @brief set material density
-     * @param [in] aMaterialDensity material density
+     * \brief set material density
+     * \param [in] aMaterialDensity material density
      **********************************************************************************/
     void setMaterialDensity(const Plato::Scalar aMaterialDensity)
     /**************************************************************************/
@@ -92,8 +92,8 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     }
 
     /******************************************************************************//**
-     * @brief set calculation type
-     * @param [in] aCalculationType calculation type string
+     * \brief set calculation type
+     * \param [in] aCalculationType calculation type string
      **********************************************************************************/
     void setCalculationType(const std::string & aCalculationType)
     /**************************************************************************/
@@ -102,12 +102,12 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     }
 
     /******************************************************************************//**
-     * @brief Evaluate mass moment function
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Evaluate mass moment function
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void
     evaluate(
@@ -145,11 +145,11 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     }
 
     /******************************************************************************//**
-     * @brief Compute structural mass
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Compute structural mass
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void
     computeStructuralMass(
@@ -184,12 +184,12 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     }
 
     /******************************************************************************//**
-     * @brief Compute first mass moment
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [in] aComponent vector component (e.g. x = 0 , y = 1, z = 2)
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Compute first mass moment
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [in] aComponent vector component (e.g. x = 0 , y = 1, z = 2)
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void
     computeFirstMoment(
@@ -235,13 +235,13 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
 
 
     /******************************************************************************//**
-     * @brief Compute second mass moment
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [in] aComponent1 vector component (e.g. x = 0 , y = 1, z = 2)
-     * @param [in] aComponent2 vector component (e.g. x = 0 , y = 1, z = 2)
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Compute second mass moment
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [in] aComponent1 vector component (e.g. x = 0 , y = 1, z = 2)
+     * \param [in] aComponent2 vector component (e.g. x = 0 , y = 1, z = 2)
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void
     computeSecondMoment(
@@ -290,10 +290,10 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
     }
 
     /******************************************************************************//**
-     * @brief Map quadrature points to physical domain
-     * @param [in] aRefPoint incoming quadrature points
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aMappedPoints points mapped to physical domain
+     * \brief Map quadrature points to physical domain
+     * \param [in] aRefPoint incoming quadrature points
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aMappedPoints points mapped to physical domain
     **********************************************************************************/
     void
     mapQuadraturePoint(

@@ -7,6 +7,7 @@
 #include <cassert>
 #include <vector>
 
+#include "Solutions.hpp"
 #include "WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "elliptic/ScalarFunctionBase.hpp"
@@ -216,14 +217,14 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate physics scalar function
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return scalar physics function evaluation
     **********************************************************************************/
     Plato::Scalar
     value(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -257,7 +258,7 @@ public:
             Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", tNumCells, mNumDofsPerCell);
 
 
-            auto tStates = aSolution.State;
+            auto tStates = aSolution.get("State");
             auto tNumSteps = tStates.extent(0);
             for( decltype(tNumSteps) tStepIndex=0; tStepIndex < tNumSteps; ++tStepIndex )
             {
@@ -284,14 +285,14 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the physics scalar function wrt the configuration parameters
     **********************************************************************************/
     Plato::ScalarVector
     gradient_x(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -325,8 +326,7 @@ public:
 
             Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
 
-            auto tStates = aSolution.State;
-
+            auto tStates = aSolution.get("State");
             auto tNumSteps = tStates.extent(0);
             for( decltype(tNumSteps) tStepIndex=0; tStepIndex < tNumSteps; ++tStepIndex )
             {
@@ -356,14 +356,14 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the physics scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector
     gradient_u(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::OrdinalType    aStepIndex,
               Plato::Scalar         aTimeStep = 0.0
@@ -384,7 +384,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            auto tStates = aSolution.State;
+            auto tStates = aSolution.get("State");
             auto tState = Kokkos::subview(tStates, aStepIndex, Kokkos::ALL());
 
             // workset state
@@ -423,14 +423,14 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the physics scalar function wrt the control variables
     **********************************************************************************/
     Plato::ScalarVector
     gradient_z(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -466,8 +466,7 @@ public:
             //
             Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
  
-            auto tStates = aSolution.State;
-
+            auto tStates = aSolution.get("State");
             auto tNumSteps = tStates.extent(0);
             for( decltype(tNumSteps) tStepIndex=0; tStepIndex < tNumSteps; ++tStepIndex )
             {

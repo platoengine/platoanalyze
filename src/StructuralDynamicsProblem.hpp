@@ -18,6 +18,7 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "BLAS1.hpp"
+#include "Solutions.hpp"
 #include "EssentialBCs.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
@@ -71,13 +72,15 @@ private:
     std::shared_ptr<const Plato::Geometric::GeometryScalarFunction<SimplexPhysics>> mConstraint;
     std::shared_ptr<const Plato::Elliptic::VectorFunction<SimplexPhysics>> mAdjointProb;
 
+    std::string mPhysics; /*!< simulated physics */
+
 public:
     /******************************************************************************//**
      *
-     * @brief Constructor
-     * @param aMesh mesh data base
-     * @param aMeshSets mesh sets data base
-     * @param aParamList parameter list with input data
+     * \brief Constructor
+     * \param aMesh mesh data base
+     * \param aMeshSets mesh sets data base
+     * \param aParamList parameter list with input data
      *
     **********************************************************************************/
     StructuralDynamicsProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList & aParamList) :
@@ -95,7 +98,8 @@ public:
             mEquality(nullptr),
             mObjective(nullptr),
             mConstraint(nullptr),
-            mAdjointProb(nullptr)
+            mAdjointProb(nullptr),
+            mPhysics(aParamList.get<std::string>("Physics"))
     {
         this->initialize(aMesh, aMeshSets, aParamList);
         this->readFrequencyArray(aParamList);
@@ -103,20 +107,9 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Return number of degrees of freedom in solution.
-     * @return Number of degrees of freedom
-     *
-    **********************************************************************************/
-    Plato::OrdinalType getNumSolutionDofs()
-    {
-        return SimplexPhysics::mNumDofsPerNode;
-    }
-
-    /******************************************************************************//**
-     *
-     * @brief Constructor
-     * @param aMesh mesh data base
-     * @param aEquality equality constraint vector function
+     * \brief Constructor
+     * \param aMesh mesh data base
+     * \param aEquality equality constraint vector function
      *
     **********************************************************************************/
     StructuralDynamicsProblem(Omega_h::Mesh& aMesh, std::shared_ptr<Plato::Elliptic::VectorFunction<SimplexPhysics>> & aEquality) :
@@ -140,7 +133,7 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Destructor
+     * \brief Destructor
      *
     **********************************************************************************/
     virtual ~StructuralDynamicsProblem()
@@ -149,9 +142,9 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set array of angular frequencies and allocate state container
+     * \brief Set array of angular frequencies and allocate state container
      *
-     * @param[in] aInput angular frequencies
+     * \param[in] aInput angular frequencies
      *
     **********************************************************************************/
     void setFrequencyArray(const std::vector<Plato::Scalar>& aInput)
@@ -163,10 +156,10 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set essential boundary conditions
+     * \brief Set essential boundary conditions
      *
-     * @param[in] aBcDofs degrees of freedom associated with essential boundary conditions
-     * @param[in] aBcValues values associated with essential boundary conditions
+     * \param[in] aBcDofs degrees of freedom associated with essential boundary conditions
+     * \param[in] aBcValues values associated with essential boundary conditions
      *
     **********************************************************************************/
     void setEssentialBoundaryConditions(const Plato::LocalOrdinalVector & aBcDofs,
@@ -182,9 +175,9 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set external force vector
+     * \brief Set external force vector
      *
-     * @param[in] aInput external force vector
+     * \param[in] aInput external force vector
      *
     **********************************************************************************/
     void setExternalForce(const Plato::ScalarVector & aInput)
@@ -196,7 +189,7 @@ public:
 
     /******************************************************************************//**
     * 
-    * @brief Set maximum number of AmgX solver iterations.
+    * \brief Set maximum number of AmgX solver iterations.
     * @ param [in] aInput number of iterations 
     *
     **********************************************************************************/
@@ -206,45 +199,12 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aGlobalState 2D container of state variables
-     * @param [in] aControl 1D container of control variables
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aGlobalState 2D container of state variables
+     * \param [in] aControl 1D container of control variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aGlobalSolution) override
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution) override
     { return; }
-
-    /******************************************************************************//**
-     *
-     * @brief Set state vector
-     *
-     * @param[in] aInput state vector
-     *
-    **********************************************************************************/
-    void setGlobalSolution(const Plato::Solution & aSolution) override
-    {
-        assert(aSolution.State.size() == mGlobalState.size());
-        Kokkos::deep_copy(mGlobalState, aSolution.State);
-    }
-
-    /******************************************************************************//**
-     *
-     * @brief Get state vector
-     *
-    **********************************************************************************/
-    Plato::Solution getGlobalSolution() override
-    {
-        return Plato::Solution(mGlobalState);
-    }
-
-    /******************************************************************************//**
-     *
-     * @brief Get adjoint vector for last time step
-     *
-    **********************************************************************************/
-    Plato::Adjoint getAdjoint()
-    {
-        return Plato::Adjoint(mMyAdjoint); /* Returns adjoint solution for last time step. */
-    }
 
     /******************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
@@ -272,7 +232,7 @@ public:
     }
 
     /******************************************************************************/
-    Plato::Solution solution(const Plato::ScalarVector & aControl)
+    Plato::Solutions solution(const Plato::ScalarVector & aControl)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
@@ -299,7 +259,9 @@ public:
 #endif
         }
 
-        return Plato::Solution(mGlobalState);
+        Plato::Solutions tSolution(mPhysics);
+        tSolution.set("State", mGlobalState);
+        return tSolution;
     }
 
     /******************************************************************************/
@@ -318,20 +280,22 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        Plato::Scalar tValue = mObjective->value(Plato::Solution(mGlobalState), aControl);
+        Plato::Solutions tSolution(mPhysics);
+        tSolution.set("State", mGlobalState);
+        Plato::Scalar tValue = mObjective->value(tSolution, aControl);
 
         return tValue;
     }
 
     /******************************************************************************/
     Plato::Scalar
-    objectiveValue(const Plato::ScalarVector & aControl, const Plato::Solution & aGlobalSolution) override
+    objectiveValue(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution) override
     /******************************************************************************/
     {
-        auto tGlobalState = aGlobalSolution.State;
-        assert(aControl.size() == mNumControls);
-        assert(tGlobalState.extent(0) == mGlobalState.extent(0));
-        assert(tGlobalState.extent(1) == mGlobalState.extent(1));
+        if(aSolution.empty())
+        {
+            THROWERR("SOLUTION DATABASE IS EMPTY.")
+        }
 
         if(mObjective == nullptr)
         {
@@ -343,7 +307,7 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        auto tValue = mObjective->value(Plato::Solution(aGlobalSolution), aControl);
+        auto tValue = mObjective->value(aSolution, aControl);
 
         return tValue;
     }
@@ -385,18 +349,20 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        return mObjective->gradient_z(Plato::Solution(mGlobalState), aControl);
+        Plato::Solutions tSolution(mPhysics);
+        tSolution.set("State", mGlobalState);
+        return mObjective->gradient_z(tSolution, aControl);
     }
 
     /******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::Solution & aGlobalSolution)
+    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-
-        auto tGlobalState = aGlobalSolution.State;
-        assert(tGlobalState.extent(0) == mGlobalState.extent(0));
-        assert(tGlobalState.extent(1) == mGlobalState.extent(1));
+        if(aSolution.empty())
+        {
+            THROWERR("SOLUTION DATABASE IS EMPTY")
+        }
 
         if(mObjective == nullptr)
         {
@@ -418,13 +384,14 @@ public:
             auto tMyStatesSubView = Kokkos::subview(tGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
 
-            auto tPartialObjectiveWrtState = mObjective->gradient_u(aGlobalSolution, aControl, tFreqIndex, tMyFrequency);
+            auto tPartialObjectiveWrtState = mObjective->gradient_u(aSolution, aControl, tFreqIndex, tMyFrequency);
             Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
 
-            auto tPartialObjectiveWrtControl = mObjective->gradient_z(aGlobalSolution, aControl, tMyFrequency);
+            auto tPartialObjectiveWrtControl = mObjective->gradient_z(aSolution, aControl, tMyFrequency);
             Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtControl, static_cast<Plato::Scalar>(1.0), mGradControl);
         }
 
+        auto tGlobalState = aSolution.get("State");
         Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mGradState);
         this->addResidualContribution(Plato::partial::CONTROL, aControl, tGlobalState, mGradControl);
 
@@ -447,19 +414,21 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        return mObjective->gradient_x(Plato::Solution(mGlobalState), aControl);
+        Plato::Solutions tSolution(mPhysics);
+        tSolution.set("State", mGlobalState);
+        return mObjective->gradient_x(tSolution, aControl);
     }
 
     /******************************************************************************/
     Plato::ScalarVector
-    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::Solution & aGlobalSolution)
+    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-
-        auto tGlobalState = aGlobalSolution.State;
-        assert(tGlobalState.extent(0) == mGlobalState.extent(0));
-        assert(tGlobalState.extent(1) == mGlobalState.extent(1));
+        if(aSolution.empty())
+        {
+            THROWERR("SOLUTION DATABASE IS EMPTY")
+        }
 
         if(mObjective == nullptr)
         {
@@ -481,14 +450,15 @@ public:
             // Compute partial derivative of objective function wrt configuration for this time step
             auto tMyStatesSubView = Kokkos::subview(tGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
-            auto tPartialObjectiveWrtConfig = mObjective->gradient_x(aGlobalSolution, aControl, tMyFrequency);
+            auto tPartialObjectiveWrtConfig = mObjective->gradient_x(aSolution, aControl, tMyFrequency);
             Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
 
             // Compute partial derivative of objective function wrt state for this time step
-            auto tPartialObjectiveWrtState = mObjective->gradient_u(aGlobalSolution, aControl, tFreqIndex, tMyFrequency);
+            auto tPartialObjectiveWrtState = mObjective->gradient_u(aSolution, aControl, tFreqIndex, tMyFrequency);
             Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
         }
 
+        auto tGlobalState = aSolution.get("State");
         Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mGradState);
         this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, tGlobalState, mGradConfig);
 

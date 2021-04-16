@@ -839,7 +839,7 @@ void MPMD_App::ComputeCriterionValue::operator()()
     auto tControl = mMyApp->mControl;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
 
-    tState = mMyApp->mProblem->solution(tControl);
+    mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     tValue -= mTarget;
 
@@ -1329,6 +1329,7 @@ MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode
 /******************************************************************************/
 void MPMD_App::Visualization::operator()()
 {
+    /*
     std::string tProblemPhysics     = mMyApp->mDefaultProblem->params.get<std::string>("Physics");
     auto tSolution = mMyApp->mProblem->getGlobalSolution();
     Plato::DataMap tDataMap = mMyApp->mProblem->getDataMap();
@@ -1346,7 +1347,7 @@ void MPMD_App::Visualization::operator()()
     if (mMyApp->mNumSpatialDims == 1)
     {
         Plato::output<1>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
-    }
+    }*/
 
 }
 /******************************************************************************/
@@ -1444,19 +1445,19 @@ void MPMD_App::getScalarFieldHostMirror
     }
     else if(aName == "Solution")
     {
-        tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,1/*stride*/);    
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 0/*dof*/,1/*stride*/);
     }
     else if(aName == "Solution X")
     {
-        tDeviceData = Plato::extract_solution(mGlobalSolution, 0/*dof*/,mNumSpatialDims/*stride*/);    
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 0/*dof*/,mNumSpatialDims/*stride*/);
     }
     else if(aName == "Solution Y")
     {
-        tDeviceData = Plato::extract_solution(mGlobalSolution, 1/*dof*/,mNumSpatialDims/*stride*/);    
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 1/*dof*/,mNumSpatialDims/*stride*/);
     }
     else if(aName == "Solution Z")
     {
-        tDeviceData = Plato::extract_solution(mGlobalSolution, 2/*dof*/,mNumSpatialDims/*stride*/);    
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 2/*dof*/,mNumSpatialDims/*stride*/);
     }
     else if(mGradientXNameToCriterionName.count(tFieldName))
     {

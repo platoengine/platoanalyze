@@ -4,6 +4,7 @@
  *  Created on: Apr 11, 2021
  */
 
+#include "PlatoUtilities.hpp"
 #include "AnalyzeAppUtils.hpp"
 
 namespace Plato
@@ -102,21 +103,32 @@ void setParameterValue
 }
 // function setParameterValue
 
+std::string 
+find_solution_tag
+(const std::string & aName,
+ const Plato::Solutions & aSolution)
+{
+    std::unordered_map<std::string, std::string> tSupportedTags = 
+        { {"solution", "state" }, {"solution x", "state"}, {"solution y", "state"}, {"solution z", "state"} };
+    auto tLowerName = Plato::tolower(aName);
+    auto tItr = tSupportedTags.find(tLowerName);
+    if( tItr == tSupportedTags.end() )
+    { THROWERR(std::string("Solution tag '") + tItr->first + "' is not a supported output key.") }
+    return tItr->second;
+}
+// function find_solution_tag
+
 Plato::ScalarVector
 extract_solution
-(const Plato::Solutions & aSolution,
- Plato::OrdinalType aDof,
- Plato::OrdinalType aStride)
-{
-    if(aSolution.size() <= 1u)
-    {
-        THROWERR(std::string("Solutions database size is '") + std::to_string(aSolution.size()) + "'."
-            + "Solution data extraction from Analyze to the Engine only supports one state solution.")
-    }
-
-    auto tTags = aSolution.tags();
-    if(tTags.empty()) { THROWERR("Solutions tags array is empty.") }
-    auto tState = aSolution.get(tTags[0]);
+(const std::string        & aName,
+ const Plato::Solutions   & aSolution,
+ const Plato::OrdinalType & aDof,
+ const Plato::OrdinalType & aStride)
+ {
+    if(aSolution.empty()) 
+    { THROWERR("Plato::Solutions database is empty.") }
+    auto tTag = Plato::find_solution_tag(aName, aSolution);
+    auto tState = aSolution.get(tTag);
     const Plato::OrdinalType tTIME_STEP_INDEX = tState.extent(0)-1;
     if(tTIME_STEP_INDEX < 0) { THROWERR("Negative time step index. State solution is most likely empty.") }
     auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());

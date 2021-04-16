@@ -41,8 +41,8 @@ private:
 
 private:
     /******************************************************************************//**
-     * @brief Initialization of Weighted Sum of Local Scalar Functions
-     * @param [in] aInputParams input parameters database
+     * \brief Initialization of Weighted Sum of Local Scalar Functions
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void
     initialize (

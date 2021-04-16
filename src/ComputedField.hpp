@@ -144,8 +144,8 @@ class ComputedFields
   /****************************************************************************/
   /*!
     \brief Get the values for the specified field.
-    @param aName Name of the requested Computed Field.
-    @param aValues Computed Field values.
+    \param aName Name of the requested Computed Field.
+    \param aValues Computed Field values.
   */
   void get(const std::string& aName, Plato::ScalarVector& aValues)
   /****************************************************************************/
@@ -162,10 +162,10 @@ class ComputedFields
   /*!
     \brief Get the values for the specified field.
     Copies values from the computed field(iValue) into aValues(aStride*iValue+aOffset)
-    @param aName Name of the requested Computed Field.
-    @param aOffset Index of this degree of freedom
-    @param aStride Number of degrees of freedom
-    @param aValues Computed Field values.
+    \param aName Name of the requested Computed Field.
+    \param aOffset Index of this degree of freedom
+    \param aStride Number of degrees of freedom
+    \param aValues Computed Field values.
   */
   void get(const std::string& aName, int aOffset, int aStride, Plato::ScalarVector& aValues)
   /****************************************************************************/
@@ -181,7 +181,7 @@ class ComputedFields
   /****************************************************************************/
   /*!
     \brief Find a Computed Field with the given name.
-    @param aName Name of the requested Computed Field.
+    \param aName Name of the requested Computed Field.
     This is a canary function.  If it doesn't find the requested Computed field a
      signal is thrown.
   */

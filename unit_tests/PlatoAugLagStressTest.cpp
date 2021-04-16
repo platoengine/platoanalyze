@@ -8,6 +8,7 @@
 
 #include "PlatoTestHelpers.hpp"
 
+#include "Solutions.hpp"
 #include "Plato_Diagnostics.hpp"
 #include "IsotropicLinearElasticMaterial.hpp"
 #include "ThermalMassMaterial.hpp"
@@ -451,7 +452,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvalTensileEnergyScalar
     tWeightedSum.allocateScalarFunctionBase(tPhysicsScalarFunc);
     tWeightedSum.appendFunctionWeight(1.0);
 
-    auto tObjFuncVal = tWeightedSum.value(Plato::Solution(tStates), tControl, 0.0);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    auto tObjFuncVal = tWeightedSum.value(tSolution, tControl, 0.0);
 
     // ****** TEST OUTPUT/RESULT VALUE FOR EACH CELL ******
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -1974,7 +1977,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPlusTensileEnergy2D)
     tWeightedSum.allocateScalarFunctionBase(tPhysicsScalarFuncTensileEnergy);
     tWeightedSum.appendFunctionWeight(tTensileEnergyFunctionWeight);
 
-    auto tObjFuncVal = tWeightedSum.value(Plato::Solution(tStates), tControl, 0.0);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    auto tObjFuncVal = tWeightedSum.value(tSolution, tControl, 0.0);
 
     Plato::Scalar tMassGoldValue = pow(static_cast<Plato::Scalar>(tMeshWidth), tSpaceDim)
                                    * tPseudoDensity * tMassFunctionWeight * tMaterialDensity;

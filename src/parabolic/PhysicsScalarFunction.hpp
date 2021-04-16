@@ -22,7 +22,7 @@ namespace Parabolic
 {
 
 /******************************************************************************//**
- * @brief Physics scalar function inc class
+ * \brief Physics scalar function inc class
  **********************************************************************************/
 template<typename PhysicsT>
 class PhysicsScalarFunction : public Plato::Parabolic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
@@ -65,8 +65,8 @@ private:
     std::string mFunctionName;/*!< User defined function name */
 
     /******************************************************************************//**
-     * @brief Initialization of parabolic Physics Scalar Function
-     * @param [in] aInputParams input parameters database
+     * \brief Initialization of parabolic Physics Scalar Function
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void
     initialize(
@@ -97,11 +97,11 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary physics scalar function inc constructor
-     * @param [in] aSpatialModel Plato Analyze spatial model
-     * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aInputParams input parameters database
-     * @param [in] aName user defined function name
+     * \brief Primary physics scalar function inc constructor
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze data map
+     * \param [in] aInputParams input parameters database
+     * \param [in] aName user defined function name
     **********************************************************************************/
     PhysicsScalarFunction(
         const Plato::SpatialModel    & aSpatialModel,
@@ -118,9 +118,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Secondary physics scalar function inc constructor, used for unit testing
-     * @param [in] aSpatialModel Plato Analyze spatial model
-     * @param [in] aDataMap Plato Analyze data map
+     * \brief Secondary physics scalar function inc constructor, used for unit testing
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze data map
     **********************************************************************************/
     PhysicsScalarFunction(
         const Plato::SpatialModel & aSpatialModel,
@@ -135,15 +135,15 @@ public:
 
 
     /******************************************************************************//**
-     * @brief Evaluate physics scalar function
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return scalar physics function evaluation
+     * \brief Evaluate physics scalar function
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return scalar physics function evaluation
     **********************************************************************************/
     Plato::Scalar
     value(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -154,8 +154,8 @@ public:
         using ControlScalar  = typename Residual::ControlScalarType;
         using ResultScalar   = typename Residual::ResultScalarType;
 
-        auto tStates = aSolution.State;
-        auto tStateDots = aSolution.StateDot;
+        auto tStates = aSolution.get("State");
+        auto tStateDots = aSolution.get("StateDot");
 
         ResultScalar tReturnVal(0.0);
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -212,15 +212,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the physics scalar function wrt the configuration parameters
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the physics scalar function wrt the configuration parameters
     **********************************************************************************/
     Plato::ScalarVector
     gradient_x(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -231,8 +231,8 @@ public:
         using ControlScalar  = typename GradientX::ControlScalarType;
         using ResultScalar   = typename GradientX::ResultScalarType;
 
-        auto tStates = aSolution.State;
-        auto tStateDots = aSolution.StateDot;
+        auto tStates = aSolution.get("State");
+        auto tStateDots = aSolution.get("StateDot");
 
         // create return view
         //
@@ -291,16 +291,16 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aStepIndex step index
-     * @param [in] aTimeStep time step
-     * @return 1D view with the gradient of the physics scalar function wrt the state variables
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aStepIndex step index
+     * \param [in] aTimeStep time step
+     * \return 1D view with the gradient of the physics scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector
     gradient_u(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::OrdinalType    aStepIndex,
               Plato::Scalar         aTimeStep
@@ -312,8 +312,8 @@ public:
         using ControlScalar  = typename GradientU::ControlScalarType;
         using ResultScalar   = typename GradientU::ResultScalarType;
 
-        auto tStates    = aSolution.State;
-        auto tStateDots = aSolution.StateDot;
+        auto tStates    = aSolution.get("State");
+        auto tStateDots = aSolution.get("StateDot");
 
         // create and assemble to return view
         //
@@ -370,16 +370,16 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aStepIndex step index
-     * @param [in] aTimeStep time step
-     * @return 1D view with the gradient of the physics scalar function wrt the state variables
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aStepIndex step index
+     * \param [in] aTimeStep time step
+     * \return 1D view with the gradient of the physics scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector
     gradient_v(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::OrdinalType    aStepIndex,
               Plato::Scalar         aTimeStep
@@ -391,8 +391,8 @@ public:
         using ControlScalar  = typename GradientV::ControlScalarType;
         using ResultScalar   = typename GradientV::ResultScalarType;
 
-        auto tStates    = aSolution.State;
-        auto tStateDots = aSolution.StateDot;
+        auto tStates    = aSolution.get("State");
+        auto tStateDots = aSolution.get("StateDot");
 
         // create and assemble to return view
         //
@@ -446,15 +446,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the physics scalar function wrt the control variables
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the physics scalar function wrt the control variables
     **********************************************************************************/
     Plato::ScalarVector
     gradient_z(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -465,8 +465,8 @@ public:
         using ControlScalar  = typename GradientZ::ControlScalarType;
         using ResultScalar   = typename GradientZ::ResultScalarType;
 
-        auto tStates    = aSolution.State;
-        auto tStateDots = aSolution.StateDot;
+        auto tStates    = aSolution.get("State");
+        auto tStateDots = aSolution.get("StateDot");
 
         // create return vector
         //
@@ -527,8 +527,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set user defined function name
-     * @param [in] function name
+     * \brief Set user defined function name
+     * \param [in] function name
     **********************************************************************************/
     void setFunctionName(const std::string aFunctionName)
     {
@@ -536,8 +536,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return user defined function name
-     * @return User defined function name
+     * \brief Return user defined function name
+     * \return User defined function name
     **********************************************************************************/
     std::string name() const
     {

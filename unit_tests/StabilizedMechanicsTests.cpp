@@ -192,7 +192,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tEllipticVMSProblem.solution(tControls);
-    auto tState = tSolution.State;
+    auto tState = tSolution.get("State");
 
     // 5. Test Results
     std::vector<std::vector<Plato::Scalar>> tGold =

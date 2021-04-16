@@ -43,19 +43,35 @@ setParameterValue
 
 /******************************************************************************//**
  *
+ * \brief Find solution supported tag 
+ *
+ * \param [in] aName     solution name
+ * \param [in] aSolution solutions database
+ * 
+ * \return solution tag
+**********************************************************************************/
+std::string 
+find_solution_tag
+(const std::string & aName,
+ const Plato::Solutions & aSolution);
+
+/******************************************************************************//**
+ *
  * \brief Extract state solution from Solutions database
  *
+ * \param [in] aName     solution name
  * \param [in] aSolution solutions database
  * \param [in] aDof      degree of freedom
- * \param [in] aStride   number of locations in memory between beginnings of successive array elements
-
+ * \param [in] aStride   spatial dimensions
+ * 
  * \return scalar vector of state solutions
 **********************************************************************************/
 Plato::ScalarVector
 extract_solution
-(const Plato::Solutions & aSolution,
- Plato::OrdinalType aDof,
- Plato::OrdinalType aStride);
+(const std::string        & aName,
+ const Plato::Solutions   & aSolution,
+ const Plato::OrdinalType & aDof,
+ const Plato::OrdinalType & aStride);
 
 }
 // namespace Plato

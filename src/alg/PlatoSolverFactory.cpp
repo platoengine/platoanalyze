@@ -25,7 +25,7 @@ std::string determine_solver_stack(const Teuchos::ParameterList& tSolverParams)
 }
 
 /******************************************************************************//**
- * @brief Solver factory for AbstractSolvers
+ * \brief Solver factory for AbstractSolvers
 **********************************************************************************/
 rcp<AbstractSolver>
 SolverFactory::create(

@@ -125,10 +125,10 @@ make_path_parallel( const std::string & aPath,
 //------------------------------------------------------------------------------
     /**
      *
-     * @brief                 returns a HDF5 enum defining the
+     * \brief                 returns a HDF5 enum defining the
      *                        data type that is to be communicated.
      *
-     * @param[in] aSample     primitive data type with arbitrary value
+     * \param[in] aSample     primitive data type with arbitrary value
      *
      * see also https://support.hdfgroup.org/HDF5/doc/H5.user/Datatypes.html
      */
@@ -214,10 +214,10 @@ make_path_parallel( const std::string & aPath,
      * unpacks a std::vector and stores it into the file
      * file must be open
      *
-     * @param[ inout ] aFileID  handler to hdf5 file
-     * @param[ in ]    aLabel   label of vector to save
-     * @param[ in ]    aVector  vector that is to be stored
-     * @param[ in ]    aStatus  error handler
+     * \param[ inout ] aFileID  handler to hdf5 file
+     * \param[ in ]    aLabel   label of vector to save
+     * \param[ in ]    aVector  vector that is to be stored
+     * \param[ in ]    aStatus  error handler
      *
      * see also
      * https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/
@@ -291,10 +291,10 @@ make_path_parallel( const std::string & aPath,
      * unpacks a Plato::ScalarVector and stores it into the file
      * file must be open
      *
-     * @param[ inout ] aFileID  handler to hdf5 file
-     * @param[ in ]    aLabel   label of vector to save
-     * @param[ in ]    aVector  vector that is to be stored
-     * @param[ in ]    aStatus  error handler
+     * \param[ inout ] aFileID  handler to hdf5 file
+     * \param[ in ]    aLabel   label of vector to save
+     * \param[ in ]    aVector  vector that is to be stored
+     * \param[ in ]    aStatus  error handler
      *
      * see also
      * https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/
@@ -356,10 +356,10 @@ make_path_parallel( const std::string & aPath,
      * unpacks a std::vector and stores it into the file
      * file must be open
      *
-     * @param[ inout ] aFileID  handler to hdf5 file
-     * @param[ in ]    aLabel   label of vector to save
-     * @param[ out ]    aVector   vector that is to be loaded
-     * @param[ in ]    aStatus  error handler
+     * \param[ inout ] aFileID  handler to hdf5 file
+     * \param[ in ]    aLabel   label of vector to save
+     * \param[ out ]    aVector   vector that is to be loaded
+     * \param[ in ]    aStatus  error handler
      *
      * see also
      * https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/
@@ -445,10 +445,10 @@ make_path_parallel( const std::string & aPath,
      * unpacks a Plato::ScalarVector and stores it into the file
      * file must be open
      *
-     * @param[ inout ] aFileID  handler to hdf5 file
-     * @param[ in ]    aLabel   label of vector to save
-     * @param[ out ]    aVector   vector that is to be loaded
-     * @param[ in ]    aStatus  error handler
+     * \param[ inout ] aFileID  handler to hdf5 file
+     * \param[ in ]    aLabel   label of vector to save
+     * \param[ out ]    aVector   vector that is to be loaded
+     * \param[ in ]    aStatus  error handler
      *
      * see also
      * https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/
@@ -536,10 +536,10 @@ make_path_parallel( const std::string & aPath,
      * saves a scalar value to a file
      * file must be open
      *
-     * @param[ inout ] aFileID  handler to hdf5 file
-     * @param[ in ]    aLabel   label of vector to save
-     * @param[ in ]    aValue   value that is to be stored
-     * @param[ in ]    aStatus  error handler
+     * \param[ inout ] aFileID  handler to hdf5 file
+     * \param[ in ]    aLabel   label of vector to save
+     * \param[ in ]    aValue   value that is to be stored
+     * \param[ in ]    aStatus  error handler
      */
     template < typename T >
     void
@@ -610,10 +610,10 @@ make_path_parallel( const std::string & aPath,
      * loads a scalar value from a file
      * file must be open
      *
-     * @param[ inout ] aFileID  handler to hdf5 file
-     * @param[ in ]    aLabel   label of vector to save
-     * @param[ out ]   aValue  vector that is to be loaded
-     * @param[ in ]    aStatus  error handler
+     * \param[ inout ] aFileID  handler to hdf5 file
+     * \param[ in ]    aLabel   label of vector to save
+     * \param[ out ]   aValue  vector that is to be loaded
+     * \param[ in ]    aStatus  error handler
      *
      * see also
      * https://support.hdfgroup.org/ftp/HDF5/examples/misc-examples/

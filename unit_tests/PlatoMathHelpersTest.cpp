@@ -18,6 +18,7 @@
 #include "Teuchos_UnitTestHarness.hpp"
 
 #include "BLAS1.hpp"
+#include "Solutions.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoMathFunctors.hpp"
 #include "Mechanics.hpp"
@@ -1657,7 +1658,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(tSpatialModel, tDataMap, *tParams, tMyFunction);
 
-  auto dfdx = eeScalarFunction.gradient_x(Plato::Solution(U),z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto dfdx = eeScalarFunction.gradient_x(tSolution, z);
 
   // create PDE constraint
   //

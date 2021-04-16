@@ -727,7 +727,7 @@ class MatrixEntryOrdinal
 /*!
   \brief Create a matrix of type MatrixType
 
-  @param mesh Omega_h mesh on which the matrix is based.  
+  \param mesh Omega_h mesh on which the matrix is based.  
 
   Create a block matrix from connectivity in mesh with block size 
   DofsPerNode_I X DofsPerNode_J.
@@ -811,7 +811,7 @@ CreateBlockMatrix( Omega_h::Mesh* mesh )
 /*!
   \brief Create a matrix of type MatrixType
 
-  @param mesh Omega_h mesh on which the matrix is based.  
+  \param mesh Omega_h mesh on which the matrix is based.  
 
   Create a matrix from connectivity in mesh with DofsPerNode.
 */

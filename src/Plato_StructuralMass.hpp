@@ -16,7 +16,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Interface to compute the structural mass
+ * \brief Interface to compute the structural mass
 **********************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class StructuralMass : public Plato::Simplex<SpaceDim>
@@ -28,8 +28,8 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aMaterialDensity material density (note: constant for all elements/cells)
+     * \brief Constructor
+     * \param [in] aMaterialDensity material density (note: constant for all elements/cells)
     **********************************************************************************/
     explicit StructuralMass(const Plato::Scalar & aMaterialDensity) :
             mMaterialDensity(aMaterialDensity)
@@ -37,18 +37,18 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
     **********************************************************************************/
     ~StructuralMass()
     {
     }
 
     /******************************************************************************//**
-     * @brief Compute the total structural mass
-     * @param [in] aNumCells number of elements/cells
-     * @param [in] aControl design variables used to denote material or void
-     * @param [in] aConfig coordinates
-     * @param [out] aOutput total structural mass
+     * \brief Compute the total structural mass
+     * \param [in] aNumCells number of elements/cells
+     * \param [in] aControl design variables used to denote material or void
+     * \param [in] aConfig coordinates
+     * \param [out] aOutput total structural mass
     **********************************************************************************/
     template<typename OutputType, typename ControlType, typename ConfigType>
     inline void operator()(const Plato::OrdinalType aNumCells,

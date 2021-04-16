@@ -10,11 +10,11 @@ namespace Plato
 namespace Parabolic
 {
     /******************************************************************************//**
-     * @brief Create method
-     * @param [in] aSpatialModel Plato Analyze spatial model
-     * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aProblemParams parameter input
-     * @param [in] aFunctionName name of function in parameter list
+     * \brief Create method
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze data map
+     * \param [in] aProblemParams parameter input
+     * \param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     template <typename PhysicsT>
     std::shared_ptr<Plato::Parabolic::ScalarFunctionBase> 

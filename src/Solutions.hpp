@@ -32,7 +32,7 @@ public:
      * \brief Constructor.
      * \param [in] aPhysics physics to be analyzed/simulated
      ******************************************************************************/
-    explicit Solutions(const std::string & aPhysics);
+    explicit Solutions(std::string aPhysics = "undefined");
 
     /***************************************************************************//**
      * \fn std::string physics
@@ -81,6 +81,23 @@ public:
      * \brief Print solutions metadata.
      ******************************************************************************/
     void print() const;
+
+    /***************************************************************************//**
+     * \fn bool defined
+     *
+     * \brief Check if solution with input tag is defined in the database
+     * \param [in] aTag solution tag/identifier
+     * \return boolean (true = is defined; false = not defined) 
+     ******************************************************************************/
+    bool defined(const std::string & aTag) const;
+
+    /***************************************************************************//**
+     * \fn bool empty
+     *
+     * \brief Check if the solution database is empty
+     * \return boolean (true = is empty; false = is not empty) 
+     ******************************************************************************/
+    bool empty() const;
 };
 // struct Solutions
 

@@ -66,7 +66,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Data structure for rocket problem input parameters.
+ * \brief Data structure for rocket problem input parameters.
 **********************************************************************************/
 struct AlgebraicRocketInputs
 {
@@ -83,7 +83,7 @@ struct AlgebraicRocketInputs
     size_t mMaxNumNewtonItr;              /*!< number of Newton iterations */
 
     /******************************************************************************//**
-     * @brief Default constructor
+     * \brief Default constructor
     **********************************************************************************/
     AlgebraicRocketInputs() :
             mAlpha(0.38),
@@ -102,7 +102,7 @@ struct AlgebraicRocketInputs
 // struct AlgebraicRocketInputs
 
 /******************************************************************************//**
- * @brief Design the rocket chamber to achieve desired QoI profile.
+ * \brief Design the rocket chamber to achieve desired QoI profile.
  *
  * Nomenclature:
  * QoI - quantity of interest
@@ -115,9 +115,9 @@ class AlgebraicRocketModel
 {
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param aInputs input parameters for simulation
-     * @param aGeomModel geometry model used for the rocket chamber
+     * \brief Constructor
+     * \param aInputs input parameters for simulation
+     * \param aGeomModel geometry model used for the rocket chamber
      **********************************************************************************/
     explicit AlgebraicRocketModel(const Plato::AlgebraicRocketInputs& aInputs,
                                   const std::shared_ptr<Plato::GeometryModel>& aChamberGeomModel) :
@@ -141,14 +141,14 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
     **********************************************************************************/
     ~AlgebraicRocketModel()
     {
     }
 
     /******************************************************************************//**
-     * @brief Disables output to console.
+     * \brief Disables output to console.
     **********************************************************************************/
     void disableOutput()
     {
@@ -156,8 +156,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set maximum number of iterations for chamber's total pressure calculation.
-     * @param aInput maximum number of iterations
+     * \brief set maximum number of iterations for chamber's total pressure calculation.
+     * \param aInput maximum number of iterations
      **********************************************************************************/
     void setMaxNumIterations(const size_t& aInput)
     {
@@ -165,8 +165,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set propellant's reference pressure.
-     * @param aInput propellant's reference pressure
+     * \brief set propellant's reference pressure.
+     * \param aInput propellant's reference pressure
      **********************************************************************************/
     void setRefPressure(const Plato::Scalar& aInput)
     {
@@ -174,8 +174,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set exponent in burn rate equation.
-     * @param aInput burn rate exponent
+     * \brief set exponent in burn rate equation.
+     * \param aInput burn rate exponent
      **********************************************************************************/
     void setBurnRateExponent(const Plato::Scalar& aInput)
     {
@@ -183,8 +183,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set throat diameter.
-     * @param aInput throat diameter
+     * \brief set throat diameter.
+     * \param aInput throat diameter
      **********************************************************************************/
     void setThroatDiameter(const Plato::Scalar& aInput)
     {
@@ -192,8 +192,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set characteristic velocity.
-     * @param aInput characteristic velocity
+     * \brief set characteristic velocity.
+     * \param aInput characteristic velocity
      **********************************************************************************/
     void setCharacteristicVelocity(const Plato::Scalar& aInput)
     {
@@ -201,8 +201,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set ambient pressure.
-     * @param aInput ambient pressure
+     * \brief set ambient pressure.
+     * \param aInput ambient pressure
      **********************************************************************************/
     void setAmbientPressure(const Plato::Scalar& aInput)
     {
@@ -210,8 +210,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set burn time step.
-     * @param aInput time step
+     * \brief set burn time step.
+     * \param aInput time step
      **********************************************************************************/
     void setBurnTimeStep(const Plato::Scalar& aInput)
     {
@@ -219,8 +219,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief set total burn time.
-     * @param aInput total burn time
+     * \brief set total burn time.
+     * \param aInput total burn time
      **********************************************************************************/
     void setTotalBurnTime(const Plato::Scalar& aInput)
     {
@@ -228,7 +228,7 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief returns time steps.
+     * \brief returns time steps.
      **********************************************************************************/
     std::vector<Plato::Scalar> getTimeProfile() const
     {
@@ -236,7 +236,7 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief returns thrust values for each time snapshot.
+     * \brief returns thrust values for each time snapshot.
      **********************************************************************************/
     std::vector<Plato::Scalar> getThrustProfile() const
     {
@@ -244,7 +244,7 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief returns pressure values for each time snapshot.
+     * \brief returns pressure values for each time snapshot.
      **********************************************************************************/
     std::vector<Plato::Scalar> getPressuresProfile() const
     {
@@ -252,9 +252,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Initialize geometry and material properties given a new parameter set
+     * \brief Initialize geometry and material properties given a new parameter set
      *        from the optimizer.
-     * @param aParam Problem database
+     * \param aParam Problem database
     **********************************************************************************/
     void initialize(Plato::ProblemParams & aParams)
     {
@@ -263,8 +263,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Output geometry and field data
-     * @param [in] aOutput output flag (true = output, false = do not output)
+     * \brief Output geometry and field data
+     * \param [in] aOutput output flag (true = output, false = do not output)
     **********************************************************************************/
     void output(bool aOutput = false)
     {
@@ -276,7 +276,7 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief compute thrust and pressure profiles given a simple algebraic model for a rocket.
+     * \brief compute thrust and pressure profiles given a simple algebraic model for a rocket.
     **********************************************************************************/
     void solve()
     {
@@ -325,10 +325,10 @@ public:
 
 private:
     /******************************************************************************//**
-     * @brief Newton solver.
-     * @param aRefMassProductionRate current production rate of gas by mass
-     * @param aTotalPressure total pressure at current time step
-     * @param aThroatArea current throat area
+     * \brief Newton solver.
+     * \param aRefMassProductionRate current production rate of gas by mass
+     * \param aTotalPressure total pressure at current time step
+     * \param aThroatArea current throat area
      **********************************************************************************/
     Plato::Scalar newton(const Plato::Scalar& aRefMassProductionRate, const Plato::Scalar& aTotalPressure, const Plato::Scalar& aThroatArea)
     {
@@ -352,10 +352,10 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Jacobian evaluation.
-     * @param aRefMassProductionRate current production rate of gas by mass
-     * @param aTotalPressure total pressure at current time step
-     * @param aThroatArea current throat area
+     * \brief Jacobian evaluation.
+     * \param aRefMassProductionRate current production rate of gas by mass
+     * \param aTotalPressure total pressure at current time step
+     * \param aThroatArea current throat area
      **********************************************************************************/
     Plato::Scalar jacobian(const Plato::Scalar& aRefMassProductionRate, const Plato::Scalar& aTotalPressure, const Plato::Scalar& aThroatArea)
     {
@@ -366,10 +366,10 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Residual evaluation.
-     * @param aRefMassProductionRate current production rate of gas by mass
-     * @param aTotalPressure total pressure at current time step
-     * @param aThroatArea current throat area
+     * \brief Residual evaluation.
+     * \param aRefMassProductionRate current production rate of gas by mass
+     * \param aTotalPressure total pressure at current time step
+     * \param aThroatArea current throat area
      **********************************************************************************/
     Plato::Scalar residual(const Plato::Scalar& aRefMassProductionRate, const Plato::Scalar& aTotalPressure, const Plato::Scalar& aThroatArea)
     {
@@ -380,7 +380,7 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Output thrust profile to text file.
+     * \brief Output thrust profile to text file.
      **********************************************************************************/
     void outputThrustProfile()
     {

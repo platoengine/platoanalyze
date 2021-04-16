@@ -12,13 +12,13 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Compute cell/element mass, /f$ \sum_{i=1}^{N} \[M\] \{z\} /f$, where
+ * \brief Compute cell/element mass, /f$ \sum_{i=1}^{N} \[M\] \{z\} /f$, where
  * /f$ \[M\] /f$ is the mass matrix, /f$ \{z\} /f$ is the control vector and
  * /f$ N /f$ is the number of nodes.
- * @param [in] aCellOrdinal cell/element index
- * @param [in] aBasisFunc 1D container of cell basis functions
- * @param [in] aCellControls 2D container of cell controls
- * @return cell/element penalized mass
+ * \param [in] aCellOrdinal cell/element index
+ * \param [in] aBasisFunc 1D container of cell basis functions
+ * \param [in] aCellControls 2D container of cell controls
+ * \return cell/element penalized mass
  **********************************************************************************/
 template<Plato::OrdinalType CellNumNodes, typename ControlType>
 DEVICE_TYPE inline ControlType
@@ -41,11 +41,11 @@ cell_mass(const Plato::OrdinalType & aCellOrdinal,
 }
 
 /******************************************************************************//**
- * @brief Compute average cell density
- * @param [in] aCellOrdinal cell/element index
- * @param [in] aNumControls number of controls
- * @param [in] aCellControls 2D container of cell controls
- * @return average density for this cell/element
+ * \brief Compute average cell density
+ * \param [in] aCellOrdinal cell/element index
+ * \param [in] aNumControls number of controls
+ * \param [in] aCellControls 2D container of cell controls
+ * \return average density for this cell/element
  **********************************************************************************/
 template<Plato::OrdinalType NumControls, typename ControlType>
 DEVICE_TYPE inline ControlType

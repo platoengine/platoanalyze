@@ -159,12 +159,12 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate weight sum function
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::Solution     & aSolution,
+    Plato::Scalar value(const Plato::Solutions    & aSolution,
                         const Plato::ScalarVector & aControl,
                               Plato::Scalar         aTimeStep = 0.0) const override
     {
@@ -182,12 +182,12 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the weight sum function with respect to (wrt) the configuration parameters
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::Solution     & aSolution,
+    Plato::ScalarVector gradient_x(const Plato::Solutions    & aSolution,
                                    const Plato::ScalarVector & aControl,
                                          Plato::Scalar         aTimeStep = 0.0) const override
     {
@@ -207,12 +207,12 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the weight sum function with respect to (wrt) the state variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the scalar function wrt the state variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_u(const Plato::Solution     & aSolution,
+    Plato::ScalarVector gradient_u(const Plato::Solutions    & aSolution,
                                    const Plato::ScalarVector & aControl,
                                          Plato::OrdinalType    aStepIndex,
                                          Plato::Scalar         aTimeStep = 0.0) const override
@@ -233,12 +233,12 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the weight sum function with respect to (wrt) the control variables
-     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aSolution solution database
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::Solution     & aSolution,
+    Plato::ScalarVector gradient_z(const Plato::Solutions    & aSolution,
                                    const Plato::ScalarVector & aControl,
                                          Plato::Scalar         aTimeStep = 0.0) const override
     {

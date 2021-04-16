@@ -23,9 +23,9 @@ namespace Plato {
 namespace Devel {
 
 /******************************************************************************//**
- * @brief get view from device
+ * \brief get view from device
  *
- * @param[in] aView data on device
+ * \param[in] aView data on device
  * @returns Mirror on host
 **********************************************************************************/
 template <typename ClassT>

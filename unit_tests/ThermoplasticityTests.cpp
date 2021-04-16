@@ -6,6 +6,7 @@
 
 #include "Teuchos_UnitTestHarness.hpp"
 
+#include "Solutions.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoTestHelpers.hpp"
 #include "Plato_Diagnostics.hpp"
@@ -162,13 +163,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices * tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -369,12 +371,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
     std::vector<std::vector<Plato::Scalar>> tGoldSolution =
         {
          {   0.00000e+00,  0.00000e+00, 0.00000e+00, -4.60073e-01, 
@@ -412,7 +415,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
             -1.87189e-02, -3.70104e-01, 5.55556e-01, -3.46729e-01}
         };
     Plato::OrdinalType tTimeStep = 4;
-    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
+    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tState.extent(1); tOrdinal++)
     {
         const Plato::Scalar tValue = std::abs(tHostSolution(tTimeStep, tOrdinal)) < 1.0e-14 ? 0.0 : tHostSolution(tTimeStep, tOrdinal);
         TEST_FLOATING_EQUALITY(tValue, tGoldSolution[0][tOrdinal], tTolerance);
@@ -609,12 +612,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
     std::vector<std::vector<Plato::Scalar>> tGoldSolution =
         {
          {    0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00,  2.00342e-01, 
@@ -663,7 +667,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
               2.73385e-02, 2.53482e-01, 0.00000e+00, 5.55556e-01, -2.93728e-01}
         };
     Plato::OrdinalType tTimeStep = 4;
-    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
+    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tState.extent(1); tOrdinal++)
     {
         const Plato::Scalar tValue = std::abs(tHostSolution(tTimeStep, tOrdinal)) < 1.0e-14 ? 0.0 : tHostSolution(tTimeStep, tOrdinal);
         TEST_FLOATING_EQUALITY(tValue, tGoldSolution[0][tOrdinal], tTolerance);
@@ -824,7 +828,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -833,12 +837,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
            2.000e-02, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling,
            2.000e-02, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -1023,7 +1028,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -1036,12 +1041,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
            2.000e-02, 0.000e+00, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling, 
            2.000e-02, 0.000e+00, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -1207,7 +1213,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -1220,12 +1226,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
            1.000e-02, 0.000e+00, 1.000e-02, 1.100e+02/tTemperatureScaling, 0.0/tPressureScaling, 
            1.000e-02, 0.000e+00, 0.000e+00, 1.100e+02/tTemperatureScaling, 0.0/tPressureScaling}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)

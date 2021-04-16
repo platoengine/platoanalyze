@@ -2220,7 +2220,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -2228,18 +2228,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
            3.118233e-4, -1.0e-3, 4.815153e-5, 1.97175e+06, 2.340348e-4, -1.0e-3, 4.357691e-5, -418444.0,
            -3.927496e-4, -1.0e-3, 5.100447e-5, -1.10956e+07, -1.803906e-4, -1.0e-3, 9.081316e-5, -7.77742e+06}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostState = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostState, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
         {
             //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
-            TEST_FLOATING_EQUALITY(tHostSolution(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostState(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
         }
     }
 
@@ -2383,13 +2384,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices * tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2572,13 +2574,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2765,13 +2768,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -3150,13 +3154,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;

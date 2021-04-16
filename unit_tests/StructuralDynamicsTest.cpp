@@ -13,6 +13,7 @@
 #include "PlatoTestHelpers.hpp"
 
 #include "Simp.hpp"
+#include "Solutions.hpp"
 #include "ExpVolume.hpp"
 #include "WorksetBase.hpp"
 #include "elliptic/VectorFunction.hpp"
@@ -560,8 +561,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicCompliance)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
     
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tValue = tScalarFunction.value(Plato::Solution(tStates), tControlValues, tAngularFrequency);
+    auto tValue = tScalarFunction.value(tSolution, tControlValues, tAngularFrequency);
 
     Plato::Scalar tGoldValues = -0.0194453;
     const Plato::Scalar tTolerance = 1e-4;
@@ -613,8 +616,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradZ)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_z(Plato::Solution(tStates), tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_z(tSolution, tControlValues, tAngularFrequency);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
@@ -678,8 +683,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradX)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_x(Plato::Solution(tStates), tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_x(tSolution, tControlValues, tAngularFrequency);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
@@ -742,8 +749,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradU)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_u(Plato::Solution(tStates), tControlValues, /*stepIndex=*/0, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_u(tSolution, tControlValues, /*stepIndex=*/0, tAngularFrequency);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
@@ -822,8 +831,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeValue)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tValue = tScalarFunction.value(Plato::Solution(tStates), tControlValues, tAngularFrequency);
+    auto tValue = tScalarFunction.value(tSolution, tControlValues, tAngularFrequency);
 
     Plato::Scalar tGoldValues = 1.0;
     const Plato::Scalar tTolerance = 1e-4;
@@ -875,8 +886,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradZ)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_z(Plato::Solution(tStates), tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_z(tSolution, tControlValues, tAngularFrequency);
 
     const Plato::Scalar tTolerance = 1e-4;
     auto tHostGrad = Kokkos::create_mirror(tGrad);
@@ -937,8 +950,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradU)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_u(Plato::Solution(tStates), tControlValues, /*stepIndex=*/0, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_u(tSolution, tControlValues, /*stepIndex=*/0, tAngularFrequency);
 
     const Plato::Scalar tTolerance = 1e-5;
     auto tHostGrad = Kokkos::create_mirror(tGrad);
@@ -995,8 +1010,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradX)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_x(Plato::Solution(tStates), tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_x(tSolution, tControlValues, tAngularFrequency);
 
     const Plato::Scalar tTolerance = 1e-5;
     auto tHostGrad = Kokkos::create_mirror(tGrad);
@@ -1405,9 +1422,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfitValue)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST VALUE FUNCTION
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
     const Plato::Scalar tTolerance = 1e-4;
     Plato::Scalar tGoldValues = 0.18225;
-    auto tOutput = tScalarFunction.value(Plato::Solution(tStates), tControls, tFreqArray[0]);
+    auto tOutput = tScalarFunction.value(tSolution, tControls, tFreqArray[0]);
     TEST_FLOATING_EQUALITY(tOutput, tGoldValues, tTolerance);
 }
 
@@ -1467,7 +1486,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradZ)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT CONTROLS
-    auto tGrad = tScalarFunction.gradient_z(Plato::Solution(tStates), tControls, tFreqArray[0]);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    auto tGrad = tScalarFunction.gradient_z(tSolution, tControls, tFreqArray[0]);
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
 
@@ -1535,7 +1556,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT CONFIGURATION
-    auto tGrad = tScalarFunction.gradient_x(Plato::Solution(tStates), tControls, tFreqArray[0]);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    auto tGrad = tScalarFunction.gradient_x(tSolution, tControls, tFreqArray[0]);
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
 
@@ -1603,7 +1626,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT STATES
-    auto tGrad = tScalarFunction.gradient_u(Plato::Solution(tStates), tControls, /*stepIndex=*/0, tFreqArray[0]);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    auto tGrad = tScalarFunction.gradient_u(tSolution, tControls, /*stepIndex=*/0, tFreqArray[0]);
     TEST_EQUALITY(tGrad.size(), tTotalNumDofs);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);

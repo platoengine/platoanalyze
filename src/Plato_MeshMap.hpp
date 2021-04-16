@@ -168,7 +168,7 @@ struct MathMapBase
 };
 
 /***************************************************************************//**
-* @brief Functor for no prescribed symmetry
+* \brief Functor for no prescribed symmetry
 *******************************************************************************/
 template <typename ScalarT>
 struct Full : public MathMapBase<ScalarT>
@@ -191,7 +191,7 @@ struct Full : public MathMapBase<ScalarT>
 };
 
 /***************************************************************************//**
-* @brief Functor for mirror plane symmetry
+* \brief Functor for mirror plane symmetry
 
   The mirror plane is defined by an origin and a normal vector.  The given
   normal vector is unitized during initialization.  Points that have a negative
@@ -254,7 +254,7 @@ struct SymmetryPlane : public MathMapBase<ScalarT>
 };
 
 /***************************************************************************//**
-* @brief Functor that computes position in local coordinates of a point given
+* \brief Functor that computes position in local coordinates of a point given
          in global coordinates then returns the basis values at that local
          point.
 
@@ -300,10 +300,10 @@ struct GetBasis
       mCoords(aMesh.coords()) {}
 
     /******************************************************************************//**
-     * @brief Find local coordinates from global coordinates, compute basis values
-     * @param [in]  Zh, Yh, Zh position in global coordinates
-     * @param [in]  i0, i1, i2, i3 global indices of nodes comprised by the element
-     * @param [out] b0, b1, b2, b3 basis values
+     * \brief Find local coordinates from global coordinates, compute basis values
+     * \param [in]  Zh, Yh, Zh position in global coordinates
+     * \param [in]  i0, i1, i2, i3 global indices of nodes comprised by the element
+     * \param [out] b0, b1, b2, b3 basis values
     **********************************************************************************/
     DEVICE_TYPE inline void
     basis(
@@ -337,14 +337,14 @@ struct GetBasis
 
 
     /******************************************************************************//**
-     * @brief Find local coordinates from global coordinates, compute basis values, and
+     * \brief Find local coordinates from global coordinates, compute basis values, and
               assembles them into the columnMap and entries of a sparse matrix.
-     * @param [in]  aLocations view of points (D, N)
-     * @param [in]  aNodeOrdinal index of point for which to determine local coords
-     * @param [in]  aElemOrdinal index of element whose bases will be used for interpolation
-     * @param [in]  aEntryOrdinal index into aColumnMap and aEntries
-     * @param [out] aColumnMap of the sparse matrix
-     * @param [out] aEntries of the sparse matrix
+     * \param [in]  aLocations view of points (D, N)
+     * \param [in]  aNodeOrdinal index of point for which to determine local coords
+     * \param [in]  aElemOrdinal index of element whose bases will be used for interpolation
+     * \param [in]  aEntryOrdinal index into aColumnMap and aEntries
+     * \param [out] aColumnMap of the sparse matrix
+     * \param [out] aEntries of the sparse matrix
     **********************************************************************************/
     DEVICE_TYPE inline void
     operator()(
@@ -384,11 +384,11 @@ struct GetBasis
     }
 
     /******************************************************************************//**
-     * @brief Find local coordinates from global coordinates and compute basis values
-     * @param [in]  aLocations view of points (D, N)
-     * @param [in]  aNodeOrdinal index of point for which to determine local coords
-     * @param [in]  aElemOrdinal index of element whose bases will be used for interpolation
-     * @param [out] aBases basis values
+     * \brief Find local coordinates from global coordinates and compute basis values
+     * \param [in]  aLocations view of points (D, N)
+     * \param [in]  aNodeOrdinal index of point for which to determine local coords
+     * \param [in]  aElemOrdinal index of element whose bases will be used for interpolation
+     * \param [out] aBases basis values
     **********************************************************************************/
     DEVICE_TYPE inline void
     operator()(
@@ -422,7 +422,7 @@ struct GetBasis
 };
 
 /***************************************************************************//**
-* @brief MeshMap
+* \brief MeshMap
 
    This base class contains most of the functionality needed for a MeshMap. The
    MathMap (i.e., Full, SymmetryPlane, etc) is added in the template derived
@@ -465,10 +465,10 @@ class MeshMap
 
   public:
     /***************************************************************************//**
-    * @brief Find element that contains each mapped node
-     * @param [in]  aLocations location of mesh nodes
-     * @param [in]  aMappedLocations mapped location of mesh nodes
-     * @param [out] aParentElements if node is mapped, index of parent element.
+    * \brief Find element that contains each mapped node
+     * \param [in]  aLocations location of mesh nodes
+     * \param [in]  aMappedLocations mapped location of mesh nodes
+     * \param [out] aParentElements if node is mapped, index of parent element.
 
        If a node is mapped (i.e., aLocations(*,node_id)!=aMappedLocations(*,node_id))
        and the parent element is found, aParentElements(node_id) is set to the index
@@ -589,7 +589,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Set map matrix values from parent element
+    * \brief Set map matrix values from parent element
     *******************************************************************************/
     void setMatrixValues(Omega_h::Mesh& aMesh, IntegerArrayT aParentElements, VectorArrayT aLocation, SparseMatrix& aMatrix)
     {
@@ -654,7 +654,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Compute transpose if input matrix exists
+    * \brief Compute transpose if input matrix exists
     *******************************************************************************/
     inline std::shared_ptr<SparseMatrix>
     createTranspose(std::shared_ptr<SparseMatrix> aMatrix)
@@ -672,7 +672,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Compute transpose (existence of input matrix is assumed)
+    * \brief Compute transpose (existence of input matrix is assumed)
     *******************************************************************************/
     inline SparseMatrix
     createTranspose(SparseMatrix& aMatrix)
@@ -741,7 +741,7 @@ class MeshMap
 
 
     /***************************************************************************//**
-    * @brief Create linear filter
+    * \brief Create linear filter
     *******************************************************************************/
     inline void
     createLinearFilter(ScalarT aRadius, SparseMatrix& aMatrix, VectorArrayT aLocations)
@@ -766,7 +766,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Set linear filter matrix values
+    * \brief Set linear filter matrix values
     *******************************************************************************/
     inline void
     setLinearFilterMatrixValues(
@@ -835,7 +835,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief create filter of type specified in input
+    * \brief create filter of type specified in input
     *******************************************************************************/
     inline std::shared_ptr<SparseMatrix>
     createFilter(Plato::InputData aFilterSpec, VectorArrayT aLocations)
@@ -862,7 +862,7 @@ class MeshMap
   public:
 
     /***************************************************************************//**
-    * @brief Apply mapping
+    * \brief Apply mapping
     *******************************************************************************/
     void apply(const ScalarArrayT & aInput, ScalarArrayT aOutput)
     {
@@ -886,7 +886,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Matrix times vector in place (overwrites input vector)
+    * \brief Matrix times vector in place (overwrites input vector)
     *******************************************************************************/
     void matvec(const SparseMatrix & aMatrix, const ScalarArrayT & aInput)
     {
@@ -897,7 +897,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Matrix times vector
+    * \brief Matrix times vector
     *******************************************************************************/
     void matvec(const SparseMatrix & aMatrix, const ScalarArrayT & aInput, ScalarArrayT aOutput)
     {
@@ -921,7 +921,7 @@ class MeshMap
     }
 
     /***************************************************************************//**
-    * @brief Apply transpose of mapping
+    * \brief Apply transpose of mapping
     *******************************************************************************/
     void applyT(const ScalarArrayT & aInput, ScalarArrayT aOutput)
     {
@@ -946,7 +946,7 @@ class MeshMap
 };
 
 /***************************************************************************//**
-* @brief Derived class template that adds MathMap functionality.
+* \brief Derived class template that adds MathMap functionality.
 *******************************************************************************/
 template <typename MathMapType>
 class MeshMapDerived : public Plato::Geometry::MeshMap<typename MathMapType::ScalarT>

@@ -323,11 +323,11 @@ effective_energy(
 
 /******************************************************************************//**
  * \brief Factory for linear mechanics problem
- * @brief Create surface area scalar function
+ * \brief Create surface area scalar function
  * \param [in] aSpatialDomain Plato Analyze spatial domain
- * @param [in] aDataMap Plato Analyze physics-based database
- * @param [in] aProblemParams input parameters
- * @param [in] aFuncType vector function name
+ * \param [in] aDataMap Plato Analyze physics-based database
+ * \param [in] aProblemParams input parameters
+ * \param [in] aFuncType vector function name
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
@@ -343,7 +343,7 @@ surface_area(
 // function surface area
 
 /******************************************************************************//**
- * @brief Factory for linear mechanics problem
+ * \brief Factory for linear mechanics problem
 **********************************************************************************/
 struct FunctionFactory
 {

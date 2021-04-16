@@ -36,9 +36,9 @@ namespace Plato
 namespace ThermomechanicsFactory
 {
     /******************************************************************************//**
-    * @brief Create a local measure for use in augmented lagrangian quadratic
-    * @param [in] aProblemParams input parameters
-    * @param [in] aFuncName scalar function name
+    * \brief Create a local measure for use in augmented lagrangian quadratic
+    * \param [in] aProblemParams input parameters
+    * \param [in] aFuncName scalar function name
     **********************************************************************************/
     template <typename EvaluationType>
     inline std::shared_ptr<Plato::AbstractLocalMeasure<EvaluationType,Plato::SimplexThermomechanics<EvaluationType::SpatialDim>>> 
@@ -63,11 +63,11 @@ namespace ThermomechanicsFactory
     }
 
     /******************************************************************************//**
-     * @brief Create augmented Lagrangian local constraint criterion with quadratic constraint formulation
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
+     * \brief Create augmented Lagrangian local constraint criterion with quadratic constraint formulation
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
     **********************************************************************************/
     template<typename EvaluationType>
     inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
@@ -334,7 +334,7 @@ struct FunctionFactory
 
 
 /****************************************************************************//**
- * @brief Concrete class for use as the SimplexPhysics template argument in
+ * \brief Concrete class for use as the SimplexPhysics template argument in
  *        Plato::Elliptic::Problem and Plato::Parabolic::Problem
  *******************************************************************************/
 template<Plato::OrdinalType SpaceDimParam>
