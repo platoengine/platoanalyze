@@ -19,11 +19,11 @@
 #include "EssentialBCs.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "ApplyConstraints.hpp"
+#include "PlatoAbstractProblem.hpp"
 
 #include "alg/PlatoSolverFactory.hpp"
 
 #include "hyperbolic/FluidsUtils.hpp"
-#include "hyperbolic/AbstractProblem.hpp"
 #include "hyperbolic/FluidsCriterionBase.hpp"
 #include "hyperbolic/FluidsVectorFunction.hpp"
 #include "hyperbolic/FluidsCriterionFactory.hpp"
@@ -41,7 +41,7 @@ namespace Fluids
  *
  **********************************************************************************/
 template<typename PhysicsT>
-class QuasiImplicit : public Plato::Fluids::AbstractProblem
+class QuasiImplicit : public Plato::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -156,21 +156,11 @@ public:
     }
 
     /******************************************************************************//**
-     * \fn const Plato::DataMap getDataMap
-     * \brief Return constant reference to Plato output database.
-     * \return constant reference to Plato output database
-     **********************************************************************************/
-    const decltype(mDataMap)& getDataMap() const
-    {
-        return mDataMap;
-    }
-
-    /******************************************************************************//**
      * \fn void output
      * \brief Output solution to visualization file.
-     * \param [in] aFilePath visualization file path (default = ./output)
+     * \param [in] aFilePath output/visualization file path (default = ./output)
      **********************************************************************************/
-    void output(std::string aFilePath = "output")
+    void output(const std::string& aFilePath) override
     {
         auto tMesh = mSpatialModel.Mesh;
         auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &tMesh, mNumSpatialDims);
@@ -203,6 +193,17 @@ public:
     }
 
     /******************************************************************************//**
+     * \brief Update simulation parameters within optimization iterations
+     * \param [in] aControl 1D container of control variables
+     * \param [in] aSolution solution database
+    **********************************************************************************/
+    void updateProblem
+    (const Plato::ScalarVector & aControl,
+     const Plato::Solutions    & aSolution)
+     override
+    { return; }
+
+    /******************************************************************************//**
      * \fn Plato::Solutions solution
      *
      * \brief Solve finite element simulation.
@@ -210,8 +211,9 @@ public:
      * \return Plato database with state solutions
      *
      **********************************************************************************/
-    Plato::Solutions solution
-    (const Plato::ScalarVector& aControl)
+    Plato::Solutions 
+    solution(const Plato::ScalarVector& aControl)
+    override
     {
         this->clear();
         this->checkProblemSetup();
@@ -266,10 +268,12 @@ public:
      * \return criterion evaluation
      *
      **********************************************************************************/
-    Plato::Scalar criterionValue
+    Plato::Scalar 
+    criterionValue
     (const Plato::ScalarVector & aControl,
      const Plato::Solutions    & aSolution,
      const std::string         & aName)
+     override
     {
         return (this->criterionValue(aControl, aName));
     }
@@ -283,9 +287,11 @@ public:
      * \return criterion evaluation
      *
      **********************************************************************************/
-    Plato::Scalar criterionValue
+    Plato::Scalar 
+    criterionValue
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
+     override
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -321,10 +327,12 @@ public:
      * \return criterion gradient with respect to design/optimization variables
      *
      **********************************************************************************/
-    Plato::ScalarVector criterionGradient
+    Plato::ScalarVector 
+    criterionGradient
     (const Plato::ScalarVector & aControl,
      const Plato::Solutions    & aSolution,
      const std::string         & aName)
+    override
     {
         return (this->criterionGradient(aControl, aName));
     }
@@ -341,6 +349,7 @@ public:
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
+    override
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -405,9 +414,11 @@ public:
      * \return criterion gradient with respect to configuration variables
      *
      **********************************************************************************/
-    Plato::ScalarVector criterionGradientX
+    Plato::ScalarVector 
+    criterionGradientX
     (const Plato::ScalarVector & aControl,
      const std::string         & aName)
+     override
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -473,10 +484,12 @@ public:
      * \return criterion gradient with respect to configuration variables
      *
      **********************************************************************************/
-    Plato::ScalarVector criterionGradientX
+    Plato::ScalarVector 
+    criterionGradientX
     (const Plato::ScalarVector & aControl,
      const Plato::Solutions    & aSolution,
      const std::string         & aName)
+     override
     {
         return (this->criterionGradientX(aControl, aName));
     }

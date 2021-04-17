@@ -144,9 +144,10 @@ public:
     )=0;
 
     /******************************************************************************//**
-     * \brief Return output database that enables import/export rights to PLATO Engine
-     * \return PLATO Analyze output database
-    **********************************************************************************/
+     * \fn const Plato::DataMap getDataMap
+     * \brief Return constant reference to Plato output database.
+     * \return constant reference to Plato output database
+     **********************************************************************************/
     Plato::DataMap mDataMap;
     decltype(mDataMap)& getDataMap()
     {
