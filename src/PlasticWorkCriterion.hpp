@@ -74,7 +74,7 @@ private:
 
     Plato::Scalar mPressureScaling;             /*!< pressure scaling */
 
-    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< Thermal Expansivity */
     Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
     Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
@@ -353,7 +353,7 @@ private:
             mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
             mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
 
-            mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+            mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansivity");
             mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
         }
         else

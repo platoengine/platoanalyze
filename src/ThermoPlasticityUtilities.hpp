@@ -27,7 +27,7 @@ class ThermoPlasticityUtilities
   public:
     /**************************************************************************//**
     * \brief Constructor
-    * \param [in] aThermalExpansionCoefficient thermal expansion coefficient
+    * \param [in] aThermalExpansionCoefficient Thermal Expansivity
     * \param [in] aReferenceTemperature reference temperature
     * \param [in] aTemperatureScaling temperature scaling
     ******************************************************************************/
