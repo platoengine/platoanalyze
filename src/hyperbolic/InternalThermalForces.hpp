@@ -254,12 +254,7 @@ private:
     void setCharacteristicLength
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", tHyperbolic);
+        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", aInputs);
     }
 
     /***************************************************************************//**
@@ -544,12 +539,7 @@ private:
     void setCharacteristicLength
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", tHyperbolic);
+        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", aInputs);
     }
 
     /***************************************************************************//**

@@ -33,12 +33,11 @@ inline bool
 is_impermeability_defined
 (Teuchos::ParameterList & aInputs)
 {
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if( !tHyperbolic.isSublist("Flow Properties") )
+    if( !aInputs.isSublist("Flow Properties") )
     {
         THROWERR("Parameter Sublist 'Flow Properties' is not defined.")
     }
-    auto tSublist = tHyperbolic.sublist("Flow Properties");
+    auto tSublist = aInputs.sublist("Flow Properties");
     return (tSublist.isParameter("Impermeability Number"));
 }
 // function is_impermeability_defined
@@ -57,17 +56,11 @@ inline bool is_dimensionless_parameter_defined
 (const std::string & aTag,
  Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if( tHyperbolic.isSublist("Flow Properties") == false )
+    if( aInputs.isSublist("Flow Properties") == false )
     {
         THROWERR("'Flow Properties' sublist is not defined.")
     }
-    auto tSublist = tHyperbolic.sublist("Flow Properties");
+    auto tSublist = aInputs.sublist("Flow Properties");
     auto tIsDefined = tSublist.isParameter(aTag);
     return tIsDefined;
 }
@@ -84,12 +77,7 @@ inline Plato::Scalar
 reynolds_number
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Flow Properties", tHyperbolic);
+    auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Flow Properties", aInputs);
     return tReNum;
 }
 // function reynolds_number
@@ -105,12 +93,7 @@ inline Plato::Scalar
 prandtl_number
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", tHyperbolic);
+    auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
     return tPrNum;
 }
 // function prandtl_number
@@ -196,8 +179,8 @@ calculate_effective_conductivity
     auto tOutput = 0;
     if(tHeatTransfer == "forced" || tHeatTransfer == "mixed")
     {
-        auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", tHyperbolic);
-        auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Flow Properties", tHyperbolic);
+        auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
+        auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Flow Properties", aInputs);
         tOutput = static_cast<Plato::Scalar>(1) / (tReNum*tPrNum);
     }
     else if(tHeatTransfer == "natural")
@@ -377,7 +360,7 @@ rayleigh_number
     Plato::ScalarVector tOuput("Rayleigh Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tRaNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Rayleigh Number", "Flow Properties", tHyperbolic);
+        auto tRaNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Rayleigh Number", "Flow Properties", aInputs);
         if(tRaNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Rayleigh Number' array length should match the number of spatial dimensions. ")
@@ -430,7 +413,7 @@ grashof_number
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tGrNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Flow Properties", tHyperbolic);
+        auto tGrNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Flow Properties", aInputs);
         if(tGrNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Grashof Number' array length should match the number of spatial dimensions. ")
@@ -483,7 +466,7 @@ richardson_number
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tRiNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Richardson Number", "Flow Properties", tHyperbolic);
+        auto tRiNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Richardson Number", "Flow Properties", aInputs);
         if(tRiNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Richardson Number' array length should match the number of spatial dimensions. ")
