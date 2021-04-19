@@ -113,8 +113,8 @@ inline bool calculate_brinkman_forces
         THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
 
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tScenario = tHyperbolic.get<std::string>("Scenario", "Analysis");
+    auto tFlowProps = aInputs.sublist("Hyperbolic");
+    auto tScenario = tFlowProps.get<std::string>("Scenario", "Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
     if(tLowerScenario == "density to")
     {
@@ -127,19 +127,19 @@ inline bool calculate_brinkman_forces
 /***************************************************************************//**
  * \fn inline std::string heat_transfer_tag
  *
- * \brief Parse heat transfer mechanism tag from input file.
+ * \brief Parse heat transfer mechanism tag from input file and convert value to lowercase.
  * \param [in] aInputs input file metadata
- * \return heat transfer mechanism tag
+ * \return lowercase heat transfer mechanism tag
  ******************************************************************************/
 inline std::string heat_transfer_tag
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
+    if(aInputs.isSublist("Flow Properties") == false)
     {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
+        THROWERR("'Flow Properties' Parameter List is not defined.")
     }
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tFlowProps = aInputs.sublist("Flow Properties");
+    auto tTag = tFlowProps.get<std::string>("Heat Transfer", "None");
     auto tHeatTransfer = Plato::tolower(tTag);
     return tHeatTransfer;
 }
@@ -172,11 +172,8 @@ inline Plato::Scalar
 calculate_effective_conductivity
 (Teuchos::ParameterList & aInputs)
 {
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "natural");
-    auto tHeatTransfer = Plato::tolower(tTag);
-
     auto tOutput = 0;
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced" || tHeatTransfer == "mixed")
     {
         auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
@@ -347,14 +344,7 @@ inline Plato::ScalarVector
 rayleigh_number
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-    auto tHeatTransfer = Plato::tolower(tTag);
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
     Plato::ScalarVector tOuput("Rayleigh Number", SpaceDim);
@@ -400,14 +390,7 @@ inline Plato::ScalarVector
 grashof_number
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-    auto tHeatTransfer = Plato::tolower(tTag);
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
@@ -453,14 +436,7 @@ inline Plato::ScalarVector
 richardson_number
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-    auto tHeatTransfer = Plato::tolower(tTag);
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
@@ -552,10 +528,10 @@ stabilization_constant
     }
 
     auto tOutput = 0.0;
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if(tHyperbolic.isSublist(aSublistName))
+    auto tFlowProps = aInputs.sublist("Hyperbolic");
+    if(tFlowProps.isSublist(aSublistName))
     {
-        auto tMomentumConservation = tHyperbolic.sublist(aSublistName);
+        auto tMomentumConservation = tFlowProps.sublist(aSublistName);
         tOutput = tMomentumConservation.get<Plato::Scalar>("Stabilization Constant", 0.0);
     }
     return tOutput;
