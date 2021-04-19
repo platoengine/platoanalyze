@@ -8,7 +8,6 @@
 #include "Omega_h_map.hpp"
 #include "Omega_h_matrix.hpp"
 #include "Omega_h_file.hpp"
-#include "Omega_h_teuchos.hpp"
 
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>

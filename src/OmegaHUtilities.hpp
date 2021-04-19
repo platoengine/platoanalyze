@@ -309,7 +309,7 @@ inline void output_node_state_to_viz_file
  Omega_h::Mesh & aMesh,
  Omega_h::vtk::Writer& aWriter)
 {
-    for(Plato::OrdinalType tSnapshot = 0; tSnapshot < aField.dimension_0(); tSnapshot++)
+    for(Plato::OrdinalType tSnapshot = 0; tSnapshot < aField.extent(0); tSnapshot++)
     {
         auto tSubView = Kokkos::subview(aField, tSnapshot, Kokkos::ALL());
         aMesh.add_tag(Omega_h::VERT, aFieldName.c_str(), NumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tSubView)));

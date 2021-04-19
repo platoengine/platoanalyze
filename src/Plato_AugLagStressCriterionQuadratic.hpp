@@ -351,8 +351,8 @@ public:
             // Compute Lagrange multiplier
             tTrialMultiplier(aCellOrdinal) = tLagrangeMultipliers(aCellOrdinal) + 
                                            ( tAugLagPenalty * tTrueConstraintValue(aCellOrdinal) );
-            tLagrangeMultipliers(aCellOrdinal) = Omega_h::max2(tTrialMultiplier(aCellOrdinal), 
-                                                               static_cast<Plato::Scalar>(0.0));
+            tLagrangeMultipliers(aCellOrdinal) = (tTrialMultiplier(aCellOrdinal) < static_cast<Plato::Scalar>(0.0)) ?
+                                                 static_cast<Plato::Scalar>(0.0) : tTrialMultiplier(aCellOrdinal);
         },"Update Multipliers");
     }
 };

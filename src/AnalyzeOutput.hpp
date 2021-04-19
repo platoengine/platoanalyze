@@ -10,7 +10,6 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array.hpp>
 #include <Omega_h_assoc.hpp>
-#include <Omega_h_teuchos.hpp>
 
 #include "PlatoUtilities.hpp"
 #include "OmegaHUtilities.hpp"
