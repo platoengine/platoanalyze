@@ -165,18 +165,18 @@ private:
     void setImpermeability
     (Teuchos::ParameterList & aInputs)
     {
-    if(Plato::Fluids::is_impermeability_defined(aInputs))
-    {
+        if(Plato::Fluids::is_impermeability_defined(aInputs))
+        {
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
-    }
-    else
-    {
+            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Flow Properties", tHyperbolic);
+        }
+        else
+        {
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
-            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Flow Properties", tHyperbolic);
+            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", tHyperbolic);
             mImpermeability = tPrNum / tDaNum;
-    }
+        }
     }
 };
 // class BrinkmanForces

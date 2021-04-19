@@ -151,13 +151,13 @@ private:
         if(Plato::Fluids::is_impermeability_defined(aInputs))
         {
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Dimensionless Properties", tHyperbolic);
+            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Flow Properties", tHyperbolic);
         }
         else
         {
             auto tHyperbolic = aInputs.sublist("Hyperbolic");
-            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
-            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Flow Properties", tHyperbolic);
+            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", tHyperbolic);
             mImpermeability = tPrNum / tDaNum;
         }
     }
@@ -199,7 +199,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -356,7 +356,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -502,7 +502,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -648,7 +648,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -773,7 +773,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "      <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
             "    </ParameterList>"
@@ -882,7 +882,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
             "      <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
@@ -1029,7 +1029,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -1138,7 +1138,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "      <Parameter  name='Impermeability Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
@@ -1273,7 +1273,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -1405,7 +1405,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -1559,7 +1559,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='4e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -1703,7 +1703,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
@@ -1872,7 +1872,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e4}'/>"
             "    </ParameterList>"
@@ -2174,7 +2174,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -2704,7 +2704,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
             "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
             "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
@@ -3221,7 +3221,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
-            "    <ParameterList  name='Dimensionless Properties'>"
+            "    <ParameterList  name='Flow Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
             "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
             "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
@@ -4411,7 +4411,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
         "<ParameterList  name='Plato Problem'>"
-        "  <ParameterList  name='Dimensionless Properties'>"
+        "  <ParameterList  name='Flow Properties'>"
         "    <Parameter  name='Prandtl'   type='double'        value='2.1'/>"
         "    <Parameter  name='Grashof'   type='Array(double)' value='{0.0, 1.5, 0.0}'/>"
         "    <Parameter  name='Darcy'     type='double'        value='2.2'/>"
@@ -4420,16 +4420,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
     );
 
     // Prandtl #
-    auto tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl", "Dimensionless Properties", tParams.operator*());
+    auto tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl", "Flow Properties", tParams.operator*());
     auto tTolerance = 1e-6;
     TEST_FLOATING_EQUALITY(tScalarOutput, 2.1, tTolerance);
 
     // Darcy #
-    tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy", "Dimensionless Properties", tParams.operator*());
+    tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy", "Flow Properties", tParams.operator*());
     TEST_FLOATING_EQUALITY(tScalarOutput, 2.2, tTolerance);
 
     // Grashof #
-    auto tArrayOutput = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof", "Dimensionless Properties", tParams.operator*());
+    auto tArrayOutput = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof", "Flow Properties", tParams.operator*());
     TEST_EQUALITY(3, tArrayOutput.size());
     TEST_FLOATING_EQUALITY(tArrayOutput[0], 0.0, tTolerance);
     TEST_FLOATING_EQUALITY(tArrayOutput[1], 1.5, tTolerance);
