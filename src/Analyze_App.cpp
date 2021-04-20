@@ -1533,13 +1533,18 @@ setParameterValue( Teuchos::ParameterList& params,
   if( p1 != std::string::npos && p2 != std::string::npos )
   {
       std::string vecName = token.substr(0,p1);
-      auto vec = params.get<Teuchos::Array<Plato::Scalar>>(vecName);
-
-      std::string strVecEntry = token.substr(p1+1,p2-p1-1);
-      int vecEntry = std::stoi(strVecEntry);
-      vec[vecEntry] = value;
-
-      params.set(vecName,vec);
+      if (params.isType<Teuchos::Array<Plato::Scalar>>(vecName))
+      {
+        auto vec = params.get<Teuchos::Array<Plato::Scalar>>(vecName);
+        std::string strVecEntry = token.substr(p1+1,p2-p1-1);
+        int vecEntry = std::stoi(strVecEntry);
+        vec[vecEntry] = value;
+        params.set(vecName,vec);
+      }
+      else
+      {
+          THROWERR("Problem setting parameter value.")
+      }
   }
   else
   {
