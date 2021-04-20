@@ -117,8 +117,6 @@ public:
             THROWERR(std::string("'Scalar Function Type' keyword is not defined in Criterion with name '") + aTag + "'.")
         }
 
-        auto tFlowTag = tCriterion.get<std::string>("Flow", "Not Defined");
-        auto tFlowLowerTag = Plato::tolower(tFlowTag);
         auto tCriterionTag = tCriterion.get<std::string>("Scalar Function Type", "Not Defined");
         auto tCriterionLowerTag = Plato::tolower(tCriterionTag);
 
