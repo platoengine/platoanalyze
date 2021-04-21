@@ -317,6 +317,38 @@ public:
 
             tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
         }
+
+        auto tFirstBlock = mSpatialModel.Domains.front();
+        auto tFirstBlockName = tFirstBlock.getDomainName();
+        if( mValueFunctions.at(tFirstBlockName)->hasBoundaryTerm() )
+        {
+            auto tNumCells = mSpatialModel.Mesh.nelems();
+
+            // workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            Plato::Geometric::WorksetBase<GeometryT>::worksetControl(aControl, tControlWS);
+
+            // workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::Geometric::WorksetBase<GeometryT>::worksetConfig(tConfigWS);
+
+            // create return view
+            //
+            Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
+
+            // evaluate function
+            //
+            mGradientXFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tControlWS, tConfigWS, tResult);
+
+            // create and assemble to return view
+            //
+            Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
+                (tNumCells, mConfigEntryOrdinal, tResult, tObjGradientX);
+
+            tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
+        }
         // Note: below uses the 'postEvaluate()' function of the first block.
         auto tName = mSpatialModel.Domains[0].getDomainName();
         mGradientXFunctions.at(tName)->postEvaluate(tObjGradientX, tValue);
@@ -369,6 +401,38 @@ public:
             //
             Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>
                 (tDomain, mControlEntryOrdinal, tResult, tObjGradientZ);
+
+            tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
+        }
+
+        auto tFirstBlock = mSpatialModel.Domains.front();
+        auto tFirstBlockName = tFirstBlock.getDomainName();
+        if( mValueFunctions.at(tFirstBlockName)->hasBoundaryTerm() )
+        {
+            auto tNumCells = mSpatialModel.Mesh.nelems();
+
+            // workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            Plato::Geometric::WorksetBase<GeometryT>::worksetControl(aControl, tControlWS);
+
+            // workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::Geometric::WorksetBase<GeometryT>::worksetConfig(tConfigWS);
+
+            // create result
+            //
+            Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
+
+            // evaluate function
+            //
+            mGradientZFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tControlWS, tConfigWS, tResult);
+
+            // create and assemble to return view
+            //
+            Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>
+                (tNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
 
             tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
         }
