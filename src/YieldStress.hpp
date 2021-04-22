@@ -43,7 +43,10 @@ public:
                ControlT const& aPenalizedHardeningModulusIsotropic) const
     {
         // Method used to compute the stress and called from within a
-        // Kokkos parallel_for.
+        // Kokkos parallel_for when there is a single return value
+
+        // Currently not used (was initally used when devloping the
+        // yield stress paradigm).
 
         // Compute the yield stress for a single value.
         aYieldStress =
@@ -68,7 +71,10 @@ public:
                Plato::ScalarVectorT< ControlT > const& aPenalizedHardeningModulusIsotropic) const
     {
         // Method used to compute the stress and called from within a
-        // Kokkos parallel_for.
+        // Kokkos parallel_for when there are multiple return values.
+
+        // Currently not used (was initally used when devloping the
+        // yield stress paradigm).
 
         // Compute the yield stress for a single value in a view.
         aYieldStress(aCellOrdinal, 0) =
@@ -117,7 +123,6 @@ public:
             aPenalizedInitialYieldStress(aCellOrdinal) +
             aPenalizedHardeningModulusIsotropic(aCellOrdinal) *
             aLocalState(aCellOrdinal, 0); // SHOULD THIS BE PREV? I think no.
-
         } );
 
         // Drop all of the refernces to the parameter data.

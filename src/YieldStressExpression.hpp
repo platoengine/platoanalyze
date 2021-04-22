@@ -9,7 +9,7 @@
 /******************************************************************************/
 /*
  To use the expression evaluator one must first add an expression to
- the analyzeInput.xml file as part of the 'Custom Plasticity Model Model':
+ the analyzeInput.xml file as part of the 'Custom Plasticity Model':
 
       <ParameterList name='Custom Plasticity Model'>
         <Parameter  name='Equation' type='string' value='PenalizedHardeningModulusIsotropic * AccumulatedPlasticStrain + PenalizedInitialYieldStress'/>
@@ -24,9 +24,6 @@
  indirectly mapped to the parameter label for the 'Local State
  Workset' because the parameter label contains whitespace and
  variables names cannot.
-
- Note: All parameters are assumed to be a vector of values that are
- indexed via cell.
 
  aLocalState must be passed in to the operator() regardless it if used
  or not. Whereas parameters are optional, currently zero to four may
@@ -151,7 +148,7 @@ public:
         for( auto const & tVarName : tVarNames )
         {
           // Here the expression variable is found as a Plato::Scalar
-          // so the value comes from the xml and is set directly.
+          // so the value comes from the XML and is set directly.
           if( tCPMParams.isType<Plato::Scalar>(tVarName) )
           {
             // The value *MUST BE* converted to the ControlT as it is
@@ -161,7 +158,7 @@ public:
             tExpEval.set_variable( tVarName.c_str(), tVal );
           }
           // Here the expression variable is found as a string so the
-          // values should come from the parameters passed in.
+          // values should come from the XML.
           else if( tCPMParams.isType<std::string>(tVarName) )
           {
             std::string tVal = tCPMParams.get<std::string>(tVarName);
@@ -275,7 +272,6 @@ public:
 
         // Evaluate the expression for this cell.
         tExpEval.evaluate_expression( aCellOrdinal, aResult );
-
       } );
 
       // Because there are views of views are used locally which are

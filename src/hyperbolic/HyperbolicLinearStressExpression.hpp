@@ -252,7 +252,7 @@ public:
         for( auto const & tVarName : tVarNames )
         {
           // Here the expression variable is found as a Plato::Scalar
-          // so the value comes from the xml and is set directly.
+          // so the value comes from the XML and is set directly.
           if( tCPMParams.isType<Plato::Scalar>(tVarName) )
           {
             // The value *MUST BE* converted to the Plato::Scalar as it is
@@ -262,7 +262,7 @@ public:
             tExpEval.set_variable( tVarName.c_str(), tVal );
           }
           // Here the expression variable is found as a string so the
-          // values should come from the parameters passed in.
+          // values should come from the XML.
           else if( tCPMParams.isType<std::string>(tVarName) )
           {
             std::string tVal = tCPMParams.get<std::string>(tVarName);

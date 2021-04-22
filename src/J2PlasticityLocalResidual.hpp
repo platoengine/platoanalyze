@@ -344,8 +344,9 @@ public:
       // Views needed in all three loops.
       Plato::ScalarVectorT<StressT>      tDevStressMinusBackstressNorm("norm(deviatoric_stress - backstress)", tNumCells);
       Plato::ScalarMultiVectorT<StressT> tYieldSurfaceNormal("yield surface normal", tNumCells, mNumStressTerms);
-      // When using the expression evaluator a ScalarMultiVectorT is
-      // assumed thus one term.
+      // When using the expression evaluator a two dimensional array
+      // is expected. As such, a ScalarMultiVectorT is used but with
+      // the second dimension set to one.
       Plato::ScalarMultiVectorT<ResultT> tYieldStress("yield stress", tNumCells, 1);
       Plato::ScalarVectorT<ControlT> tPenalizedHardeningModulusKinematic("PenalizedHardeningModulusKinematic", tNumCells);
 
