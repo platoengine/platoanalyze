@@ -316,6 +316,10 @@ TpetraLinearSolver::TpetraLinearSolver(
     mSolver = "GMRES";
   else
     throw std::invalid_argument("Solver not specified in input parameter list.\n");
+  
+  mDisplayIterations = false;
+  if(aSolverParams.isType<bool>("Display Iterations"))
+    mDisplayIterations = aSolverParams.get<bool>("Display Iterations");
 
   if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
     mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
@@ -417,7 +421,8 @@ TpetraLinearSolver::solve(
 {
   mSolverStartTime = time(&mTimer);
   const double tAnalyzeElapsedTime = difftime(mSolverStartTime, mSolverEndTime);
-  std::cout << "Analyze elapsed time: " << tAnalyzeElapsedTime << ". " << std::flush;
+  if (mDisplayIterations)
+    std::cout << "Analyze elapsed time: " << tAnalyzeElapsedTime << ". " << std::flush;
 
   Teuchos::RCP<Tpetra_Matrix> A = mSystem->fromMatrix(aA);
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
@@ -448,7 +453,8 @@ TpetraLinearSolver::solve(
 
   mSolverEndTime = time(&mTimer);
   const double tTpetraElapsedTime = difftime(mSolverEndTime, mSolverStartTime);
-  std::cout << "Tpetra elapsed time: " << tTpetraElapsedTime << "." << std::endl;
+  if (mDisplayIterations)
+    std::cout << "Tpetra elapsed time: " << tTpetraElapsedTime << "." << std::endl;
 }
 
 } // end namespace Plato

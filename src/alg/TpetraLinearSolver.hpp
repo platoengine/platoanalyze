@@ -83,6 +83,7 @@ class TpetraLinearSolver : public AbstractSolver
     Teuchos::ParameterList mSolverOptions;
     Teuchos::ParameterList mPreconditionerOptions;
     time_t mTimer, mSolverStartTime, mSolverEndTime;
+    bool mDisplayIterations;
   public:
     /******************************************************************************//**
      * @brief TpetraLinearSolver constructor
