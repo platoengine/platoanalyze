@@ -2,4 +2,4 @@
 .cproject
 .settings
 .vscode
-build
+build*

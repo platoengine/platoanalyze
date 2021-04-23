@@ -80,11 +80,9 @@ ComputeCauchyStress<3>::operator()
                                    * (aStrain(aCellOrdinal, 2) - tTraceOver3);
 
     // add hydrostatic stress to normal components
-    ControlT tLambda = aPenalizedBulkModulus
-                     - (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus / static_cast<Plato::Scalar>(3.0));
-    aStress(aCellOrdinal, 0) += tLambda * tTrace;
-    aStress(aCellOrdinal, 1) += tLambda * tTrace;
-    aStress(aCellOrdinal, 2) += tLambda * tTrace;
+    aStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTrace;
+    aStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTrace;
+    aStress(aCellOrdinal, 2) += aPenalizedBulkModulus * tTrace;
 
     // compute shear components - elastic strain already has 2 multiplier, see equation in function declaration
     aStress(aCellOrdinal, 3) = aPenalizedShearModulus * aStrain(aCellOrdinal, 3);
@@ -112,12 +110,11 @@ ComputeCauchyStress<2>::operator()
     aStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aStrain(aCellOrdinal, 0) - tTraceOver3);
     aStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aStrain(aCellOrdinal, 1) - tTraceOver3);
     aStress(aCellOrdinal, 3) = (2.0 * aPenalizedShearModulus) * (aStrain(aCellOrdinal, 3) - tTraceOver3);
+    
     // add hydrostatic stress to normal components
-    ControlT tLambda = aPenalizedBulkModulus
-                     - ( (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus) / static_cast<Plato::Scalar>(3.0) );
-    aStress(aCellOrdinal, 0) += tLambda * tTrace; // sigma_11
-    aStress(aCellOrdinal, 1) += tLambda * tTrace; // sigma_22
-    aStress(aCellOrdinal, 3) += tLambda * tTrace; // sigma_33
+    aStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTrace; // sigma_11
+    aStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTrace; // sigma_22
+    aStress(aCellOrdinal, 3) += aPenalizedBulkModulus * tTrace; // sigma_33
 
     // compute shear components - elastic strain already has 2 multiplier, see equation in function declaration
     aStress(aCellOrdinal, 2) = aPenalizedShearModulus * aStrain(aCellOrdinal, 2); // sigma_12

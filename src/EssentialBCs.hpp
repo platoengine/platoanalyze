@@ -25,12 +25,14 @@ public:
 
     EssentialBC<SimplexPhysicsType>(
         const std::string            & aName,
-              Teuchos::ParameterList & aParam
+              Teuchos::ParameterList & aParam,
+              Plato::Scalar            aScaleFactor = 1.0
     ) :
         name(aName),
         ns_name(aParam.get < std::string > ("Sides")),
         dof(aParam.get<Plato::OrdinalType>("Index", 0)),
-        mMathExpr(nullptr)
+        mMathExpr(nullptr),
+        mScaleFactor(aScaleFactor)
     {
         if (aParam.isType<Plato::Scalar>("Value") && aParam.isType<std::string>("Function") )
         {
@@ -86,15 +88,15 @@ public:
     }
 
     // ! Get the value to which the dofs will be constrained.
-    Scalar get_value(Scalar aTime) const
+    Plato::Scalar get_value(Plato::Scalar aTime) const
     {
         if (mMathExpr == nullptr)
         {
-            return value;
+            return value / mScaleFactor;
         }
         else
         {
-            return mMathExpr->value(aTime);
+            return mMathExpr->value(aTime) / mScaleFactor;
         }
     }
 
@@ -102,8 +104,9 @@ protected:
     const std::string name;
     const std::string ns_name;
     const Plato::OrdinalType dof;
-    Scalar value;
+    Plato::Scalar value;
     std::shared_ptr<Plato::MathExpr> mMathExpr;
+    Plato::Scalar mScaleFactor;
 
 };
 
@@ -128,6 +131,12 @@ public :
      based on the ParameterList.
      */
     EssentialBCs(Teuchos::ParameterList &aParams, const Omega_h::MeshSets & aMeshSets);
+
+    /*!
+     \brief Constructor that parses and creates a vector of EssentialBC objects with scale factors
+     */
+    EssentialBCs(Teuchos::ParameterList &aParams, const Omega_h::MeshSets & aMeshSets, 
+                 const std::map<Plato::OrdinalType, Plato::Scalar> & aDofOffsetToScaleFactor);
 
     /*!
      \brief Get ordinals and values for constraints.
@@ -159,6 +168,13 @@ OrdinalType EssentialBC<SimplexPhysicsType>::get_length(const Omega_h::MeshSets&
     }
     auto tNodeLids = (tNodeSetsIter->second);
     auto tNumberConstrainedNodes = tNodeLids.size();
+
+    if (tNumberConstrainedNodes == static_cast<Plato::OrdinalType>(0))
+    {
+        const std::string tErrorMessage = std::string("The set '") +
+              ns_name + "' specified in Essential Boundary Conditions contains 0 nodes.";
+        WARNING(tErrorMessage)
+    }
 
     return tNumberConstrainedNodes;
 }
@@ -229,6 +245,47 @@ EssentialBCs<SimplexPhysicsType>::EssentialBCs(
         }
         else if(tType == "Fixed Value" || tType == "Time Dependent")
             tMyBC.reset(new EssentialBC<SimplexPhysicsType>(tMyName, tSublist));
+        else
+            TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, " Boundary Condition type invalid: Not 'Zero Value' or 'Fixed Value'.");
+        BCs.push_back(tMyBC);
+    }
+}
+
+/****************************************************************************/
+template<typename SimplexPhysicsType>
+EssentialBCs<SimplexPhysicsType>::EssentialBCs(
+          Teuchos::ParameterList & aParams,
+    const Omega_h::MeshSets      & aMeshSets,
+    const std::map<Plato::OrdinalType, Plato::Scalar> & aDofOffsetToScaleFactor
+) :
+    mMeshSets(aMeshSets),
+    BCs()
+/****************************************************************************/
+{
+    for(Teuchos::ParameterList::ConstIterator tIndex = aParams.begin(); tIndex != aParams.end(); ++tIndex)
+    {
+        const Teuchos::ParameterEntry & tEntry = aParams.entry(tIndex);
+        const std::string & tMyName = aParams.name(tIndex);
+
+        TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(), std::logic_error, " Parameter in Boundary Conditions block not valid.  Expect lists only.");
+
+        Teuchos::ParameterList& tSublist = aParams.sublist(tMyName);
+        const std::string tType = tSublist.get <std::string> ("Type");
+        const Plato::OrdinalType tDofIndex = tSublist.get<Plato::OrdinalType>("Index", 0);
+        Plato::Scalar tScaleFactor(1.0);
+        auto tSearch = aDofOffsetToScaleFactor.find(tDofIndex);
+        if(tSearch != aDofOffsetToScaleFactor.end())
+            tScaleFactor = tSearch->second;
+
+        std::shared_ptr<EssentialBC<SimplexPhysicsType>> tMyBC;
+        if("Zero Value" == tType)
+        {
+            const std::string tValueDocument = "solution component set to zero.";
+            tSublist.set("Value", static_cast<Plato::Scalar>(0.0), tValueDocument);
+            tMyBC.reset(new EssentialBC<SimplexPhysicsType>(tMyName, tSublist, tScaleFactor));
+        }
+        else if(tType == "Fixed Value" || tType == "Time Dependent")
+            tMyBC.reset(new EssentialBC<SimplexPhysicsType>(tMyName, tSublist, tScaleFactor));
         else
             TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, " Boundary Condition type invalid: Not 'Zero Value' or 'Fixed Value'.");
         BCs.push_back(tMyBC);

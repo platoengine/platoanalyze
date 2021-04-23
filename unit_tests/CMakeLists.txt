@@ -249,6 +249,33 @@ if(PLASTICITY)
   build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ElastoPlasticityUnitTests)
   add_test(NAME runElastoPlasticityUnitTests COMMAND ${ES_MPI_TEST})
   #end: ElastoPlasticityTests unit test
+
+  #begin: ThermoplasticityTests unit test
+  set(ThermoplasticityTest_SOURCES
+    ThermoplasticityTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(ThermoplasticityTest_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(ThermoplasticityUnitTests
+    ${ThermoplasticityTest_SOURCES}
+    ${ThermoplasticityTest_HEADERS}
+  )
+
+  target_link_libraries(ThermoplasticityUnitTests
+    analyzelib
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
+    )
+  target_include_directories(ThermoplasticityUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ThermoplasticityUnitTests)
+  add_test(NAME runThermoplasticityUnitTests COMMAND ${ES_MPI_TEST})
+  #end: ThermoplasticityTests unit test
 endif()
 
 #begin: OmegaHUtilitiesTests unit test

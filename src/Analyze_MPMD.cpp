@@ -56,7 +56,14 @@ int main(int aArgc, char **aArgv)
       safeExit(tErrorCode);
     }
 
-    tPlatoInterface->perform();
+    try
+    {
+      tPlatoInterface->perform();
+    }
+    catch(...)
+    {
+      safeExit();
+    }
 
     if(tMyApp)
     {

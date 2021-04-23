@@ -30,6 +30,8 @@
 #include "IsotropicMaterialUtilities.hpp"
 #include "AbstractGlobalVectorFunctionInc.hpp"
 
+#include "ExpInstMacros.hpp"
+
 namespace Plato
 {
 
@@ -65,8 +67,8 @@ private:
     static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
     static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; /*!< number of global dofs per node */
 
-    static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
-    static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
+    static constexpr auto mNumMechDims = mSpaceDim;                                    /*!< number of mechanical degrees of freedom */
+    static constexpr auto mMechDofOffset = SimplexPhysicsType::mDisplacementDofOffset; /*!< mechanical degrees of freedom offset */
 
     using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mSpatialDomain; /*!< mesh database */
     using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mDataMap;       /*!< PLATO Engine output database */
@@ -96,7 +98,7 @@ private:
 
     std::vector<std::string> mPlotTable;           /*!< array of output element data identifiers*/
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                       /*!< body loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>> mBodyLoads;   /*!< body loads interface */
     std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
 
@@ -167,14 +169,21 @@ private:
         // Parse body loads
         if (aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
 
         // Parse Neumman loads
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
-            mNeumannLoads =
-                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+            auto tNaturalBCsParams = aProblemParams.sublist("Natural Boundary Conditions");
+
+            // Parse mechanical Neumann loads
+            if(tNaturalBCsParams.isSublist("Mechanical Natural Boundary Conditions"))
+            {
+                mNeumannLoads =
+                std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> (tNaturalBCsParams.sublist("Mechanical Natural Boundary Conditions"));
+            }
+
         }
 
         mDataMap.mScalarValues["LoadControlConstant"] = 1.0;
@@ -203,11 +212,11 @@ private:
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
         Teuchos::ParameterList tMaterialsInputs = aProblemParams.sublist("Material Models");
+        mPressureScaling =     tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
 
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Teuchos::ParameterList tMaterialInputs = tMaterialsInputs.sublist(tMaterialName);
-
-        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        
         if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
         {
             auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
@@ -480,9 +489,10 @@ public:
             tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence);
 
             // compute volume difference
-            tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
-            tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty
-                * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tElasticBulkModulus);
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
+            tPressure(aCellOrdinal) *= tPressureScaling;
+            tVolumeStrain(aCellOrdinal) = tPressureScaling
+                * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tPenalizedBulkModulus);
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
@@ -495,7 +505,6 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
 
             // prepare output data
-            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
             tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
             tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
@@ -573,23 +582,9 @@ public:
 // namespace Plato
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
+PLATO_EXPL_DEC_INC_VMS(Plato::InfinitesimalStrainPlasticityResidual, Plato::SimplexPlasticity, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
+PLATO_EXPL_DEC_INC_VMS(Plato::InfinitesimalStrainPlasticityResidual, Plato::SimplexPlasticity, 3)
 #endif

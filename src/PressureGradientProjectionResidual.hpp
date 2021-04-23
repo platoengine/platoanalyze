@@ -39,7 +39,7 @@ private:
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;    /*!< Configuration AD type */
     using ResultScalarType    = typename EvaluationType::ResultScalarType;    /*!< Result AD type */
 
-   
+
     using FunctionBaseType = Plato::AbstractVectorFunctionVMS<EvaluationType>;
     using CubatureType = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
 
@@ -60,8 +60,8 @@ private:
         if (aProblemParams.isSublist("Material Models"))
         {
             Teuchos::ParameterList& tMaterialsInputs = aProblemParams.sublist("Material Models");
+            mPressureScaling =      tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
             Teuchos::ParameterList& tMaterialInputs = tMaterialsInputs.sublist(mSpatialDomain.getMaterialName());
-            mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
         }
     }
 

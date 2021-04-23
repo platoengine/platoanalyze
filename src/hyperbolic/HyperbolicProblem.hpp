@@ -57,6 +57,10 @@ namespace Plato
         Plato::ScalarMultiVector mVelocity;
         Plato::ScalarMultiVector mAcceleration;
 
+        Plato::ScalarVector mInitDisplacement;
+        Plato::ScalarVector mInitVelocity;
+        Plato::ScalarVector mInitAcceleration;
+
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianU;
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianV;
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianA;
@@ -87,6 +91,9 @@ namespace Plato
             mDisplacement  ("Displacement", mNumSteps, mPDEConstraint.size()),
             mVelocity      ("Velocity",     mNumSteps, mPDEConstraint.size()),
             mAcceleration  ("Acceleration", mNumSteps, mPDEConstraint.size()),
+            mInitDisplacement ("Init Displacement", mPDEConstraint.size()),
+            mInitVelocity     ("Init Velocity",     mPDEConstraint.size()),
+            mInitAcceleration ("Init Acceleration", mPDEConstraint.size()),
             mJacobianU     (Teuchos::null),
             mJacobianV     (Teuchos::null),
             mJacobianA     (Teuchos::null),
@@ -140,9 +147,6 @@ namespace Plato
                   THROWERR("No 'Computed Fields' have been defined");
                 }
 
-                Plato::ScalarVector tInitialState = Kokkos::subview(mDisplacement, 0, Kokkos::ALL());
-                Plato::ScalarVector tInitialStateDot = Kokkos::subview(mVelocity, 0, Kokkos::ALL());
-
                 auto tDofNames = mPDEConstraint.getDofNames();
                 auto tDofDotNames = mPDEConstraint.getDofDotNames();
 
@@ -165,7 +169,7 @@ namespace Plato
                         }
                         if (tDofIndex != -1)
                         {
-                            mComputedFields->get(tFieldName, tDofIndex, tDofNames.size(), tInitialState);
+                            mComputedFields->get(tFieldName, tDofIndex, tDofNames.size(), mInitDisplacement);
                         }
                         else
                         {
@@ -178,7 +182,7 @@ namespace Plato
                             }
                             if (tDofIndex != -1)
                             {
-                                mComputedFields->get(tFieldName, tDofIndex, tDofDotNames.size(), tInitialStateDot);
+                                mComputedFields->get(tFieldName, tDofIndex, tDofDotNames.size(), mInitVelocity);
                             }
                             else
                             {
@@ -265,9 +269,15 @@ namespace Plato
         /******************************************************************************/
         {
             mDataMap.clearStates();
+            Kokkos::deep_copy(mDisplacement, 0.0);
+            Kokkos::deep_copy(mVelocity,     0.0);
+            Kokkos::deep_copy(mAcceleration, 0.0);
             Plato::ScalarVector tDisplacementInit = Kokkos::subview(mDisplacement, /*StepIndex=*/0, Kokkos::ALL());
             Plato::ScalarVector tVelocityInit     = Kokkos::subview(mVelocity,     /*StepIndex=*/0, Kokkos::ALL());
             Plato::ScalarVector tAccelerationInit = Kokkos::subview(mAcceleration, /*StepIndex=*/0, Kokkos::ALL());
+            Kokkos::deep_copy(tDisplacementInit, mInitDisplacement);
+            Kokkos::deep_copy(tVelocityInit,     mInitVelocity);
+            Kokkos::deep_copy(tAccelerationInit, mInitAcceleration);
             mResidual  = mPDEConstraint.value(tDisplacementInit, tVelocityInit, tAccelerationInit, aControl, mTimeStep, 0.0);
             mDataMap.saveState();
 

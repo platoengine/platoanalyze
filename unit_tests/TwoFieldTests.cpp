@@ -1089,6 +1089,7 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
 
   { // test row summed solve
     //
+    Plato::blas1::scale(-1.0, tResidual);
     Plato::Solve::RowSummed<spaceDim>(tJacobian, tProjPGrad, tResidual);
 
     auto tProjPGrad_Host = Kokkos::create_mirror_view( tProjPGrad );

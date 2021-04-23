@@ -56,17 +56,18 @@ endif()
 ## plasticity sources
 if(PLASTICITY)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    J2PlasticityLocalResidual.cpp
-    NewtonRaphsonSolver.cpp
-    PathDependentAdjointSolver.cpp
-    GlobalVectorFunctionInc.cpp
-    PathDependentScalarFunctionFactory.cpp
-    BasicLocalScalarFunction.cpp
-    PlasticityProblem.cpp
-    ComputePrincipalStresses.cpp
-    WeightedLocalScalarFunction.cpp
-    InfinitesimalStrainPlasticityResidual.cpp
-    ElasticWorkCriterion.cpp
+    J2PlasticityLocalResidual.cpp 
+    NewtonRaphsonSolver.cpp 
+    PathDependentAdjointSolver.cpp 
+    GlobalVectorFunctionInc.cpp 
+    PathDependentScalarFunctionFactory.cpp 
+    BasicLocalScalarFunction.cpp 
+    PlasticityProblem.cpp 
+    ComputePrincipalStresses.cpp 
+    WeightedLocalScalarFunction.cpp 
+    InfinitesimalStrainPlasticityResidual.cpp 
+    InfinitesimalStrainThermoPlasticityResidual.cpp 
+    ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp
   )
 endif()

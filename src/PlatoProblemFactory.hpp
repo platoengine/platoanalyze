@@ -116,6 +116,19 @@ public:
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
+        else if(tPhysics == "Thermoplasticity") 
+        {
+            if(tPDE == "Elliptic")
+            {
+                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainThermoPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                tOutput->readEssentialBoundaryConditions(tInputData);
+                return tOutput;
+            }
+            else
+            {
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
+            }
+        }
 #endif
 #ifdef PLATO_STABILIZED
         else if(tPhysics == "Stabilized Mechanical")

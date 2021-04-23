@@ -361,7 +361,7 @@ inline void transform_ad_type_to_pod_3Dview(const Plato::OrdinalType& aNumCells,
       {
           for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
           {
-              aOutput(aCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
+              aOutput(aCellOrdinal, tRowIndex, tColumnIndex) += aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
           }
       }
     }, "convert AD type to Scalar type");
@@ -375,7 +375,7 @@ inline void transform_ad_type_to_pod_3Dview(const Plato::OrdinalType& aNumCells,
 * Assemble scalar function global value from local values.
 *
 * \fn Scalar assemble_scalar_func_value(const Plato::OrdinalType& aNumCells, const Result& aResult)
-* 
+*
 * \tparam Scalar typename of return value
 * \tparam Result result vector view typename
 *
@@ -618,7 +618,7 @@ assemble_scalar_gradient_fad(
 *
 * \tparam NumNodesPerCell     number of nodes per cell
 * \tparam ControlEntryOrdinal global-to-local index map class
-* \tparam Control             control variables class  
+* \tparam Control             control variables class
 * \tparam ControlWS           control workset class
 *
 * \param [in]     aDomain               Plato Analyze spatial domain (block)
@@ -656,7 +656,7 @@ workset_control_scalar_scalar(
 *
 * \tparam NumNodesPerCell     number of nodes per cell
 * \tparam ControlEntryOrdinal global-to-local index map class
-* \tparam Control             control variables class  
+* \tparam Control             control variables class
 * \tparam ControlWS           control workset class
 *
 * \param [in]     aSpatialModel         Plato Analyze spatial model
@@ -689,9 +689,9 @@ workset_control_scalar_scalar(
 * \brief Create control workset, i.e. set control variables for each element/cell
 *
 * \tparam NumNodesPerCell     number of nodes per cell
-* \tparam ControlFad          control variables forward automatic differentation (FAD) class  
+* \tparam ControlFad          control variables forward automatic differentation (FAD) class
 * \tparam ControlEntryOrdinal global-to-local index map class
-* \tparam Control             control variables class  
+* \tparam Control             control variables class
 * \tparam ControlWS           control workset FAD class
 *
 * \param [in]     aDomain              Plato Analyze spatial domain
@@ -726,9 +726,9 @@ workset_control_scalar_fad(
 * \brief Create control workset, i.e. set control variables for each element/cell
 *
 * \tparam NumNodesPerCell     number of nodes per cell
-* \tparam ControlFad          control variables forward automatic differentation (FAD) class  
+* \tparam ControlFad          control variables forward automatic differentation (FAD) class
 * \tparam ControlEntryOrdinal global-to-local index map class
-* \tparam Control             control variables class  
+* \tparam Control             control variables class
 * \tparam ControlWS           control workset FAD class
 *
 * \param [in]     aNumCells             number of cells (i.e. elements)
@@ -763,7 +763,7 @@ workset_control_scalar_fad(
 * \tparam NumDofsPerCell    number of degrees of freedom per cell
 * \tparam NumNodesPerCell   number of nodes per cell
 * \tparam StateEntryOrdinal global-to-local index map class
-* \tparam State             state variables class  
+* \tparam State             state variables class
 * \tparam StateWS           state workset class
 *
 * \param [in]     aDomain             Plato Analyze spatial domain
@@ -776,8 +776,8 @@ template<Plato::OrdinalType NumDofsPerNode, Plato::OrdinalType NumNodesPerCell, 
 inline void
 workset_state_scalar_scalar(
     const Plato::SpatialDomain & aDomain,
-    const StateEntryOrdinal    & aStateEntryOrdinal, 
-    const State                & aState, 
+    const StateEntryOrdinal    & aStateEntryOrdinal,
+    const State                & aState,
           StateWS              & aStateWS
 )
 {
@@ -805,7 +805,7 @@ workset_state_scalar_scalar(
 * \tparam NumDofsPerCell    number of degrees of freedom per cell
 * \tparam NumNodesPerCell   number of nodes per cell
 * \tparam StateEntryOrdinal global-to-local index map class
-* \tparam State             state variables class  
+* \tparam State             state variables class
 * \tparam StateWS           state workset class
 *
 * \param [in]     aNumCells           number of cells (i.e. elements)
@@ -818,8 +818,8 @@ template<Plato::OrdinalType NumDofsPerNode, Plato::OrdinalType NumNodesPerCell, 
 inline void
 workset_state_scalar_scalar(
           Plato::OrdinalType   aNumCells,
-    const StateEntryOrdinal  & aStateEntryOrdinal, 
-    const State              & aState, 
+    const StateEntryOrdinal  & aStateEntryOrdinal,
+    const State              & aState,
           StateWS            & aStateWS
 )
 {
@@ -846,7 +846,7 @@ workset_state_scalar_scalar(
 * \tparam NumNodesPerCell   number of nodes per cell
 * \tparam StateFad          output state forward automatic differentiation (FAD) class
 * \tparam StateEntryOrdinal global-to-local index map class
-* \tparam State             state variables class  
+* \tparam State             state variables class
 * \tparam FadStateWS        state workset FAD
 *
 * \param [in]     aDomain            Plato Analyze spatial domain
@@ -890,7 +890,7 @@ workset_state_scalar_fad(
 * \tparam NumNodesPerCell   number of nodes per cell
 * \tparam StateFad          output state forward automatic differentiation (FAD) class
 * \tparam StateEntryOrdinal global-to-local index map class
-* \tparam State             state variables class  
+* \tparam State             state variables class
 * \tparam FadStateWS        state workset FAD
 *
 * \param [in]     aNumCells           number of cells (i.e. elements)
@@ -928,7 +928,7 @@ workset_state_scalar_fad(
 * \brief Create local state workset, i.e. set local state variables for each element/cell
 *
 * \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
-* \tparam State               local state variables class  
+* \tparam State               local state variables class
 * \tparam StateWS             local state workset class
 *
 * \param [in]     aDomain    Plato Analyze spatial domain
@@ -939,8 +939,8 @@ workset_state_scalar_fad(
 template<Plato::OrdinalType NumLocalDofsPerCell, class State, class StateWS>
 inline void
 workset_local_state_scalar_scalar(
-    const Plato::SpatialDomain & aDomain, 
-    const State                & aState, 
+    const Plato::SpatialDomain & aDomain,
+    const State                & aState,
           StateWS              & aStateWS
 )
 {
@@ -962,7 +962,7 @@ workset_local_state_scalar_scalar(
 * \brief Create local state workset, i.e. set local state variables for each element/cell
 *
 * \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
-* \tparam State               local state variables class  
+* \tparam State               local state variables class
 * \tparam StateWS             local state workset class
 *
 * \param [in]     aNumCells  number of cells (i.e. elements)
@@ -971,8 +971,8 @@ workset_local_state_scalar_scalar(
 *
 *******************************************************************************/
 template<Plato::OrdinalType NumLocalDofsPerCell, class State, class StateWS>
-inline void workset_local_state_scalar_scalar(const Plato::OrdinalType& aNumCells, 
-                                              const State& aState, 
+inline void workset_local_state_scalar_scalar(const Plato::OrdinalType& aNumCells,
+                                              const State& aState,
                                               StateWS& aStateWS)
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -991,8 +991,8 @@ inline void workset_local_state_scalar_scalar(const Plato::OrdinalType& aNumCell
 * \brief Create local state workset, i.e. set local state variables for each element/cell
 *
 * \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
-* \tparam StateFad            output local state variables forward automatic differentiation (FAD) class  
-* \tparam State               local state variables class  
+* \tparam StateFad            output local state variables forward automatic differentiation (FAD) class
+* \tparam State               local state variables class
 * \tparam FadStateWS          local state workset FAD class
 *
 * \param [in]     aNumCells    number of cells (i.e. elements)
@@ -1020,8 +1020,8 @@ inline void workset_local_state_scalar_fad(const Plato::OrdinalType& aNumCells,
 * \brief Create local state workset, i.e. set local state variables for each element/cell
 *
 * \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
-* \tparam StateFad            output local state variables forward automatic differentiation (FAD) class  
-* \tparam State               local state variables class  
+* \tparam StateFad            output local state variables forward automatic differentiation (FAD) class
+* \tparam State               local state variables class
 * \tparam FadStateWS          local state workset FAD class
 *
 * \param [in]     aDomain      Plato Analyze spatial domain
@@ -1032,7 +1032,7 @@ inline void workset_local_state_scalar_fad(const Plato::OrdinalType& aNumCells,
 template<Plato::OrdinalType NumLocalDofsPerCell, class StateFad, class State, class FadStateWS>
 inline void
 workset_local_state_scalar_fad(
-    const Plato::SpatialDomain & aDomain, 
+    const Plato::SpatialDomain & aDomain,
     const State                & aState,
           FadStateWS           & aFadStateWS
 )
@@ -1068,8 +1068,8 @@ workset_local_state_scalar_fad(
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumNodesPerCell, class ConfigWS, class NodeCoordinates>
 inline void
 workset_config_scalar(
-    const Plato::SpatialDomain & aDomain, 
-    const NodeCoordinates      & aNodeCoordinate, 
+    const Plato::SpatialDomain & aDomain,
+    const NodeCoordinates      & aNodeCoordinate,
           ConfigWS             & aConfigWS
 )
 {
@@ -1106,7 +1106,7 @@ template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumNodesPerCell, class 
 inline void
 workset_config_scalar(
           Plato::OrdinalType   aNumCells,
-    const NodeCoordinates    & aNodeCoordinate, 
+    const NodeCoordinates    & aNodeCoordinate,
           ConfigWS           & aConfigWS
 )
 {
@@ -1142,8 +1142,8 @@ workset_config_scalar(
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType numConfigDofsPerCell, class ConfigFad, class FadConfigWS, class NodeCoordinates>
 inline void
 workset_config_fad(
-    const Plato::SpatialDomain & aDomain, 
-    const NodeCoordinates      & aNodeCoordinate, 
+    const Plato::SpatialDomain & aDomain,
+    const NodeCoordinates      & aNodeCoordinate,
           FadConfigWS          & aFadConfigWS
 )
 {
@@ -1183,8 +1183,8 @@ workset_config_fad(
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType numConfigDofsPerCell, class ConfigFad, class FadConfigWS, class NodeCoordinates>
 inline void
 workset_config_fad(
-    const Plato::OrdinalType & aNumCells, 
-    const NodeCoordinates    & aNodeCoordinate, 
+    const Plato::OrdinalType & aNumCells,
+    const NodeCoordinates    & aNodeCoordinate,
           FadConfigWS        & aFadConfigWS
 )
 {
@@ -1215,16 +1215,16 @@ workset_config_fad(
 *
 * \param [in]     aNumCells           number of cells (i.e. elements)
 * \param [in]     aStateEntryOrdinal  global-to-local index state map
-* \param [in]     aResidual           input residual vector 
-* \param [in/out] aReturnValue        output residual vector 
+* \param [in]     aResidual           input residual vector
+* \param [in/out] aReturnValue        output residual vector
 *
 *******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType NumDofsPerNode, class StateEntryOrdinal, class Residual, class ReturnVal>
 inline void
 assemble_residual(
     const Plato::SpatialDomain & aDomain,
-    const StateEntryOrdinal    & aStateEntryOrdinal, 
-    const Residual             & aResidual, 
+    const StateEntryOrdinal    & aStateEntryOrdinal,
+    const Residual             & aResidual,
           ReturnVal            & aReturnValue)
 {
     auto tNumCells = aDomain.numCells();
@@ -1255,16 +1255,16 @@ assemble_residual(
 *
 * \param [in]     aNumCells           number of cells (i.e. elements)
 * \param [in]     aStateEntryOrdinal  global-to-local index state map
-* \param [in]     aResidual           input residual vector 
-* \param [in/out] aReturnValue        output residual vector 
+* \param [in]     aResidual           input residual vector
+* \param [in/out] aReturnValue        output residual vector
 *
 *******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType NumDofsPerNode, class StateEntryOrdinal, class Residual, class ReturnVal>
 inline void
 assemble_residual(
     const Plato::OrdinalType & aNumCells,
-    const StateEntryOrdinal  & aStateEntryOrdinal, 
-    const Residual           & aResidual, 
+    const StateEntryOrdinal  & aStateEntryOrdinal,
+    const Residual           & aResidual,
           ReturnVal          & aReturnValue)
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0,aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -1291,9 +1291,9 @@ assemble_residual(
 * \param [in]     aNumCells            number of cells (i.e. elements)
 * \param [in]     aNumRowsPerCell      number of rows
 * \param [in]     aNumColumnsPerCell   number of columns
-* \param [in]     aMatrixEntryOrdinal  matrix entries index map 
-* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell 
-* \param [in/out] aReturnValue         output Jacobian  
+* \param [in]     aMatrixEntryOrdinal  matrix entries index map
+* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell
+* \param [in/out] aReturnValue         output Jacobian
 *
 *******************************************************************************/
 template<class MatrixEntriesOrdinal, class ReturnVal>
@@ -1323,6 +1323,43 @@ inline void assemble_jacobian(Plato::OrdinalType aNumCells,
 * \brief Assemble Jacobian matrix
 *
 * \tparam MatrixEntriesOrdinal  matrix entries index map class
+* \tparam ReturnVal             output residual class
+*
+* \param [in]     aNumCells            number of cells (i.e. elements)
+* \param [in]     aNumRowsPerCell      number of rows
+* \param [in]     aNumColumnsPerCell   number of columns
+* \param [in]     aMatrixEntryOrdinal  matrix entries index map
+* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell
+* \param [in/out] aReturnValue         output Jacobian
+*
+*******************************************************************************/
+template<class MatrixEntriesOrdinal, class ReturnVal>
+inline void assemble_jacobian_transpose_pod(Plato::OrdinalType aNumCells,
+                              Plato::OrdinalType aNumRowsPerCell,
+                              Plato::OrdinalType aNumColumnsPerCell,
+                              const MatrixEntriesOrdinal &aMatrixEntryOrdinal,
+                              const Plato::ScalarArray3D &aJacobianWorkset,
+                              ReturnVal &aReturnValue)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < aNumRowsPerCell; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++)
+            {
+                Plato::OrdinalType tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tColumnIndex, tRowIndex);
+                Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aJacobianWorkset(aCellOrdinal,tRowIndex, tColumnIndex));
+            }
+        }
+    }, "assemble jacobian");
+}
+// function assemble_jacobian
+
+
+/***************************************************************************//**
+* \brief Assemble Jacobian matrix
+*
+* \tparam MatrixEntriesOrdinal  matrix entries index map class
 * \tparam Jacobian              input Jacobian workset forward automatic differentiation (FAD) class
 * \tparam ReturnVal             output Jacobian FAD class
 *
@@ -1330,8 +1367,8 @@ inline void assemble_jacobian(Plato::OrdinalType aNumCells,
 * \param [in]     aNumRowsPerCell      number of rows
 * \param [in]     aNumColumnsPerCell   number of columns
 * \param [in]     aMatrixEntryOrdinal  matrix entries index map
-* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell 
-* \param [in/out] aReturnValue         assembled Jacobian  
+* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell
+* \param [in/out] aReturnValue         assembled Jacobian
 *
 *******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
@@ -1372,8 +1409,8 @@ assemble_jacobian_fad(
 * \param [in]     aNumRowsPerCell      number of rows
 * \param [in]     aNumColumnsPerCell   number of columns
 * \param [in]     aMatrixEntryOrdinal  matrix entries index map
-* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell 
-* \param [in/out] aReturnValue         assembled Jacobian  
+* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell
+* \param [in/out] aReturnValue         assembled Jacobian
 *
 *******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
@@ -1411,8 +1448,8 @@ assemble_jacobian_fad(
 * \param [in]     aNumRowsPerCell      number of rows
 * \param [in]     aNumColumnsPerCell   number of columns
 * \param [in]     aMatrixEntryOrdinal  matrix entries index map
-* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell 
-* \param [in/out] aReturnValue         assembled transpose of Jacobian  
+* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell
+* \param [in/out] aReturnValue         assembled transpose of Jacobian
 *
 *******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
@@ -1453,8 +1490,8 @@ assemble_transpose_jacobian(
 * \param [in]     aNumRowsPerCell      number of rows
 * \param [in]     aNumColumnsPerCell   number of columns
 * \param [in]     aMatrixEntryOrdinal  matrix entries index map
-* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell 
-* \param [in/out] aReturnValue         assembled transpose of Jacobian  
+* \param [in]     aJacobianWorkset     jacobian workset, i.e. jacobian for each element/cell
+* \param [in/out] aReturnValue         assembled transpose of Jacobian
 *
 *******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
