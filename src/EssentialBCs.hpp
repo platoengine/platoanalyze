@@ -12,6 +12,118 @@
 
 namespace Plato
 {
+    
+/******************************************************************************//**
+ * \fn Plato::LocalOrdinalVector find_duplicate_dofs
+ *
+ * \brief Find duplicate degrees of freedom (dofs). Assumes all the dof ids are 
+ * positive, i.e. dofs ids cannot be negative. 
+ * \param [in] aDofs dofs array
+ * \return duplicate dofs array
+ *
+ **********************************************************************************/
+inline Plato::LocalOrdinalVector
+find_duplicate_dofs
+(const Plato::LocalOrdinalVector& aDofs)
+{
+    auto tNumElems = aDofs.size();
+    Plato::LocalOrdinalVector tSum("number of duplicates", 1);
+    Plato::LocalOrdinalVector tDuplicates("duplicates", tNumElems);
+    Plato::blas1::fill(-1.0, tDuplicates);
+    
+    auto tRange = tNumElems - static_cast<decltype(tNumElems)>(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tRange), LAMBDA_EXPRESSION(const decltype(tRange)& aIndexI)
+    {
+        for(decltype(tNumElems) tIndexJ = aIndexI + static_cast<decltype(tNumElems)>(1); tIndexJ < tNumElems; tIndexJ++)
+        {
+            if ( aDofs(aIndexI) == aDofs(tIndexJ) )
+            {
+                bool tFoundNumber = false;
+                for(decltype(tNumElems) tIndex = 0; tIndex < tNumElems; tIndex++)
+                {
+                    if(tDuplicates(tIndex) == aDofs(aIndexI))
+                    {
+                        tFoundNumber = true;
+                        break;
+                    }
+                }
+                
+                if(!tFoundNumber)
+                {
+                    tDuplicates(aIndexI) = aDofs(aIndexI);
+                    tSum(0) += 1;
+                }
+            }
+        }        
+    }, "find_duplicate_dofs");
+
+    auto tHostSum = Kokkos::create_mirror(tSum);
+    Kokkos::deep_copy(tHostSum, tSum);
+
+    auto tNumDuplicates = tHostSum(0);
+    Plato::blas1::fill(0.0, tSum);
+    Plato::LocalOrdinalVector tOutput("duplicates", tNumDuplicates);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumElems), LAMBDA_EXPRESSION(const decltype(tNumElems)& aIndex)
+    {
+        if(tDuplicates(aIndex) != -1)
+        {
+            tOutput(tSum(0)) = tDuplicates(aIndex);
+            tSum(0) += 1;
+        }
+    },"post_process_duplicate_dofs");
+
+    return tOutput;
+}
+// function find_duplicate_dofs
+
+/******************************************************************************//**
+ * \fn void resolve_competing_dof_values
+ *
+ * \brief Resolve duplicate competing Dirichlet degrees of freedom (dofs) values.
+ * If multiple Dirichlet dofs are competing, the dof value is set to the maximum 
+ * value of all competing dofs.
+ * 
+ * \param [in] aDofs          dofs array
+ * \param [in] aDuplicateDofs duplicate dofs array
+ * \param [in] aDofsVals      Dirichlet dof values
+ *
+ **********************************************************************************/
+inline void 
+resolve_competing_dof_values
+(const Plato::LocalOrdinalVector & aDofs,
+ const Plato::LocalOrdinalVector & aDuplicateDofs,
+       Plato::ScalarVector       & aDofsVals)
+{
+    auto tNumDofs = aDofs.size();
+    Plato::ScalarVector tDuplicateDofValues("dof values", aDuplicateDofs.size());
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const decltype(tNumDofs)& aIndexI)
+    {
+        for(decltype(tNumDofs) tIndexJ = 0 ; tIndexJ < aDuplicateDofs.size(); tIndexJ++)
+        {
+            bool tFoundNumber = false;
+            if(aDuplicateDofs(tIndexJ) == aDofs(aIndexI))
+            {
+                tDuplicateDofValues(tIndexJ) = tDuplicateDofValues(tIndexJ) > aDofsVals(aIndexI) ? tDuplicateDofValues(tIndexJ) : aDofsVals(aIndexI);
+                tFoundNumber = true;
+                break;
+            }
+        }
+    },"set_max_dofs_value");
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const decltype(tNumDofs)& aIndexI)
+    {
+        for(decltype(tNumDofs) tIndexJ = 0 ; tIndexJ < aDuplicateDofs.size(); tIndexJ++)
+        {
+            bool tFoundNumber = false;
+            if(aDuplicateDofs(tIndexJ) == aDofs(aIndexI))
+            {
+                aDofsVals(aIndexI) = tDuplicateDofValues(tIndexJ);
+                break;
+            }
+        }
+    },"set_max_dofs_value");
+}
+// resolve_competing_dof_values
 
 /******************************************************************************/
 /*!

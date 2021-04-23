@@ -2961,13 +2961,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;

@@ -172,6 +172,53 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ResolveDuplicateDofs)
+{
+    Plato::OrdinalType tNumDofs = 20;
+    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
+    auto tHostDofs = Kokkos::create_mirror(tDofs);
+    tHostDofs(0) = 1; tHostDofs(1) = 23; tHostDofs(2) = 34; tHostDofs(3) = 2; tHostDofs(4) = 5;
+    tHostDofs(5) = 6; tHostDofs(6) = 23; tHostDofs(7) = 1; tHostDofs(8) = 10; tHostDofs(9) = 4;
+    tHostDofs(10) = 222; tHostDofs(11) = 223; tHostDofs(12) = 123; tHostDofs(13) = 102; tHostDofs(14) = 42;
+    tHostDofs(15) = 126; tHostDofs(16) = 23; tHostDofs(17) = 4; tHostDofs(18) = 10; tHostDofs(19) = 42;
+    Kokkos::deep_copy(tDofs, tHostDofs);
+
+    // TEST: find_duplicate_dofs
+    auto tDuplicateDofs = Plato::find_duplicate_dofs(tDofs);
+    auto tNumDuplicateDofs = tDuplicateDofs.size();
+    TEST_EQUALITY(5, tNumDuplicateDofs);
+    auto tHostDuplicateDofs = Kokkos::create_mirror(tDuplicateDofs);
+    Kokkos::deep_copy(tHostDuplicateDofs, tDuplicateDofs);
+    std::vector<decltype(tNumDuplicateDofs)> tGoldDofs = {1, 23, 10, 4, 42};
+    for(auto& tGoldDof : tGoldDofs)
+    {
+        auto tIndex = &tGoldDof - &tGoldDofs[0];
+        TEST_EQUALITY(tGoldDof, tHostDuplicateDofs(tIndex));
+    }
+
+
+    Plato::ScalarVector tDofsVals("dofs  values", tNumDofs);
+    auto tHostDofsVals = Kokkos::create_mirror(tDofsVals);
+    tHostDofsVals(0) = 0; tHostDofsVals(1) = 0; tHostDofsVals(2) = 0; tHostDofsVals(3) = 0; tHostDofsVals(4) = 0;
+    tHostDofsVals(5) = 0; tHostDofsVals(6) = 1; tHostDofsVals(7) = 1; tHostDofsVals(8) = 0; tHostDofsVals(9) = 0;
+    tHostDofsVals(10) = 1; tHostDofsVals(11) = 1; tHostDofsVals(12) = 1; tHostDofsVals(13) = 1; tHostDofsVals(14) = 2;
+    tHostDofsVals(15) = 1; tHostDofsVals(16) = 1.5; tHostDofsVals(17) = 0; tHostDofsVals(18) = 0; tHostDofsVals(19) = 0;
+    Kokkos::deep_copy(tDofsVals, tHostDofsVals);
+
+    Plato::resolve_competing_dof_values(tDofs, tDuplicateDofs, tDofsVals);
+    auto tFixedHostDofsVals = Kokkos::create_mirror(tDofsVals);
+    Kokkos::deep_copy(tFixedHostDofsVals, tDofsVals);
+    std::vector<Plato::Scalar> tGoldDofVals = 
+        {1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 1.5, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0, 1.5, 0.0, 0.0, 2.0};
+
+    auto tTol = 1e-4;
+    for(auto& tGoldDofVal : tGoldDofVals)
+    {
+        auto tIndex = &tGoldDofVal - &tGoldDofVals[0];
+        TEST_FLOATING_EQUALITY(tGoldDofVal, tFixedHostDofsVals(tIndex), tTol);
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OpenTextFile)
 {
     std::ofstream tFile;

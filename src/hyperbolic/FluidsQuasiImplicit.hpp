@@ -50,8 +50,8 @@ private:
     static constexpr auto mNumTempDofsPerNode  = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
 
-    Plato::Comm::Machine& mMachine; /*!< parallel communication interface */
-    const Teuchos::ParameterList& mInputs; /*!< input file metadata */
+    Plato::Comm::Machine mMachine; /*!< parallel communication interface */
+    Teuchos::ParameterList mInputs; /*!< input file metadata */
 
     Plato::DataMap mDataMap; /*!< static output fields metadata interface */
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
@@ -1479,6 +1479,8 @@ private:
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
 
         // create linear solver
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
@@ -1498,7 +1500,11 @@ private:
             Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
+            if( !std::isfinite(tNormResidual) )
+            { THROWERR("The norm of the residual is not a finite number") }
             auto tNormStep = Plato::blas1::norm(tDeltaCorrector);
+            if( !std::isfinite(tNormStep) )
+            { THROWERR("The norm of the step is not a finite number") }
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
@@ -1606,12 +1612,9 @@ private:
         auto tResidual = mPredictorResidual.value(aControl, aStates);
         auto tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
 
-        // prepare constraints dofs
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-
         // create linear solver
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
@@ -1629,7 +1632,11 @@ private:
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
+            if( !std::isfinite(tNormResidual) )
+            { THROWERR("The norm of the residual is not a finite number") }
             auto tNormStep = Plato::blas1::norm(tDeltaPredictor);
+            if( !std::isfinite(tNormStep) )
+            { THROWERR("The norm of the step is not a finite number") }
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
@@ -1697,6 +1704,8 @@ private:
         mPressureEssentialBCs.get(tBcDofs, tBcValues);
 
         // create linear solver
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
@@ -1719,7 +1728,11 @@ private:
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
+            if( !std::isfinite(tNormResidual) )
+            { THROWERR("The norm of the residual is not a finite number") }
             auto tNormStep = Plato::blas1::norm(tDeltaPressure);
+            if( !std::isfinite(tNormStep) )
+            { THROWERR("The norm of the step is not a finite number") }
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
@@ -1786,6 +1799,8 @@ private:
         mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
 
         // solve energy equation (consistent or mass lumped)
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
@@ -1811,7 +1826,11 @@ private:
 
             // calculate stopping criteria
             auto tNormResidual = Plato::blas1::norm(tResidual);
+            if( !std::isfinite(tNormResidual) )
+            { THROWERR("The norm of the residual is not a finite number") }
             auto tNormStep = Plato::blas1::norm(tDeltaTemperature);
+            if( !std::isfinite(tNormStep) )
+            { THROWERR("The norm of the step is not a finite number") }
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
@@ -1864,6 +1883,8 @@ private:
         Plato::blas1::scale(-1.0, tRHS);
 
         // solve adjoint system of equations
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
@@ -1927,6 +1948,8 @@ private:
         Plato::blas1::fill(0.0, tBcValues);
 
         // solve adjoint system of equations
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
@@ -1989,6 +2012,8 @@ private:
         Plato::blas1::fill(0.0, tBcValues);
 
         // solve adjoint system of equations
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
@@ -2061,6 +2086,8 @@ private:
         Plato::blas1::fill(0.0, tBcValues);
 
         // solve adjoint system of equations
+        if( mInputs.isSublist("Linear Solver") == false )
+        { THROWERR("Parameter list 'Linear Solver' is not defined.") }
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);

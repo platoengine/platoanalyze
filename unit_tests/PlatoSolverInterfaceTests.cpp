@@ -1309,7 +1309,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_valid_input )
   auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
-  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);

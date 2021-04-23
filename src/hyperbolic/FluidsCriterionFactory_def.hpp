@@ -28,35 +28,40 @@ CriterionFactory<PhysicsT>::createCriterion
        Teuchos::ParameterList & aInputs,
        std::string            & aTag)
 {
-   auto tFunctionTag = aInputs.sublist("Criteria").sublist(aTag);
-   auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");
-   auto tLowerType = Plato::tolower(tType);
+    auto tCriteriaParam = aInputs.sublist("Criteria");
+    if(tCriteriaParam.isSublist(aTag) == false) 
+    {
+        THROWERR(std::string("Parameter list block with tag '") + aTag + "' is not defined")
+    }       
+    auto tFunctionTag = tCriteriaParam.sublist(aTag);
+    auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");
+    auto tLowerType = Plato::tolower(tType);
 
-   if(tLowerType == "scalar function")
-   {
-       auto tCriterion =
-           std::make_shared<Plato::Fluids::ScalarFunction<PhysicsT>>
-               (aModel, aDataMap, aInputs, aTag);
-       return tCriterion;
-   }
-   else if(tLowerType == "weighted sum")
-   {
-       auto tCriterion =
-           std::make_shared<Plato::Fluids::WeightedScalarFunction<PhysicsT>>
-               (aModel, aDataMap, aInputs, aTag);
-       return tCriterion;
-   }
-   else if(tLowerType == "least squares")
-   {
-       auto tCriterion =
-           std::make_shared<Plato::Fluids::LeastSquaresScalarFunction<PhysicsT>>
-               (aModel, aDataMap, aInputs, aTag);
-       return tCriterion;
-   }
-   else
-   {
-       THROWERR(std::string("Scalar function in block '") + aTag + "' with Type '" + tType + "' is not supported.")
-   }
+    if(tLowerType == "scalar function")
+    {
+        auto tCriterion =
+            std::make_shared<Plato::Fluids::ScalarFunction<PhysicsT>>
+                (aModel, aDataMap, aInputs, aTag);
+        return tCriterion;
+    }
+    else if(tLowerType == "weighted sum")
+    {
+        auto tCriterion =
+            std::make_shared<Plato::Fluids::WeightedScalarFunction<PhysicsT>>
+                (aModel, aDataMap, aInputs, aTag);
+        return tCriterion;
+    }
+    else if(tLowerType == "least squares")
+    {
+        auto tCriterion =
+            std::make_shared<Plato::Fluids::LeastSquaresScalarFunction<PhysicsT>>
+                (aModel, aDataMap, aInputs, aTag);
+        return tCriterion;
+    }
+    else
+    {
+        THROWERR(std::string("Scalar function in block '") + aTag + "' with Type '" + tType + "' is not supported.")
+    }
 }
 
 }
