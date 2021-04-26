@@ -303,8 +303,16 @@ TpetraLinearSolver::TpetraLinearSolver(
     Omega_h::Mesh&          aMesh,
     Comm::Machine           aMachine,
     int                     aDofsPerNode
-) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))), mSolverEndTime(time(&mTimer))
+) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))),
+    mPreLinearSolveTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Pre Linear Solve Setup")),
+    mPreconditionerSetupTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Preconditioner Setup")),
+    mMatrixConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Matrix Conversion")),
+    mVectorConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Vector Conversion")),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Linear Solve")),
+    mSolverEndTime(mPreLinearSolveTimer->wallTime())
 {
+  mPreLinearSolveTimer->start();
+
   if(aSolverParams.isType<std::string>("Solver Package"))
     mSolverPackage = aSolverParams.get<std::string>("Solver Package");
   else
@@ -355,6 +363,16 @@ TpetraLinearSolver::TpetraLinearSolver(
     mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
 }
 
+/******************************************************************************//**
+ * @brief TpetraLinearSolver destructor
+**********************************************************************************/
+TpetraLinearSolver::~TpetraLinearSolver()
+{
+  const std::string tTimerFilter = ""; //"Analyze:"; // Only timers beginning with this string get summarized.
+  if (mDisplayIterations)
+    Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::ECounterSetOp::Intersection, tTimerFilter);
+}
+
 template<class MV, class OP>
 void
 TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
@@ -375,17 +393,12 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
   solver->setProblem (problem);
 
   Belos::ReturnType result = solver->solve();
+  mNumIterations           = solver->getNumIters();
+  mAchievedTolerance       = solver->achievedTol();
 
-  // Ask the solver how many iterations the last solve() took.
-  const int numIters = solver->getNumIters();
-
-  const double tTolerance = solver->achievedTol();
-  if (result == Belos::Converged) {
-    //std::cout << "Belos solver required " << numIters << " iterations to reach a tolerance of "
-    //          << tTolerance << "." << std::endl;
-  } else {
-    std::cout << "Belos solver did not converge to desired tolerance. Iterations: " << numIters 
-              << ". Achieved tolerance: " << tTolerance << "." << std::endl;
+  if (result == Belos::Unconverged) {
+    printf("Belos solver did not achieve desired tolerance. Completed %d iterations with an achieved tolerance of %7.1e\n",
+            mNumIterations, mAchievedTolerance);
   }
 }
 
@@ -399,6 +412,8 @@ TpetraLinearSolver::amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tp
     tAmesos2Solver->symbolicFactorization();
     tAmesos2Solver->numericFactorization();
     tAmesos2Solver->solve();
+    mNumIterations = 1;
+    mAchievedTolerance = 0.0;
   }
   else
   {
@@ -419,17 +434,22 @@ TpetraLinearSolver::solve(
     Plato::ScalarVector   aB
 )
 {
-  mSolverStartTime = time(&mTimer);
-  const double tAnalyzeElapsedTime = difftime(mSolverStartTime, mSolverEndTime);
-  if (mDisplayIterations)
-    std::cout << "Analyze elapsed time: " << tAnalyzeElapsedTime << ". " << std::flush;
+  mPreLinearSolveTimer->stop(); mPreLinearSolveTimer->incrementNumCalls();
+  mSolverStartTime = mPreLinearSolveTimer->wallTime();
+  const double tAnalyzeElapsedTime = mSolverStartTime - mSolverEndTime;
 
+  mMatrixConversionTimer->start();
   Teuchos::RCP<Tpetra_Matrix> A = mSystem->fromMatrix(aA);
+  mMatrixConversionTimer->stop(); mMatrixConversionTimer->incrementNumCalls();
+
+  mVectorConversionTimer->start();
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
   Teuchos::RCP<Tpetra_MultiVector> B = mSystem->fromVector(aB);
+  mVectorConversionTimer->stop(); mVectorConversionTimer->incrementNumCalls(); mVectorConversionTimer->incrementNumCalls();
 
   Teuchos::RCP<Tpetra_Operator> M;
 
+  mPreconditionerSetupTimer->start();
   if(mPreconditionerPackage == "IFpack2")
     M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
   else if(mPreconditionerPackage == "MueLu")
@@ -439,7 +459,9 @@ TpetraLinearSolver::solve(
     std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage + " is not currently a valid option\n";
     throw std::invalid_argument(tInvalid_solver);
   }
+  mPreconditionerSetupTimer->stop(); mPreconditionerSetupTimer->incrementNumCalls(); 
 
+  mLinearSolverTimer->start();
   if(mSolverPackage == "Belos")
     belosSolve<Tpetra_MultiVector, Tpetra_Operator> (A, X, B, M);
   else if (mSolverPackage == "Amesos2")
@@ -449,12 +471,18 @@ TpetraLinearSolver::solve(
     std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";
     throw std::invalid_argument(tInvalid_solver);
   }
-  mSystem->toVector(aX,X);
+  mLinearSolverTimer->stop(); mLinearSolverTimer->incrementNumCalls();
 
-  mSolverEndTime = time(&mTimer);
-  const double tTpetraElapsedTime = difftime(mSolverEndTime, mSolverStartTime);
+  mVectorConversionTimer->start();
+  mSystem->toVector(aX,X);
+  mVectorConversionTimer->stop(); mVectorConversionTimer->incrementNumCalls();
+
+  mSolverEndTime = mPreLinearSolveTimer->wallTime();
+  const double tTpetraElapsedTime = mSolverEndTime - mSolverStartTime;
   if (mDisplayIterations)
-    std::cout << "Tpetra elapsed time: " << tTpetraElapsedTime << "." << std::endl;
+    printf("Pre Lin. Solve %5.1f second(s) || Lin. Solve %5.1f second(s), %4d iteration(s), %7.1e achieved tolerance\n",
+           tAnalyzeElapsedTime, tTpetraElapsedTime, mNumIterations, mAchievedTolerance);
+  mPreLinearSolveTimer->start();
 }
 
 } // end namespace Plato

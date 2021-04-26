@@ -8,11 +8,11 @@
 
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_Comm.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_Time.hpp>
 #include <Tpetra_Core.hpp>
 #include <Tpetra_MultiVector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
-
-#include <ctime>
 
 namespace Plato {
 
@@ -82,8 +82,17 @@ class TpetraLinearSolver : public AbstractSolver
 
     Teuchos::ParameterList mSolverOptions;
     Teuchos::ParameterList mPreconditionerOptions;
-    time_t mTimer, mSolverStartTime, mSolverEndTime;
-    bool mDisplayIterations;
+
+    Teuchos::RCP<Teuchos::Time> mPreLinearSolveTimer;
+    Teuchos::RCP<Teuchos::Time> mPreconditionerSetupTimer;
+    Teuchos::RCP<Teuchos::Time> mMatrixConversionTimer;
+    Teuchos::RCP<Teuchos::Time> mVectorConversionTimer;
+    Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
+    double mSolverStartTime, mSolverEndTime;
+
+    bool   mDisplayIterations;
+    int    mNumIterations;
+    double mAchievedTolerance;
   public:
     /******************************************************************************//**
      * @brief TpetraLinearSolver constructor
@@ -96,6 +105,11 @@ class TpetraLinearSolver : public AbstractSolver
         Comm::Machine           aMachine,
         int                     aDofsPerNode
     );
+
+    /******************************************************************************//**
+     * @brief TpetraLinearSolver destructor
+    **********************************************************************************/
+    ~TpetraLinearSolver();
 
     /******************************************************************************//**
      * @brief Interface function to solve the linear system
