@@ -369,8 +369,12 @@ TpetraLinearSolver::TpetraLinearSolver(
 TpetraLinearSolver::~TpetraLinearSolver()
 {
   const std::string tTimerFilter = ""; //"Analyze:"; // Only timers beginning with this string get summarized.
+  const bool tAlwaysWriteLocal = false;
+  const bool tWriteGlobalStats = true;
+  const bool tWriteZeroTimers  = false;
   if (mDisplayIterations)
-    Teuchos::TimeMonitor::summarize(std::cout, false, true, false, Teuchos::ECounterSetOp::Intersection, tTimerFilter);
+    Teuchos::TimeMonitor::summarize(std::cout, tAlwaysWriteLocal, tWriteGlobalStats, tWriteZeroTimers, 
+                                    Teuchos::ECounterSetOp::Intersection, tTimerFilter);
 }
 
 template<class MV, class OP>
@@ -384,8 +388,7 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
     factory.create (mSolver, tSolverOptions);
 
   typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
-  Teuchos::RCP<problem_type> problem = 
-    Teuchos::rcp (new problem_type(A, X, B));
+  Teuchos::RCP<problem_type> problem = Teuchos::rcp (new problem_type(A, X, B));
 
   problem->setRightPrec(M);
   
