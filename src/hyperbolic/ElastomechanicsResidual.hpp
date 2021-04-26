@@ -10,6 +10,7 @@
 #include "Plato_Solve.hpp"
 #include "LinearStress.hpp"
 #include "ProjectToNode.hpp"
+#include "RayleighStress.hpp"
 #include "ApplyWeighting.hpp"
 #include "StressDivergence.hpp"
 #include "SimplexMechanics.hpp"
@@ -258,7 +259,7 @@ class TransientMechanicsResidual :
 
       Plato::ComputeGradientWorkset<SpaceDim> tComputeGradient;
       Plato::Strain<SpaceDim>                 tComputeVoigtStrain;
-      Plato::LinearStress<SpaceDim>           tComputeVoigtStress(mMaterialModel);
+      Plato::RayleighStress<SpaceDim>         tComputeVoigtStress(mMaterialModel);
       Plato::StressDivergence<SpaceDim>       tComputeStressDivergence;
       Plato::InertialContent<SpaceDim>        tInertialContent(mMaterialModel);
 

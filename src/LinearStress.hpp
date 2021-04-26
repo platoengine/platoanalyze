@@ -24,7 +24,6 @@ private:
 
     const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;  /*!< material stiffness matrix */
     Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;                      /*!< reference strain tensor */
-    Plato::Scalar mRayleighB;
 
 public:
     /******************************************************************************//**
@@ -46,8 +45,7 @@ public:
     **********************************************************************************/
     LinearStress(const Teuchos::RCP<Plato::LinearElasticMaterial<SpaceDim>> aMaterialModel) :
             mCellStiffness(aMaterialModel->getStiffnessMatrix()),
-            mReferenceStrain(aMaterialModel->getReferenceStrain()),
-            mRayleighB(aMaterialModel->getRayleighB())
+            mReferenceStrain(aMaterialModel->getReferenceStrain())
     {
     }
 
@@ -75,33 +73,6 @@ public:
             }
         }
     }
-
-    /******************************************************************************//**
-     * \brief Compute Cauchy stress tensor
-     * \param [in]  aCellOrdinal element ordinal
-     * \param [out] aCauchyStress Cauchy stress tensor
-     * \param [in]  aSmallStrain Infinitesimal strain tensor
-     * \param [in]  aVelGrad Velocity gradient tensor
-    **********************************************************************************/
-    template<typename StressScalarType, typename StrainScalarType, typename VelGradScalarType>
-    DEVICE_TYPE inline void
-    operator()( int cellOrdinal,
-                Kokkos::View<StressScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aCauchyStress,
-                Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aSmallStrain,
-                Kokkos::View<VelGradScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aVelGrad) const {
-
-      // compute stress
-      //
-      for( int iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++){
-        aCauchyStress(cellOrdinal,iVoigt) = 0.0;
-        for( int jVoigt=0; jVoigt<mNumVoigtTerms; jVoigt++){
-          aCauchyStress(cellOrdinal,iVoigt) += (aSmallStrain(cellOrdinal,jVoigt)-mReferenceStrain(jVoigt))*mCellStiffness(iVoigt, jVoigt)
-                                     +  aVelGrad(cellOrdinal,jVoigt)*mCellStiffness(iVoigt, jVoigt)*mRayleighB;
-        }
-      }
-    }
-
-
 
     /******************************************************************************//**
      * \brief Compute Cauchy stress tensor
