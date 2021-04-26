@@ -36,7 +36,8 @@ TpetraSystem::TpetraSystem(
     Omega_h::Mesh& aMesh,
     Comm::Machine  aMachine,
     int            aDofsPerNode
-)
+) : mMatrixConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Matrix Conversion")),
+    mVectorConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Vector Conversion"))
 {
     mComm = aMachine.teuchosComm;
 
@@ -166,6 +167,7 @@ TpetraSystem::TpetraSystem(
 Teuchos::RCP<Tpetra_Matrix>
 TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
 {
+  Teuchos::TimeMonitor LocalTimer(*mMatrixConversionTimer);
   auto tRetVal = Teuchos::rcp(new Tpetra_Matrix(mMap, 0));
 
   auto tNumRowsPerBlock = aInMatrix.numRowsPerBlock();
@@ -219,6 +221,7 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
 Teuchos::RCP<Tpetra_MultiVector>
 TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
 {
+  Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
   auto tOutVector = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
   if(tInVector.extent(0) != tOutVector->getLocalLength())
     throw std::domain_error("ScalarVector size does not match TpetraSystem map\n");
@@ -237,6 +240,7 @@ TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
 void 
 TpetraSystem::toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const
 {
+    Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
     auto tLength = tInVector->getLocalLength();
     auto tTemp = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
     if(tLength != tTemp->getLocalLength())
@@ -306,8 +310,6 @@ TpetraLinearSolver::TpetraLinearSolver(
 ) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))),
     mPreLinearSolveTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Pre Linear Solve Setup")),
     mPreconditionerSetupTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Preconditioner Setup")),
-    mMatrixConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Matrix Conversion")),
-    mVectorConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Vector Conversion")),
     mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Linear Solve")),
     mSolverEndTime(mPreLinearSolveTimer->wallTime())
 {
@@ -381,6 +383,8 @@ template<class MV, class OP>
 void
 TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
 {
+  Teuchos::TimeMonitor LocalTimer(*mLinearSolverTimer);
+
   using scalar_type = typename MV::scalar_type;
   Teuchos::RCP<Teuchos::ParameterList> tSolverOptions = Teuchos::rcp(new Teuchos::ParameterList(mSolverOptions));
   Belos::SolverFactory<scalar_type, MV, OP> factory;
@@ -408,6 +412,8 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
 void
 TpetraLinearSolver::amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tpetra_MultiVector> X, Teuchos::RCP<Tpetra_MultiVector> B) 
 {
+  Teuchos::TimeMonitor LocalTimer(*mLinearSolverTimer);
+  
   if( Amesos2::query(mSolver) )
   {
     Teuchos::RCP<Amesos2::Solver<Tpetra_Matrix, Tpetra_MultiVector>> tAmesos2Solver =
@@ -441,14 +447,9 @@ TpetraLinearSolver::solve(
   mSolverStartTime = mPreLinearSolveTimer->wallTime();
   const double tAnalyzeElapsedTime = mSolverStartTime - mSolverEndTime;
 
-  mMatrixConversionTimer->start();
   Teuchos::RCP<Tpetra_Matrix> A = mSystem->fromMatrix(aA);
-  mMatrixConversionTimer->stop(); mMatrixConversionTimer->incrementNumCalls();
-
-  mVectorConversionTimer->start();
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
   Teuchos::RCP<Tpetra_MultiVector> B = mSystem->fromVector(aB);
-  mVectorConversionTimer->stop(); mVectorConversionTimer->incrementNumCalls(); mVectorConversionTimer->incrementNumCalls();
 
   Teuchos::RCP<Tpetra_Operator> M;
 
@@ -464,7 +465,6 @@ TpetraLinearSolver::solve(
   }
   mPreconditionerSetupTimer->stop(); mPreconditionerSetupTimer->incrementNumCalls(); 
 
-  mLinearSolverTimer->start();
   if(mSolverPackage == "Belos")
     belosSolve<Tpetra_MultiVector, Tpetra_Operator> (A, X, B, M);
   else if (mSolverPackage == "Amesos2")
@@ -474,11 +474,7 @@ TpetraLinearSolver::solve(
     std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";
     throw std::invalid_argument(tInvalid_solver);
   }
-  mLinearSolverTimer->stop(); mLinearSolverTimer->incrementNumCalls();
-
-  mVectorConversionTimer->start();
   mSystem->toVector(aX,X);
-  mVectorConversionTimer->stop(); mVectorConversionTimer->incrementNumCalls();
 
   mSolverEndTime = mPreLinearSolveTimer->wallTime();
   const double tTpetraElapsedTime = mSolverEndTime - mSolverStartTime;

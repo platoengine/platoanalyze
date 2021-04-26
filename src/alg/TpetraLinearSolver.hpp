@@ -33,6 +33,9 @@ class TpetraSystem
   Teuchos::RCP<Tpetra_Map> mMap;
   Teuchos::RCP<const Teuchos::Comm<int>>  mComm;
 
+  Teuchos::RCP<Teuchos::Time> mMatrixConversionTimer;
+  Teuchos::RCP<Teuchos::Time> mVectorConversionTimer;
+
   public:
     TpetraSystem(
         Omega_h::Mesh& aMesh,
@@ -85,8 +88,6 @@ class TpetraLinearSolver : public AbstractSolver
 
     Teuchos::RCP<Teuchos::Time> mPreLinearSolveTimer;
     Teuchos::RCP<Teuchos::Time> mPreconditionerSetupTimer;
-    Teuchos::RCP<Teuchos::Time> mMatrixConversionTimer;
-    Teuchos::RCP<Teuchos::Time> mVectorConversionTimer;
     Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
     double mSolverStartTime, mSolverEndTime;
 
