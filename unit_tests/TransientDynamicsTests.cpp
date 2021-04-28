@@ -30,6 +30,48 @@
 #include "hyperbolic/HyperbolicMechanics.hpp"
 #include "hyperbolic/HyperbolicProblem.hpp"
 
+template <class VectorFunctionT, class VectorT, class ControlT>
+Plato::Scalar
+testVectorFunction_Partial_z(
+    VectorFunctionT& aVectorFunction,
+    VectorT aU,
+    VectorT aV,
+    VectorT aA,
+    ControlT aControl,
+    Plato::Scalar aTimeStep)
+{
+    // compute initial R and dRdz
+    auto tResidual = aVectorFunction.value(aU, aV, aA, aControl, aTimeStep);
+    auto t_dRdz = aVectorFunction.gradient_z(aU, aV, aA, aControl, aTimeStep);
+
+    Plato::ScalarVector tStep = Plato::ScalarVector("Step", aControl.extent(0));
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::blas1::random(0.025, 0.05, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+
+    // compute F at z - step
+    Plato::blas1::axpy(-1.0, tStep, aControl);
+    auto tResidualNeg = aVectorFunction.value(aU, aV, aA, aControl, aTimeStep);
+
+    // compute F at z + step
+    Plato::blas1::axpy(2.0, tStep, aControl);
+    auto tResidualPos = aVectorFunction.value(aU, aV, aA, aControl, aTimeStep);
+    Plato::blas1::axpy(-1.0, tStep, aControl);
+
+    // compute actual change in F over 2 * deltaZ
+    Plato::blas1::axpy(-1.0, tResidualPos, tResidualNeg);
+    auto tDeltaFD = Plato::blas1::norm(tResidualNeg);
+
+    Plato::ScalarVector tDeltaR = Plato::ScalarVector("delta R", tResidual.extent(0));
+    Plato::blas1::scale(2.0, tStep);
+    Plato::VectorTimesMatrixPlusVector(tStep, t_dRdz, tDeltaR);
+    auto tDeltaAD = Plato::blas1::norm(tDeltaR);
+
+    // return error
+    Plato::Scalar tPer = fabs(tDeltaFD) + fabs(tDeltaAD);
+    return std::fabs(tDeltaFD - tDeltaAD) / (tPer != 0 ? tPer : 1.0);
+}
+
 TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 {
   // create test mesh
@@ -297,7 +339,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
     tVectorFunction(tSpatialModel, tDataMap, *tInputParams, tInputParams->get<std::string>("PDE Constraint"));
 
   int tNumDofs = cSpaceDim*tMesh->nverts();
-  Plato::ScalarVector tControl("control", tNumDofs);
+  Plato::ScalarVector tControl("control", tMesh->nverts());
   Plato::blas1::fill(1.0, tControl);
 
   // create mesh based displacement from host data
@@ -307,7 +349,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
   for( auto& val : u_host ) val = (disp += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     u_host_view(u_host.data(),u_host.size());
-  auto tU = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  Plato::ScalarVector tU = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
 
   Plato::ScalarVector tV("Velocity", tNumDofs);
   Plato::blas1::fill(0.0, tV);
@@ -468,6 +510,9 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
   /**************************************
    Test VectorFunction gradient wrt Z
    **************************************/
+
+  auto t_dRdz_error = testVectorFunction_Partial_z(tVectorFunction, tU, tV, tA, tControl, tTimeStep);
+  TEST_ASSERT(t_dRdz_error < 1.0e-6);
 
   auto tGradientZ = tVectorFunction.gradient_z(tU, tV, tA, tControl, tTimeStep);
   auto tGradientZ_entries = tGradientZ->entries();

@@ -1281,6 +1281,51 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_SlowDumbMatrixMinusMat
 }
 /******************************************************************************/
 /*! 
+  \brief Create a full non-square block matrix, A, with size nrows X ncols and
+         a vector, a, with length nrows and a vector, b, with length ncols.
+         compute c = a*A + b, then verify c against gold.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_VectorTimesMatrixPlusVector)
+{
+  Plato::OrdinalType tOffset = 3;
+
+  auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType( 3, 12, 1, 4) );
+  std::vector<Plato::OrdinalType> tRowMapA = { 0, 3, 6, 9 };
+  std::vector<Plato::OrdinalType> tColMapA = { 0, 1, 2, 0, 1, 2, 0, 1, 2 };
+  std::vector<Plato::Scalar>      tValuesA = 
+    { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+  PlatoDevel::setMatrixData(tMatrixA, tRowMapA, tColMapA, tValuesA);
+
+  auto tMatrixA_full = ::PlatoUtestHelpers::toFull(tMatrixA);
+
+  Plato::ScalarVector tVector_a("a", 3);
+  std::vector<Plato::Scalar> tVector_a_full({12,11,10});
+  PlatoDevel::setViewFromVector<Plato::Scalar>(tVector_a, tVector_a_full);
+
+  Plato::ScalarVector tVector_b("b", 12);
+  std::vector<Plato::Scalar> tVector_b_full({12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1});
+  PlatoDevel::setViewFromVector<Plato::Scalar>(tVector_b, tVector_b_full);
+
+  std::vector<Plato::Scalar> tVector_c_gold(12);
+  for(int j=0; j<12; j++)
+  {
+    tVector_c_gold[j] = tVector_b_full[j];
+    for(int i=0; i<3; i++)
+    {
+      tVector_c_gold[j] += tVector_a_full[i] * tMatrixA_full[i][j];
+    }
+  }
+
+  Plato::VectorTimesMatrixPlusVector( tVector_a, tMatrixA, tVector_b );
+
+  TEST_ASSERT(is_same(tVector_b, tVector_c_gold));
+}
+/******************************************************************************/
+/*! 
   \brief Create a full block matrix, A, and a sub-block matrix, B, and
          compute C=A-B, then verify C against gold.
 */

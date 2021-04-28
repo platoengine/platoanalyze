@@ -24,6 +24,7 @@
 
 #ifdef PLATO_ELLIPTIC
 #include "elliptic/Problem.hpp"
+#include "elliptic/updated_lagrangian/Problem.hpp"
 #endif
 
 #ifdef PLATO_PARABOLIC
@@ -82,8 +83,15 @@ public:
                 return tOutput;
             }
             else 
+            if(tPDE == "Updated Lagrangian Elliptic")
+            {
+                using PhysicsType = Plato::Elliptic::UpdatedLagrangian::Mechanics<SpatialDim>;
+                auto tOutput = std::make_shared<Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType>> (aMesh, aMeshSets, tInputData, aMachine);
+                return tOutput;
+            }
 #endif
 #ifdef PLATO_HYPERBOLIC
+            else
             if(tPDE == "Hyperbolic")
             {
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
