@@ -161,6 +161,10 @@ set(LINK_LIBS
     ${SOLVER_INTERFACE_LIBRARIES}
     )
 
+if (PLATOANALYZE_ENABLE_MESHMAP)
+  set(LINK_LIBS ArborX::ArborX ${LINK_LIBS})
+endif()
+
 target_link_libraries(analyzelib PUBLIC ${LINK_LIBS})
 IF( AMGX_FOUND )
   target_include_directories(analyzelib PUBLIC ${AMGX_INCLUDE_DIRS})
