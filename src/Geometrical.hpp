@@ -8,6 +8,7 @@
 #include "NoPenalty.hpp"
 
 #include "geometric/Volume.hpp"
+#include "geometric/GeometryMisfit.hpp"
 #include "geometric/AbstractScalarFunction.hpp"
 
 namespace Plato {
@@ -52,6 +53,11 @@ struct FunctionFactory{
             {
                 throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
+        } else
+        if( strScalarFunctionType == "Geometry Misfit" )
+        {
+            return std::make_shared<Plato::Geometric::GeometryMisfit<EvaluationType>>
+               (aSpatialDomain, aDataMap, aParamList, strScalarFunctionName);
         }
         else
         {
