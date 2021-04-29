@@ -65,6 +65,8 @@ struct Solution {
   ScalarMultiVector State;
   ScalarMultiVector StateDot;
   ScalarMultiVector StateDotDot;
+  
+  ScalarMultiVector LocalState;
 };
 typedef Solution Adjoint;
 
@@ -77,8 +79,21 @@ struct DataMap
   std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
 
   std::map<std::string, Plato::ScalarVectorT<Plato::OrdinalType>> ordinalVectors;
+  std::map<std::string, Plato::ScalarVector> scalarNodeFields;
+  std::map<std::string, Plato::ScalarVector> vectorNodeFields;
 
   std::vector<DataMap> stateDataMaps;
+
+  void clearAll()
+  {
+    clearStates();
+    mScalarValues.clear();
+    scalarVectors.clear();
+    scalarMultiVectors.clear();
+    scalarArray3Ds.clear();
+    scalarNodeFields.clear();
+    vectorNodeFields.clear();
+  }
 
   void clearStates()
   {
@@ -88,6 +103,14 @@ struct DataMap
   void saveState()
   {
     stateDataMaps.push_back(getState());
+
+    mScalarValues.clear();
+    scalarVectors.clear();
+    scalarMultiVectors.clear();
+    scalarArray3Ds.clear();
+
+    scalarNodeFields.clear();
+    vectorNodeFields.clear();
   }
 
   DataMap getState() const

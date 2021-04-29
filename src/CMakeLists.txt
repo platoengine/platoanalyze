@@ -5,15 +5,15 @@ configure_file(
 
 ## material model sources
 set(ANALYZE_SOURCES
-    CustomMaterial.cpp 
-##    ElasticModelFactory.cpp 
-    LinearElasticMaterial.cpp 
-    CubicLinearElasticMaterial.cpp 
-    CustomLinearElasticMaterial.cpp 
-    LinearElectroelasticMaterial.cpp 
-    IsotropicLinearElasticMaterial.cpp 
-    OrthotropicLinearElasticMaterial.cpp 
-    LinearThermoelasticMaterial.cpp 
+    CustomMaterial.cpp
+##    ElasticModelFactory.cpp
+    LinearElasticMaterial.cpp
+    CubicLinearElasticMaterial.cpp
+    CustomLinearElasticMaterial.cpp
+    LinearElectroelasticMaterial.cpp
+    IsotropicLinearElasticMaterial.cpp
+    OrthotropicLinearElasticMaterial.cpp
+    LinearThermoelasticMaterial.cpp
     MaterialModel.cpp
     Rank4Voigt.cpp
     IsotropicStiffness.cpp
@@ -21,24 +21,25 @@ set(ANALYZE_SOURCES
 
 ## Augmented Lagrangian sources
 set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    TensileEnergyDensityLocalMeasure.cpp 
-    TensileEnergyDensity.cpp 
-    Plato_AugLagStressCriterionQuadratic.cpp 
-    Plato_AugLagStressCriterionGeneral.cpp 
-    Plato_AugLagStressCriterion.cpp 
-    Plato_StructuralMass.cpp 
-    VonMisesLocalMeasure.cpp 
-    ThermalVonMisesLocalMeasure.cpp 
+    TensileEnergyDensityLocalMeasure.cpp
+    TensileEnergyDensity.cpp
+    Plato_AugLagStressCriterionQuadratic.cpp
+    Plato_AugLagStressCriterionGeneral.cpp
+    Plato_AugLagStressCriterion.cpp
+    Plato_StructuralMass.cpp
+    VonMisesLocalMeasure.cpp
+    ThermalVonMisesLocalMeasure.cpp
 )
 
 ## core sources
 set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    ExpressionEvaluator.cpp 
-    alg/ParseInput.cpp 
-    alg/Basis.cpp 
-    alg/Cubature.cpp 
-    alg/ParallelComm.cpp 
-    alg/AmgXConfigs.cpp 
+    ExpressionEvaluator.cpp
+    PlatoMask.cpp
+    alg/ParseInput.cpp
+    alg/Basis.cpp
+    alg/Cubature.cpp
+    alg/ParallelComm.cpp
+    alg/AmgXConfigs.cpp
     alg/EpetraLinearSolver.cpp
     alg/AmgXLinearSolver.cpp
     alg/PlatoSolverFactory.cpp
@@ -47,8 +48,8 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
 ## Stabilized VMS sources
 if(STABILIZED)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    EllipticVMSProblem.cpp 
-    StabilizedElastostaticEnergy.cpp 
+    EllipticVMSProblem.cpp
+    StabilizedElastostaticEnergy.cpp
   )
 endif()
 
@@ -85,39 +86,44 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
 ## elliptic sources
 if(ELLIPTIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    elliptic/Problem.cpp 
+    elliptic/Problem.cpp
     elliptic/SolutionFunction.cpp
-    elliptic/DivisionFunction.cpp 
-    elliptic/LeastSquaresFunction.cpp 
-    elliptic/WeightedSumFunction.cpp 
-    elliptic/ScalarFunctionBaseFactory.cpp 
-    elliptic/PhysicsScalarFunction.cpp 
-    elliptic/MassMoment.cpp 
+    elliptic/DivisionFunction.cpp
+    elliptic/LeastSquaresFunction.cpp
+    elliptic/WeightedSumFunction.cpp
+    elliptic/ScalarFunctionBaseFactory.cpp
+    elliptic/PhysicsScalarFunction.cpp
+    elliptic/MassMoment.cpp
     elliptic/MassPropertiesFunction.cpp
-    elliptic/FluxPNorm.cpp 
-    elliptic/StressPNorm.cpp 
-    elliptic/EMStressPNorm.cpp 
-    elliptic/EffectiveEnergy.cpp 
-    elliptic/InternalThermalEnergy.cpp 
-    elliptic/InternalThermoelasticEnergy.cpp 
-    elliptic/InternalElectroelasticEnergy.cpp 
-    elliptic/InternalElasticEnergy.cpp 
-    elliptic/ElastostaticResidual.cpp 
-    elliptic/ThermostaticResidual.cpp 
-    IntermediateDensityPenalty.cpp 
+    elliptic/FluxPNorm.cpp
+    elliptic/StressPNorm.cpp
+    elliptic/EMStressPNorm.cpp
+    elliptic/EffectiveEnergy.cpp
+    elliptic/InternalThermalEnergy.cpp
+    elliptic/InternalThermoelasticEnergy.cpp
+    elliptic/InternalElectroelasticEnergy.cpp
+    elliptic/InternalElasticEnergy.cpp
+    elliptic/ElastostaticResidual.cpp
+    elliptic/ThermostaticResidual.cpp
+    IntermediateDensityPenalty.cpp
+    elliptic/updated_lagrangian/Problem.cpp
+    elliptic/updated_lagrangian/ElastostaticResidual.cpp
+    elliptic/updated_lagrangian/ScalarFunctionBaseFactory.cpp
+    elliptic/updated_lagrangian/PhysicsScalarFunction.cpp
+    elliptic/updated_lagrangian/InternalElasticEnergy.cpp
   )
 endif()
 
 ## parabolic sources
 if(PARABOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    parabolic/Problem.cpp 
-    parabolic/InternalThermalEnergy.cpp 
-    parabolic/InternalThermoelasticEnergy.cpp 
-    parabolic/TemperatureAverage.cpp 
-    parabolic/ScalarFunctionBaseFactory.cpp 
-    parabolic/PhysicsScalarFunction.cpp 
-    parabolic/HeatEquationResidual.cpp 
+    parabolic/Problem.cpp
+    parabolic/InternalThermalEnergy.cpp
+    parabolic/InternalThermoelasticEnergy.cpp
+    parabolic/TemperatureAverage.cpp
+    parabolic/ScalarFunctionBaseFactory.cpp
+    parabolic/PhysicsScalarFunction.cpp
+    parabolic/HeatEquationResidual.cpp
     parabolic/TransientThermomechResidual.cpp
   )
 endif()
@@ -131,7 +137,7 @@ if(HYPERBOLIC)
 endif()
 
 if (PLATOANALYZE_ENABLE_TPETRA)
-  set(ANALYZE_SOURCES ${ANALYZE_SOURCES} alg/TpetraLinearSolver.cpp) 
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES} alg/TpetraLinearSolver.cpp)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/src)

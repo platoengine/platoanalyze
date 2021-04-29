@@ -4,6 +4,8 @@
 #include <Kokkos_Core.hpp>
 #include "PlatoTestHelpers.hpp"
 
+#include <fenv.h>
+
 int main( int argc, char* argv[] )
 {
 
