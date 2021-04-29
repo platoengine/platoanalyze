@@ -8,6 +8,7 @@
 
 #include "hyperbolic/IncompressibleFluids.hpp"
 
+#include "hyperbolic/CriterionFlowRate.hpp"
 #include "hyperbolic/AverageSurfacePressure.hpp"
 #include "hyperbolic/AverageSurfaceTemperature.hpp"
 
@@ -120,12 +121,19 @@ public:
         auto tCriterionTag = tCriterion.get<std::string>("Scalar Function Type", "Not Defined");
         auto tCriterionLowerTag = Plato::tolower(tCriterionTag);
 
+        if( tCriterionLowerTag == "flow rate" )
+        {
+            return ( std::make_shared<Plato::Fluids::CriterionFlowRate<PhysicsT, EvaluationT>>
+                (aTag, aDomain, aDataMap, aInputs) );
+        }
+        else 
         if( tCriterionLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::Fluids::AverageSurfacePressure<PhysicsT, EvaluationT>>
                 (aTag, aDomain, aDataMap, aInputs) );
         }
-        else if( tCriterionLowerTag == "average surface temperature" )
+        else 
+        if( tCriterionLowerTag == "average surface temperature" )
         {
             return ( std::make_shared<Plato::Fluids::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
                 (aTag, aDomain, aDataMap, aInputs) );

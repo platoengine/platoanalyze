@@ -132,6 +132,7 @@ if(HYPERBOLIC)
     hyperbolic/BrinkmanForces.cpp
     hyperbolic/ThermalBuoyancy.cpp
     hyperbolic/PressureResidual.cpp
+    hyperbolic/CriterionFlowRate.cpp
     hyperbolic/TemperatureResidual.cpp
     hyperbolic/FluidsQuasiImplicit.cpp
     hyperbolic/FluidsScalarFunction.cpp
