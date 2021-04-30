@@ -221,15 +221,38 @@ EpetraLinearSolver::setupSolver(AztecOO& aSolver)
         tDisplayIterations = mSolverParams.get<int>("Display Iterations");
     }
 
+    std::string tSolverType = "GMRES";
+    if(mSolverParams.isType<std::string>("Solver"))
+        tSolverType = mSolverParams.get<std::string>("Solver");
+    
+
     aSolver.SetAztecOption(AZ_output, tDisplayIterations);
 
     // defaults (TODO: add options)
-    aSolver.SetAztecOption(AZ_precond, AZ_ilu);
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
     aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
-    aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
-    aSolver.SetAztecOption(AZ_kspace, mIterations);
-    aSolver.SetAztecOption(AZ_solver, AZ_gmres);
+    if (tSolverType == "GMRES")
+    {
+        aSolver.SetAztecOption(AZ_kspace,  mIterations);
+        aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
+        aSolver.SetAztecOption(AZ_solver,  AZ_gmres);
+    }
+    else if (tSolverType == "Cg")
+    {
+        aSolver.SetAztecOption(AZ_type_overlap, AZ_symmetric);
+        aSolver.SetAztecOption(AZ_overlap, 0);
+        aSolver.SetAztecOption(AZ_solver, AZ_cg);
+    }
+    else if (tSolverType == "Bicgstab")
+    {
+        aSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
+    }
+    else
+    {
+        const std::string tErrorMessage = std::string("Epetra Error: Specified solver '")
+              + tSolverType + "' not implemented. Current options are 'GMRES', 'Cg', and 'Bicgstab'";
+        THROWERR(tErrorMessage)
+    }
 }
 
 } // end namespace Plato
