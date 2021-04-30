@@ -4,6 +4,7 @@
 #include <Omega_h_assoc.hpp>
 #include <Teuchos_ParameterList.hpp>
 
+#include "PlatoMask.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -26,13 +27,17 @@ private:
     std::string         mSpatialDomainName; /*!< element block name */
     Omega_h::LOs        mElemLids;          /*!< element block local identification numbers */
 
+    Plato::LocalOrdinalVector mTotalElemLids;   /*!< List of all elements in this domain */
+    Plato::LocalOrdinalVector mMaskedElemLids;  /*!< List of elements after a mask is applied */
+
 public:
     /******************************************************************************//**
      * \fn getDomainName
      * \brief Return domain name.
      * \return domain name
      **********************************************************************************/
-    decltype(mSpatialDomainName) getDomainName() const
+    decltype(mSpatialDomainName) 
+    getDomainName() const
     {
         return mSpatialDomainName;
     }
@@ -42,7 +47,8 @@ public:
      * \brief Return material model name.
      * \return material model name
      **********************************************************************************/
-    decltype(mMaterialModelName) getMaterialName() const
+    decltype(mMaterialModelName) 
+    getMaterialName() const
     {
         return mMaterialModelName;
     }
@@ -62,7 +68,8 @@ public:
      * \brief Return element block name.
      * \return element block name
      **********************************************************************************/
-    decltype(mElementBlockName) getElementBlockName() const
+    decltype(mElementBlockName) 
+    getElementBlockName() const
     {
         return mElementBlockName;
     }
@@ -72,7 +79,8 @@ public:
      * \brief Set element block name.
      * \param [in] aName element block name
      **********************************************************************************/
-    void setElementBlockName(const std::string & aName)
+    void setElementBlockName
+    (const std::string & aName)
     {
         mElementBlockName = aName;
     }
@@ -82,49 +90,30 @@ public:
      * \brief Return the number of cells.
      * \return number of cells
      **********************************************************************************/
-    Plato::OrdinalType numCells() const
+    Plato::OrdinalType 
+    numCells() const
     {
-        return mElemLids.size();
+        return mMaskedElemLids.extent(0);
+    }
+
+    /******************************************************************************//**
+     * \brief get cell ordinal list
+     * Note: A const reference is returned to prevent the ref count from being modified.  
+    **********************************************************************************/
+    const Plato::LocalOrdinalVector &
+    cellOrdinals() const
+    {
+        return mMaskedElemLids;
     }
 
     /******************************************************************************//**
      * \fn cellOrdinals
-     * \brief Return the list of cell ordinals.
-     * \return list of cell ordinals
-     **********************************************************************************/
-    Omega_h::LOs cellOrdinals() const
-    {
-        return mElemLids;
-    }
-
-    /******************************************************************************//**
-     * \fn cellOrdinals
-     * \brief Set cell ordinals for this element set (block).
-     * \param [in] aName element set (block) name
+     * \brief Set cell ordinals for this element block.
+     * \param [in] aName element block name
      **********************************************************************************/
     void cellOrdinals(const std::string & aName)
     {
-        auto &tElemSets = MeshSets[Omega_h::ELEM_SET];
-        auto tElemSetsI = tElemSets.find(aName);
-        if (tElemSetsI == tElemSets.end())
-        {
-            std::ostringstream tMsg;
-            tMsg << "Could not find element set (block) with name = '" << aName << "'.";
-            THROWERR(tMsg.str())
-        }
-        mElementBlockName = aName;
-        mElemLids = (tElemSetsI->second);
-    }
-
-    /******************************************************************************//**
-     * \fn cellOrdinals
-     * \brief Set cell ordinals for this element set (block)
-     * \param [in] aOrdinals list of cell ordinals
-     **********************************************************************************/
-    void cellOrdinals(const std::string & aName, const Omega_h::LOs & aOrdinals)
-    {
-        mElemLids = aOrdinals;
-        mElementBlockName = aName;
+        this->setMaskLocalElemIDs(aName);
     }
 
     /******************************************************************************//**
@@ -158,17 +147,109 @@ public:
         MeshSets(aMeshSets),
         mSpatialDomainName(aName)
     {
-        if (aInputParams.isType<std::string>("Element Block"))
+        this->initialize(aInputParams);
+    }
+
+    /******************************************************************************//**
+     * \brief Apply mask to this Domain
+     *        This function removes elements that have a mask value of zero in \p aMask.
+     *        Subsequent calls to numCells() and cellOrdinals() refer to the reduced list.
+     *        Call removeMask() to remove the mask, or applyMask(...) to apply a different
+     *        mask.
+     * \param [in] aMask Plato Mask specifying active/inactive nodes and elements
+    **********************************************************************************/
+    template<Plato::OrdinalType mSpatialDim>
+    void applyMask
+    (std::shared_ptr<Plato::Mask<mSpatialDim>> aMask)
+    {
+        using OrdinalT = Plato::OrdinalType;
+
+        auto tMask = aMask->cellMask();
+        auto tTotalElemLids = mTotalElemLids;
+        auto tNumEntries = tTotalElemLids.extent(0);
+
+        // how many non-zeros in the mask?
+        Plato::OrdinalType tSum(0);
+        Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,tNumEntries), 
+        LAMBDA_EXPRESSION(const Plato::OrdinalType& aOrdinal, Plato::OrdinalType & aUpdate)
         {
-            auto tElemBlockName = aInputParams.get<std::string>("Element Block");
-            this->cellOrdinals(tElemBlockName);
+            auto tElemOrdinal = tTotalElemLids(aOrdinal);
+            aUpdate += tMask(tElemOrdinal); 
+        }, tSum);
+        Kokkos::resize(mMaskedElemLids, tSum);
+
+        auto tMaskedElemLids = mMaskedElemLids;
+
+        // create a list of elements with non-zero mask values
+        OrdinalT tOffset(0);
+        Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumEntries),
+        KOKKOS_LAMBDA (const OrdinalT& aOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
+        {
+            auto tElemOrdinal = tTotalElemLids(aOrdinal);
+            const OrdinalT tVal = tMask(tElemOrdinal);
+            if( tIsFinal && tVal ) { tMaskedElemLids(aUpdate) = tElemOrdinal; }
+            aUpdate += tVal;
+        }, tOffset);
+    }
+        
+    /******************************************************************************//**
+     * \brief Remove applied mask.
+     *        This function resets the element list in this domain to the original definition.
+     *        If no mask has been applied, this function has no effect.
+    **********************************************************************************/
+    void
+    removeMask()
+    {
+        Kokkos::deep_copy(mMaskedElemLids, mTotalElemLids);
+    }
+    
+    Omega_h::LOs 
+    getLocalElemIDs
+    (const std::string& aBlockName) const
+    {
+        auto& tElemSets = MeshSets[Omega_h::ELEM_SET];
+        auto tElemSetsI = tElemSets.find(aBlockName);
+        if(tElemSetsI == tElemSets.end())
+        {
+            std::ostringstream tMsg;
+            tMsg << "Could not find element set (block) with name = '" << aBlockName;
+            THROWERR(tMsg.str())
+        }
+
+        return (tElemSetsI->second);
+    }
+
+    void setMaskLocalElemIDs
+    (const std::string& aBlockName)
+    {
+        auto tElemLids = this->getLocalElemIDs(aBlockName);
+        auto tNumElems = tElemLids.size();
+        mTotalElemLids = Plato::LocalOrdinalVector("element list", tNumElems);
+        mMaskedElemLids = Plato::LocalOrdinalVector("masked element list", tNumElems);
+
+        auto tTotalElemLids = mTotalElemLids;
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumElems), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            tTotalElemLids(aCellOrdinal) = tElemLids[aCellOrdinal];
+        }, "get element ids");
+        Kokkos::deep_copy(mMaskedElemLids, mTotalElemLids);
+    }
+
+    void 
+    initialize
+    (const Teuchos::ParameterList & aInputParams)
+    {
+        if(aInputParams.isType<std::string>("Element Block"))
+        {
+            mElementBlockName = aInputParams.get<std::string>("Element Block");
+            this->cellOrdinals(mElementBlockName);
         }
         else
         {
             THROWERR("Parsing new Domain. Required keyword 'Element Block' not found");
         }
 
-        if (aInputParams.isType<std::string>("Material Model"))
+        if(aInputParams.isType<std::string>("Material Model"))
         {
             mMaterialModelName = aInputParams.get<std::string>("Material Model");
         }
@@ -176,6 +257,8 @@ public:
         {
             THROWERR("Parsing new Domain. Required keyword 'Material Model' not found");
         }
+
+        this->setMaskLocalElemIDs(mElementBlockName);
     }
 };
 // class SpatialDomain
@@ -247,15 +330,25 @@ public:
         }
     }
 
+    template <Plato::OrdinalType mSpatialDim>
+    void applyMask
+    (std::shared_ptr<Plato::Mask<mSpatialDim>> aMask)
+    {
+        for( auto& tDomain : Domains )
+        {
+            tDomain.applyMask(aMask);
+        }
+    }
+
     /******************************************************************************//**
      * \brief Append spatial domain to spatial model.
      * \param [in] aDomain Spatial domain
      **********************************************************************************/
-    void append(Plato::SpatialDomain & aDomain)
+    void append
+    (Plato::SpatialDomain & aDomain)
     {
         Domains.push_back(aDomain);
     }
-
 };
 // class SpatialModel
 

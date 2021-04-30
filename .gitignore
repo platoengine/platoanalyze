@@ -1,5 +1,10 @@
 .project
 .cproject
 .settings
+<<<<<<< HEAD
 build*
 /Debug/
+=======
+.vscode
+build*
+>>>>>>> develop

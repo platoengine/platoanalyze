@@ -375,10 +375,11 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
 
   const double tTolerance = solver->achievedTol();
   if (result == Belos::Converged) {
-    std::cout << "The Belos solve took " << numIters << " iteration(s) to reach "
-      "a relative residual tolerance of " << tTolerance << "." << std::endl;
+    //std::cout << "The Belos solve took " << numIters << " iteration(s) to reach "
+    //  "a relative residual tolerance of " << tTolerance << "." << std::endl;
   } else {
-    std::cout << "The Belos solve took " << numIters << " iteration(s), but did not converge." << std::endl;
+    std::cout << "The Belos solve took " << numIters << " iteration(s), but did not converge. Achieved tolerance = "
+              << tTolerance << "." << std::endl;
   }
 }
 

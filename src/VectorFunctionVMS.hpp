@@ -786,7 +786,7 @@ public:
 
         // create return array
         //
-        Plato::ScalarArray3D tOutJacobian("POD Jacobian Node State", mNumCells, mNumStateDofsPerCell, mNumNodeStateDofsPerNode);
+        Plato::ScalarArray3D tOutJacobian("POD Jacobian Node State", mNumCells, mNumStateDofsPerCell, mNumNodeStateDofsPerCell);
 
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -821,7 +821,7 @@ public:
             //
             mJacobianNFunctions.at(tName)->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep );
 
-            Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodeStateDofsPerNode>(tDomain, tJacobianWS, tOutJacobian);
+            Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodeStateDofsPerCell>(tDomain, tJacobianWS, tOutJacobian);
         }
 
         {
@@ -851,9 +851,9 @@ public:
 
             // evaluate function
             //
-            mBoundaryLoadsJacobianNFunction->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep );
-
-            Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodeStateDofsPerNode>(mNumCells, tJacobianWS, tOutJacobian);
+            mBoundaryLoadsJacobianNFunction->evaluate_boundary( mSpatialModel, tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep );
+  
+            Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodeStateDofsPerCell>(mNumCells, tJacobianWS, tOutJacobian);
         }
         return (tOutJacobian);
     }

@@ -66,6 +66,15 @@ public:
     )=0;
 
     /******************************************************************************//**
+     * \brief Is criterion independent of the solution state?
+     * \param [in] aName Name of criterion.
+    **********************************************************************************/
+    virtual bool
+    criterionIsLinear(
+        const std::string & aName
+    ){ return false; }
+
+    /******************************************************************************//**
      * \brief Evaluate criterion function
      * \param [in] aControl 1D view of control variables
      * \param [in] aName Name of criterion.

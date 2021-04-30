@@ -267,9 +267,7 @@ public:
         if(tNumValues > tMaxDisplay) ss << " ... ";
         ss << "]" << std::endl;
 
-#ifdef PLATO_CONSOLE
         Plato::Console::Status(ss.str());
-#endif
     }
 
     /******************************************************************************//**
@@ -314,8 +312,34 @@ public:
         if(mValueNameToCriterionName.count(aName))
         {
             auto tStrCriterion = mValueNameToCriterionName[aName];
-            std::vector<Plato::Scalar> tValue(1, mCriterionValues[tStrCriterion]);
-            aSharedField.setData(tValue);
+
+            if(mCriterionValues.count(tStrCriterion))
+            {
+                std::vector<Plato::Scalar> tValue(1, mCriterionValues[tStrCriterion]);
+                aSharedField.setData(tValue);
+            }
+            else
+            {
+                std::stringstream ss;
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
+                throw Plato::ParsingException(ss.str());
+            }
+        }
+        else
+        if(mVectorNameToCriterionName.count(aName))
+        {
+            auto tStrCriterion = mVectorNameToCriterionName[aName];
+
+            if(mCriterionVectors.count(tStrCriterion))
+            {
+                aSharedField.setData(mCriterionVectors[tStrCriterion]);
+            }
+            else
+            {
+                std::stringstream ss;
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
+                throw Plato::ParsingException(ss.str());
+            }
         }
         else
         {
@@ -335,9 +359,7 @@ public:
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
 
-#ifdef PLATO_CONSOLE
             Plato::Console::Status(ss.str());
-#endif
         }
     }
 
@@ -537,11 +559,14 @@ private:
     Plato::ScalarVector      mControl;
     Plato::ScalarMultiVector mCoords;
 
-    std::map<std::string, Plato::Scalar>       mCriterionValues;
+    std::map<std::string, Plato::Scalar>              mCriterionValues;
+    std::map<std::string, std::vector<Plato::Scalar>> mCriterionVectors;
+
     std::map<std::string, Plato::ScalarVector> mCriterionGradientsZ;
     std::map<std::string, Plato::ScalarVector> mCriterionGradientsX;
 
     std::map<std::string, std::string> mValueNameToCriterionName;
+    std::map<std::string, std::string> mVectorNameToCriterionName;
     std::map<std::string, std::string> mGradientZNameToCriterionName;
     std::map<std::string, std::string> mGradientXNameToCriterionName;
 
@@ -664,7 +689,8 @@ private:
         ComputeCriterionP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        std::string mStrGradientP;
+        std::string mStrValName;
+        std::string mStrGradName;
     };
     friend class ComputeCriterionP;
     /******************************************************************************/
@@ -712,7 +738,7 @@ private:
         ComputeCriterionGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        std::string mStrGradientP;
+        std::string mStrGradName;
     };
     friend class ComputeCriterionGradientP;
     /******************************************************************************/

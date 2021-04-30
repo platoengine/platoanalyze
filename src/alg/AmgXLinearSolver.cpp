@@ -1,5 +1,6 @@
 #ifdef HAVE_AMGX
 #include "alg/AmgXLinearSolver.hpp"
+#include "AnalyzeMacros.hpp"
 #include <amgx_c.h>
 #include <string>
 #include <fstream>
@@ -81,7 +82,9 @@ AmgXLinearSolver::loadConfigString(std::string aConfigFile)
 AmgXLinearSolver::AmgXLinearSolver(
     const Teuchos::ParameterList& aSolverParams,
     int aDofsPerNode
-) : mDofsPerNode(aDofsPerNode)
+) :
+    mDofsPerNode(aDofsPerNode),
+    mDivergenceIsFatal(false)
 {
     AMGX_SAFE_CALL(AMGX_initialize());
     AMGX_SAFE_CALL(AMGX_initialize_plugins());
@@ -94,6 +97,11 @@ AmgXLinearSolver::AmgXLinearSolver(
     }
     auto tConfigString = loadConfigString(tConfigFile);
     AMGX_config_create(&mConfigHandle, tConfigString.c_str());
+
+    if(aSolverParams.isType<bool>("Divergence is Fatal"))
+    {
+        mDivergenceIsFatal = aSolverParams.get<bool>("Divergence is Fatal");
+    }
 
     // everything currently assumes exactly one MPI rank.
     MPI_Comm mpi_comm = MPI_COMM_SELF;
@@ -142,6 +150,23 @@ AmgXLinearSolver::solve(
     int err = cudaDeviceSynchronize();
     assert(err == cudaSuccess);
     auto solverErr = AMGX_solver_solve(mSolverHandle, mForcingHandle, mSolutionHandle);
+    AMGX_SOLVE_STATUS tStatus;
+    AMGX_solver_get_status(mSolverHandle, &tStatus);
+    if (tStatus == AMGX_SOLVE_FAILED)
+    {
+        THROWERR("AMGX Solver Failed!");
+    }
+    else if (tStatus == AMGX_SOLVE_DIVERGED)
+    {
+        if (mDivergenceIsFatal)
+        {
+            THROWERR("AMGX Solver Diverged!");
+        }
+        else
+        {
+            WARNING("AMGX Solver Diverged!");
+        }
+    }
     AMGX_vector_download(mSolutionHandle, mSolution.data());
 }
 

@@ -128,7 +128,7 @@ private:
         Plato::blas1::fill(0.0, tDispControlledDirichletValues);
         if(mCurrentSolverIter == static_cast<Plato::OrdinalType>(0))
         {
-            Plato::blas1::update(mDirichletValuesMultiplier, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.), mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
         }
 
         if(mDebugFlag == true)
@@ -167,7 +167,6 @@ private:
     {
         const Plato::Scalar tAlpha = 1.0;
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
-        //Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
         if (mLinearSolver == nullptr)
             THROWERR("Linear solver object not initialized.")
         mLinearSolver->solve(*aMatrix, aStates.mDeltaGlobalState, aResidual);
@@ -456,9 +455,9 @@ public:
     *******************************************************************************/
     NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
         mWorksetBase(aMesh),
-        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
+        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
         mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-7)),
+        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-8)),
         mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
         mCurrentSolverIter(0),
         mDebugFlag(aInputs.get<bool>("Debug",false)),
@@ -580,17 +579,21 @@ public:
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mSolverDiagnosticsFile);
 
         this->initializeSolver(aStates);
+        // Elastic trial step
+        mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
+                                         aStates.mCurrentLocalState, aStates.mPreviousLocalState,
+                                         aControls, aStates.mCurrentStepIndex);
         while(true)
         {
             tOutputData.mCurrentIteration = mCurrentSolverIter;
-if (mDebugFlag) printf("Iter: %d\nUpdate Local Jacobian Inverse.\n", mCurrentSolverIter);
+            if (mDebugFlag) printf("Iter: %d\nUpdate Local Jacobian Inverse.\n", mCurrentSolverIter);
             // update inverse of local Jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStates, tInvLocalJacobianT);
-if (mDebugFlag) printf("Assemble residual.\n");
+            if (mDebugFlag) printf("Assemble residual.\n");
             // assemble residual
             auto tGlobalResidual = this->assembleResidual(aControls, aStates, tInvLocalJacobianT);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), tGlobalResidual);
-if (mDebugFlag) printf("Assemble tangent.\n");
+            if (mDebugFlag) printf("Assemble tangent.\n");
             // assemble tangent stiffness matrix
             auto tGlobalJacobian = this->assembleTangentMatrix(aControls, aStates, tInvLocalJacobianT);
 
@@ -608,19 +611,19 @@ if (mDebugFlag) printf("Assemble tangent.\n");
                 tNewtonRaphsonConverged = this->didNewtonRaphsonSolverConverge(tOutputData);
                 break;
             }
-if (mDebugFlag) printf("Update global states.\n");
+            if (mDebugFlag) printf("Update global states.\n");
             // update global states
             this->updateGlobalStates(tGlobalJacobian, tGlobalResidual, aStates);
-if (mDebugFlag) printf("Update local states.\n");
+            if (mDebugFlag) printf("Update local states.\n");
             // update local states
             mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                              aStates.mCurrentLocalState, aStates.mPreviousLocalState,
                                              aControls, aStates.mCurrentStepIndex);
             mCurrentSolverIter++;
         }
-if (mDebugFlag) printf("Newton finished\n");
+        if (mDebugFlag) printf("Newton iteration completed.\n");
         Plato::print_newton_raphson_stop_criterion(tOutputData, mSolverDiagnosticsFile);
-
+        
         return (tNewtonRaphsonConverged);
     }
 };

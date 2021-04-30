@@ -18,6 +18,7 @@
 #include "alg/CrsLinearProblem.hpp"
 #include "alg/AmgXConfigs.hpp"
 #include <PlatoTypes.hpp>
+#include "AnalyzeMacros.hpp"
 
 #include <amgx_c.h>
 #include <sstream>
@@ -191,6 +192,16 @@ public:
         assert(tErrorMsg == cudaSuccess);
         Kokkos::Profiling::pushRegion("AMGX_solver_solve");
         auto tSolverErr = AMGX_solver_solve(mSolver, mRHS, mLHS);
+        AMGX_SOLVE_STATUS tStatus;
+        AMGX_solver_get_status(mSolver, &tStatus);
+        if (tStatus == AMGX_SOLVE_FAILED)
+        {
+            THROWERR("AMGX Solver Failed!");
+        }
+        else if (tStatus == AMGX_SOLVE_DIVERGED)
+        {
+            THROWERR("AMGX Solver Diverged!");
+        }
         Kokkos::Profiling::popRegion();
         Kokkos::Profiling::pushRegion("AMGX_vector_download");
         AMGX_vector_download(mLHS, mSolution.data());

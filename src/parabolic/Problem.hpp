@@ -200,6 +200,18 @@ namespace Parabolic
 
         }
 
+        /******************************************************************************//**
+         * \brief Is criterion independent of the solution state?
+         * \param [in] aName Name of criterion.
+        **********************************************************************************/
+        bool
+        criterionIsLinear(
+            const std::string & aName
+        ) override
+        {
+            return mLinearCriteria.count(aName) > 0 ? true : false;
+        }
+
         void applyConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
           const Plato::ScalarVector & aVector

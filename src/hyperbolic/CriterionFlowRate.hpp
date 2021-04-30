@@ -185,7 +185,6 @@ public:
                     {
                         for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
                         {
-                            auto tLocalCellDof = (tNode * mNumSpatialDims) + tDim;
                             aResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurVelGP(tCellOrdinal, tDim) * tUnitNormalVec(tDim) * tSurfaceAreaTimesCubWeight;
                         }
                     }

@@ -140,7 +140,7 @@ EpetraLinearSolver::EpetraLinearSolver(
     }
     else
     {
-        mIterations = 100;
+        mIterations = 300;
     }
 
     if(mSolverParams.isType<double>("Tolerance"))
@@ -149,7 +149,7 @@ EpetraLinearSolver::EpetraLinearSolver(
     }
     else
     {
-        mTolerance = 1e-6;
+        mTolerance = 1e-14;
     }
 }
 

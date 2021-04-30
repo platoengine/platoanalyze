@@ -36,23 +36,12 @@ namespace Plato
 {
 
 /***********************************************************************//**
- * \brief Evaluate stabilized infinitesimal strain thermoplasticity residual, defined as
+ * \brief Evaluate stabilized infinitesimal strain thermoplasticity residual
  *
  * \tparam EvaluationType denotes evaluation type for vector function, possible
  *   options are Residual, Jacobian, PartialControl, etc.
  * \tparam SimplexPhysicsType simplex physics type, e.g. SimplexThermoPlasticity. gives
  *   access to static data related to the physics problem.
- * NEED TO UPDATE THESE EQUATIONS TO INCLUDE HEAT CONDUCTION
- * \f$   \langle \nabla{v_h}, s_h \rangle + \langle \nabla\cdot{v_h}, p_h \rangle
- *     - \langle v_h, f \rangle - \langle v_h, b \rangle = 0\ \forall\ v_h \in V_{h,0}
- *       = \{v_h \in V_h | v = 0\ \mbox{in}\ \partial\Omega_{u} \} \f$
- *
- * \f$   \langle q_h, \nabla\cdot{u_h} \rangle - \langle q_h, \frac{1}{K}p_h \rangle
- *     - \sum_{e=1}^{N_{elem}} \tau_e \langle \nabla{q_h} \left[ \nabla{p_h} - \Pi_h
- *       \right] \rangle = 0\ \forall\ q_h \in L_h \subset\ L^2(\Omega) \f$
- *
- * \f$ \langle \nabla{p_h}, \eta_h \rangle - \langle \Pi_h, \eta_h \rangle = 0\
- *     \forall\ \eta_h \in V_h \subset\ H^{1}(\Omega) \f$
  *
 ***************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
@@ -104,11 +93,11 @@ private:
 
     std::vector<std::string> mPlotTable;           /*!< array of output element data identifiers*/
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType,SimplexPhysicsType>> mBodyLoads;                       /*!< body loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>> mBodyLoads;                       /*!< body loads interface */
     std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>> 
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>>
                     mNeumannMechanicalLoads; /*!< Neumann mechanical loads interface */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>> 
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>>
                     mNeumannThermalLoads; /*!< Neumann thermal loads interface */
 
 // Private access functions
@@ -178,7 +167,7 @@ private:
         // Parse body loads
         if (aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType,SimplexPhysicsType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
 
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
@@ -297,7 +286,7 @@ private:
             mNeumannMechanicalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
         }
 
-        tMultiplier = static_cast<Plato::Scalar>(-1.0);
+        //tMultiplier = static_cast<Plato::Scalar>(-1.0);
         if( mNeumannThermalLoads != nullptr )
         {
             mNeumannThermalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
@@ -456,7 +445,7 @@ public:
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, 
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature,
                                                                                                mTemperatureScaling);
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
@@ -519,7 +508,7 @@ public:
             tInterpolateTemperatureFromNodal(aCellOrdinal, tBasisFunctions, aCurrentGlobalState, tTemperature);
             tInterpolateTemperatureGradFromNodal(aCellOrdinal, tConfigurationGradient, aCurrentGlobalState, tTemperatureGrad);
             // Trace of the isotropic thermal strain tensor which for 2D plane strain and 3D is always 3*thermal_strain
-            tThermalVolumetricStrain(aCellOrdinal) = static_cast<GlobalStateT>(3.0) * tThermalExpansionCoefficient * 
+            tThermalVolumetricStrain(aCellOrdinal) = static_cast<GlobalStateT>(3.0) * tThermalExpansionCoefficient *
                                                      (tTemperatureScaling * tTemperature(aCellOrdinal) - tReferenceTemperature);
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic - e_thermal

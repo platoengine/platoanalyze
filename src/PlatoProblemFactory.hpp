@@ -25,6 +25,7 @@
 
 #ifdef PLATO_ELLIPTIC
 #include "elliptic/Problem.hpp"
+#include "elliptic/updated_lagrangian/Problem.hpp"
 #endif
 
 #ifdef PLATO_PARABOLIC
@@ -67,12 +68,12 @@ is_pde_constraint_supported
 // function is_pde_constraint_supported
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type mechanical.
+* \brief Create mechanical problem.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type mechanical
+* \returns shared pointer to abstract problem of type mechanical
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -101,19 +102,19 @@ create_mechanical_problem
     }
     else
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
 #endif
 }
 // function create_mechanical_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type plasticity.
+* \brief Create plasticity problem.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type plasticity
+* \returns shared pointer to abstract problem of type plasticity
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -135,19 +136,53 @@ create_plasticity_problem
     }
     else
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
 #endif
  }
  // function create_plasticity_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type stabilized mechanical.
+* \brief Create a thermoplasticity problem.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type stabilized mechanical
+* \returns shared pointer to abstract problem of type thermoplasticity
+**********************************************************************************/
+template<Plato::OrdinalType SpatialDim>
+inline 
+std::shared_ptr<Plato::AbstractProblem> 
+create_thermoplasticity_problem
+(Omega_h::Mesh          & aMesh,
+ Omega_h::MeshSets      & aMeshSets,
+ Teuchos::ParameterList & aPlatoProb,
+ Comm::Machine            aMachine)
+ {
+     auto tLowerPDE = Plato::is_pde_constraint_supported(aPlatoProb);
+
+#ifdef PLATO_ELLIPTIC
+    if(tLowerPDE == "elliptic")
+    {
+        auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainThermoPlasticity<SpatialDim>> > (aMesh, aMeshSets, aPlatoProb, aMachine);
+        tOutput->readEssentialBoundaryConditions(aPlatoProb);
+        return tOutput;
+    }
+    else
+    {
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
+    }
+#endif
+ }
+ // function create_thermoplasticity_problem
+
+/******************************************************************************//**
+* \brief Create a abstract problem of type stabilized mechanical.
+* \param [in] aMesh        mesh metadata
+* \param [in] aMeshSets    sidesets mesh metadata
+* \param [in] aPlatoProb input xml metadata
+* \param [in] aMachine     mpi communicator interface
+* \returns shared pointer to abstract problem of type stabilized mechanical
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -169,18 +204,18 @@ create_stabilized_mechanical_problem
     else
   #endif
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
 }
  // function create_stabilized_mechanical_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type thermal.
+* \brief Create a abstract problem of type thermal.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type thermal
+* \returns shared pointer to abstract problem of type thermal
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -210,18 +245,18 @@ create_thermal_problem
     else
 #endif
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
  }
  // function create_thermal_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type electromechanical.
+* \brief Create a abstract problem of type electromechanical.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type electromechanical
+* \returns shared pointer to abstract problem of type electromechanical
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -239,12 +274,12 @@ create_electromechanical_problem
  // function create_electromechanical_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type stabilized thermomechanical.
+* \brief Create a abstract problem of type stabilized thermomechanical.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type stabilized thermomechanical
+* \returns shared pointer to abstract problem of type stabilized thermomechanical
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -264,18 +299,18 @@ create_stabilized_thermomechanical_problem
     }
     else
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
  }
  // function create_stabilized_thermomechanical_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type thermomechanical.
+* \brief Create a abstract problem of type thermomechanical.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type thermomechanical
+* \returns shared pointer to abstract problem of type thermomechanical
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -305,18 +340,18 @@ create_thermomechanical_problem
     else
 #endif
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
  }
  // function create_thermomechanical_problem
 
 /******************************************************************************//**
-* \brief Create a Plato abstract problem of type incompressible fluid.
+* \brief Create a abstract problem of type incompressible fluid.
 * \param [in] aMesh        mesh metadata
 * \param [in] aMeshSets    sidesets mesh metadata
 * \param [in] aPlatoProb input xml metadata
 * \param [in] aMachine     mpi communicator interface
-* \returns shared pointer to a Plato abstract problem of type incompressible fluid
+* \returns shared pointer to abstract problem of type incompressible fluid
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline 
@@ -336,7 +371,7 @@ create_incompressible_fluid_problem
     }
     else
     {
-        THROWERR(std::string("Value = '") + tLowerPDE + "' set for parameter 'PDE Constraint' is not supported.");
+        THROWERR(std::string("'PDE Constraint' of type '") + tLowerPDE + "' is not supported.");
     }
 #endif
  }
@@ -380,6 +415,11 @@ public:
         {
             return ( Plato::create_plasticity_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
         }
+        else 
+        if(tPhysics == "thermoplasticity") 
+        {
+            return ( Plato::create_thermoplasticity_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
+        }
 #endif
 #ifdef PLATO_STABILIZED
         else 
@@ -416,7 +456,7 @@ public:
         }
         else
         {
-            THROWERR(std::string("Value = '") + tPhysics + "' set for parameter 'Physics' is not supported.");
+            THROWERR(std::string("'Physics' of type ") + tLowerPhysics + "' is not supported.");
         }
         return nullptr;
     }

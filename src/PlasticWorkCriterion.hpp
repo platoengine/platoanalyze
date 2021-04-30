@@ -70,6 +70,7 @@ private:
 
     Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
     Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
+    Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
     Plato::Scalar mPenaltySIMP;                /*!< SIMP penalty for elastic properties */
     Plato::Scalar mMinErsatz;                  /*!< SIMP min ersatz stiffness for elastic properties */
@@ -97,6 +98,9 @@ public:
         FunctionBaseType(aSpatialDomain, aDataMap, aName),
         mBulkModulus(-1.0),
         mShearModulus(-1.0),
+        mThermalExpansionCoefficient(0.0),
+        mReferenceTemperature(0.0),
+        mTemperatureScaling(1.0),
         mPenaltySIMP(3),
         mMinErsatz(1e-9),
         mUpperBoundOnPenaltySIMP(4),
@@ -161,23 +165,37 @@ public:
         using TotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
+        using PreviousTotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, PrevGlobalStateT, ConfigT>;
+        using PreviousElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, PrevLocalStateT, ConfigT, PrevGlobalStateT>;
+
         // allocate functors used to evaluate criterion
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature,
+                                                                                               mTemperatureScaling);
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
 
         // allocate local containers used to evaluate criterion
         auto tNumCells = mSpatialDomain.numCells();
+
+        Plato::ScalarMultiVectorT<PreviousTotalStrainT>   tPreviousTotalStrain("previous total strain",tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<PreviousElasticStrainT> tPreviousElasticStrain("previous elastic strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<ResultT>                tPreviousCauchyStress("previous cauchy stress", tNumCells, mNumStressTerms);
+
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<TotalStrainT> tCurrentTotalStrain("current total strain",tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+
+        Plato::ScalarMultiVectorT<ResultT> tAverageCauchyStress("average cauchy stress", tNumCells, mNumStressTerms);
+
+        auto tNumStressTerms = mNumStressTerms;
+
+        constexpr Plato::Scalar tOneHalf = 0.5;
 
         // transfer member data to device
         auto tElasticBulkModulus = mBulkModulus;
@@ -194,6 +212,11 @@ public:
             // compute plastic strain misfit
             tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aCurrentLocalState, aPreviousLocalState, tPlasticStrainMisfit);
 
+            // compute previous elastic strain
+            tComputeTotalStrain(aCellOrdinal, tPreviousTotalStrain, aPreviousGlobalState, tConfigurationGradient);
+            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aPreviousGlobalState, aPreviousLocalState,
+                                                        tBasisFunctions, tPreviousTotalStrain, tPreviousElasticStrain);
+
             // compute current elastic strain
             tComputeTotalStrain(aCellOrdinal, tCurrentTotalStrain, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
@@ -206,12 +229,18 @@ public:
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
 
             // compute current Cauchy stress
+            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tPreviousElasticStrain, tPreviousCauchyStress);
             tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tCurrentElasticStrain, tCurrentCauchyStress);
 
-            // compute double dot product
-            const Plato::Scalar tMultiplier = 0.5;
-            tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPlasticStrainMisfit, aResult);
-            aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
+            for (Plato::OrdinalType tIndex = 0; tIndex < tNumStressTerms; ++tIndex)
+                tAverageCauchyStress(aCellOrdinal, tIndex) = tOneHalf * 
+                                                             (tCurrentCauchyStress(aCellOrdinal, tIndex) + tPreviousCauchyStress(aCellOrdinal, tIndex));
+
+            // compute double dot product (strain tensor shear terms already have factor of 2)
+            aResult(aCellOrdinal) = 0.0;
+            for (Plato::OrdinalType tIndex = 0; tIndex < tNumStressTerms; ++tIndex)
+                aResult(aCellOrdinal) += tAverageCauchyStress(aCellOrdinal, tIndex) * tPlasticStrainMisfit(aCellOrdinal, tIndex);
+            aResult(aCellOrdinal) *= tCellVolume(aCellOrdinal);
         }, "plastic work criterion");
     }
 
@@ -286,6 +315,7 @@ private:
     **************************************************************************/
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aMaterialParams)
     {
+        mTemperatureScaling = aMaterialParams.get<Plato::Scalar>("Temperature Scaling", 1.0);
         if (aMaterialParams.isSublist("Isotropic Linear Elastic"))
         {
             auto tElasticSubList = aMaterialParams.sublist("Isotropic Linear Elastic");
