@@ -227,8 +227,6 @@ EpetraLinearSolver::setupSolver(AztecOO& aSolver)
     
 
     aSolver.SetAztecOption(AZ_output, tDisplayIterations);
-
-    // defaults (TODO: add options)
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
     aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
     if (tSolverType == "GMRES")

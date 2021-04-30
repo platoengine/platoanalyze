@@ -966,7 +966,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
       Teuchos::getParametersFromXmlString(
       "<ParameterList name='Linear Solver'>                              \n"
       "  <Parameter name='Solver Stack' type='string' value='Epetra'/>   \n"
-      "  <Parameter name='Solver' type='string' value='AztecOO'/>        \n"
       "  <Parameter name='Display Iterations' type='int' value='0'/>     \n"
       "  <Parameter name='Iterations' type='int' value='50'/>            \n"
       "  <Parameter name='Tolerance' type='double' value='1e-14'/>       \n"
