@@ -173,6 +173,38 @@ EpetraLinearSolver::solve(
     setupSolver(tSolver);
 
     tSolver.Iterate( mIterations, mTolerance );
+    
+    const double* tSolverStatus = tSolver.GetAztecStatus();
+    if (tSolverStatus[AZ_why] == AZ_normal)
+    {
+        // Do nothing
+    }
+    else if (tSolverStatus[AZ_why] == AZ_loss)
+    {
+        printf("Epetra Warning: Loss of numerical precision occured during linear solve.\n");
+    }
+    else if (tSolverStatus[AZ_why] == AZ_ill_cond)
+    {
+        printf("Epetra Warning: Hessenberg matrix in GMRES is ill-conditioned.\n");
+    }
+    else if (tSolverStatus[AZ_why] == AZ_maxits)
+    {
+        const std::string tWarningMessage = std::string("Epetra Warning: Specified maximum iterations (")
+              + std::to_string(mIterations) + ") reached without convergence to requested tolerance ("
+              + std::to_string(mTolerance) + ").\n";
+        printf(tWarningMessage.c_str());
+    }
+    else if (tSolverStatus[AZ_why] == AZ_param)
+    {
+        THROWERR("Epetra Error: User requested option not available.")
+    }
+    else if (tSolverStatus[AZ_why] == AZ_breakdown)
+    {
+        THROWERR("Epetra Error: Numerical breakdown occured during linear solve.")
+    }
+
+    printf("Lin. Solve %5.1f second(s), %4.0f iteration(s), %7.1e achieved tolerance (%7.1e requested)\n",
+            tSolverStatus[AZ_solve_time], tSolverStatus[AZ_its], tSolverStatus[AZ_scaled_r], mTolerance);
 
     mSystem->toVector(aX, tSolution);
 }
