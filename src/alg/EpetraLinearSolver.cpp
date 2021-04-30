@@ -140,7 +140,7 @@ EpetraLinearSolver::EpetraLinearSolver(
     }
     else
     {
-        mIterations = 300;
+        mIterations = 1000;
     }
 
     if(mSolverParams.isType<double>("Tolerance"))
@@ -196,6 +196,7 @@ EpetraLinearSolver::setupSolver(AztecOO& aSolver)
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
     aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
     aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
+    aSolver.SetAztecOption(AZ_kspace, mIterations);
     aSolver.SetAztecOption(AZ_solver, AZ_gmres);
 }
 
