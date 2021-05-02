@@ -3,7 +3,7 @@
 #include "Simplex.hpp"
 #include "OmegaHUtilities.hpp"
 #include "geometric/WorksetBase.hpp"
-#include "NaturalBCUtilities.hpp"
+#include "SurfaceIntegralUtilities.hpp"
 
 #include "PlatoStaticsTypes.hpp"
 #include "ImplicitFunctors.hpp"
@@ -154,8 +154,8 @@ class GeometryMisfit : public Plato::Geometric::AbstractScalarFunction<Evaluatio
         auto tPoints = mDataMap.scalarMultiVectors[mPointCloudName];
 
         // create functors
-        Plato::ComputeSurfaceJacobians<SpaceDim> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<SpaceDim> tComputeSurfaceIntegralWeight;
+        Plato::CalculateSurfaceArea<SpaceDim> tCalculateSurfaceArea;
+        Plato::CalculateSurfaceJacobians<SpaceDim> tCalculateSurfaceJacobians;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpaceDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         auto tNumFaces = tFaceLids.size();
@@ -255,8 +255,8 @@ class GeometryMisfit : public Plato::Geometric::AbstractScalarFunction<Evaluatio
 
             // compute integration weights
             ConfigScalarType tWeight(0.0);
-            tComputeSurfaceJacobians(tCellOrdinal, aFaceOrdinal, tLocalNodeOrd, aConfig, tJacobian);
-            tComputeSurfaceIntegralWeight(aFaceOrdinal, tMultiplier, tJacobian, tWeight);
+            tCalculateSurfaceJacobians(tCellOrdinal, aFaceOrdinal, tLocalNodeOrd, aConfig, tJacobian);
+            tCalculateSurfaceArea(aFaceOrdinal, tMultiplier, tJacobian, tWeight);
 
             if (tResultDenominator(aFaceOrdinal) != 0)
             {
