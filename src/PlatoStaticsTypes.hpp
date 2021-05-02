@@ -51,6 +51,7 @@ struct DataMap
   std::map<std::string, Plato::ScalarMultiVector> scalarMultiVectors;
   std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
 
+  std::map<std::string, Plato::ScalarVectorT<Plato::OrdinalType>> ordinalVectors;
   std::map<std::string, Plato::ScalarVector> scalarNodeFields;
   std::map<std::string, Plato::ScalarVector> vectorNodeFields;
 
