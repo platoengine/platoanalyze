@@ -1,6 +1,7 @@
 configure_file(  ${CMAKE_CURRENT_SOURCE_DIR}/amgx.json
                  ${CMAKE_CURRENT_BINARY_DIR}/amgx.json COPYONLY)
-
+configure_file(  ${CMAKE_CURRENT_SOURCE_DIR}/points.xyz
+                 ${CMAKE_CURRENT_BINARY_DIR}/points.xyz COPYONLY)
 
 if(STRUCTURAL)
   #begin: Structural dynamics unit test
