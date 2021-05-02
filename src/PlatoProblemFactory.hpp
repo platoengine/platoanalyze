@@ -93,9 +93,16 @@ create_mechanical_problem
         tOutput->readEssentialBoundaryConditions(aPlatoProb);
         return tOutput;
     }
-    else
+    else 
+    if(tLowerPDE == "updated lagrangian elliptic")
+    {
+        using PhysicsType = Plato::Elliptic::UpdatedLagrangian::Mechanics<SpatialDim>;
+        auto tOutput = std::make_shared<Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType>> (aMesh, aMeshSets, aPlatoProb, aMachine);
+        return tOutput;
+    }
 #endif
 #ifdef PLATO_HYPERBOLIC
+    else
     if (tLowerPDE == "hyperbolic")
     {
         return std::make_shared<HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>>>(aMesh, aMeshSets, aPlatoProb, aMachine);
