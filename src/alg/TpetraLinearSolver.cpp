@@ -315,10 +315,9 @@ TpetraLinearSolver::TpetraLinearSolver(
 {
   mPreLinearSolveTimer->start();
 
+  mSolverPackage = "Belos";
   if(aSolverParams.isType<std::string>("Solver Package"))
     mSolverPackage = aSolverParams.get<std::string>("Solver Package");
-  else
-    mSolverPackage = "Belos";
 
   if(aSolverParams.isType<std::string>("Solver"))
     mSolver = aSolverParams.get<std::string>("Solver");
@@ -335,26 +334,21 @@ TpetraLinearSolver::TpetraLinearSolver(
     mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
   else if(mSolverPackage == "Belos")
   {
-    int tMaxIterations;
+    int tMaxIterations = 300;
     if(aSolverParams.isType<int>("Iterations"))
       tMaxIterations = aSolverParams.get<int>("Iterations");
-    else
-      tMaxIterations = 300;
 
-    double tTolerance;
+    double tTolerance = 1e-14;
     if(aSolverParams.isType<double>("Tolerance"))
-      tTolerance = aSolverParams.get<double>("Tolerance");
-    else
-      tTolerance = 1e-14;
+      tTolerance = aSolverParams.get<double>("Tolerance");      
 
     mSolverOptions.set ("Maximum Iterations", tMaxIterations);
     mSolverOptions.set ("Convergence Tolerance", tTolerance);
   }
 
+  mPreconditionerPackage = "IFpack2";
   if(aSolverParams.isType<std::string>("Preconditioner Package"))
     mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
-  else
-    mPreconditionerPackage = "IFpack2";
 
   if(aSolverParams.isType<std::string>("Preconditioner Type"))
     mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
@@ -382,8 +376,7 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
   using scalar_type = typename MV::scalar_type;
   Teuchos::RCP<Teuchos::ParameterList> tSolverOptions = Teuchos::rcp(new Teuchos::ParameterList(mSolverOptions));
   Belos::SolverFactory<scalar_type, MV, OP> factory;
-  Teuchos::RCP<Belos::SolverManager<scalar_type, MV, OP> > solver = 
-    factory.create (mSolver, tSolverOptions);
+  Teuchos::RCP<Belos::SolverManager<scalar_type, MV, OP> > solver = factory.create (mSolver, tSolverOptions);
 
   typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
   Teuchos::RCP<problem_type> problem = Teuchos::rcp (new problem_type(A, X, B));

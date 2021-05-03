@@ -223,7 +223,6 @@ EpetraLinearSolver::setupSolver(AztecOO& aSolver)
     std::string tSolverType = "GMRES";
     if(mSolverParams.isType<std::string>("Solver"))
         tSolverType = mSolverParams.get<std::string>("Solver");
-    
 
     aSolver.SetAztecOption(AZ_output, tDisplayIterations);
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
