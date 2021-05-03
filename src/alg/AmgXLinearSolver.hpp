@@ -5,6 +5,8 @@
 #include "alg/PlatoAbstractSolver.hpp"
 
 #include <Teuchos_ParameterList.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_Time.hpp>
 
 #include <amgx_c.h>
 
@@ -27,6 +29,8 @@ class AmgXLinearSolver : public AbstractSolver
     int mDofsPerNode;
 
     bool mDivergenceIsFatal;
+
+    Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
 
     Plato::ScalarVector mSolution;
 

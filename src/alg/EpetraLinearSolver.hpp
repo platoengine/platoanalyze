@@ -14,6 +14,8 @@
 #include <Epetra_VbrRowMatrix.h>
 #include <Epetra_LinearProblem.h>
 #include <Teuchos_ParameterList.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_Time.hpp>
 
 
 namespace Plato {
@@ -28,6 +30,9 @@ class EpetraSystem
 {
     rcp<Epetra_BlockMap> mBlockRowMap;
     rcp<Epetra_Comm>     mComm;
+
+    Teuchos::RCP<Teuchos::Time> mMatrixConversionTimer;
+    Teuchos::RCP<Teuchos::Time> mVectorConversionTimer;
 
   public:
     EpetraSystem(
@@ -68,6 +73,8 @@ class EpetraLinearSolver : public AbstractSolver
     rcp<EpetraSystem> mSystem;
 
     Teuchos::ParameterList mSolverParams;
+
+    Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
 
     int mIterations;
     Plato::Scalar mTolerance;

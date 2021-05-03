@@ -12,7 +12,9 @@ EpetraSystem::EpetraSystem(
     Omega_h::Mesh& aMesh,
     Comm::Machine  aMachine,
     int            aDofsPerNode
-) {
+):  mMatrixConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Matrix Conversion")),
+    mVectorConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Vector Conversion"))
+{
     mComm = aMachine.epetraComm;
 
     int tNumNodes = aMesh.nverts();
@@ -25,7 +27,9 @@ EpetraSystem::EpetraSystem(
 **********************************************************************************/
 rcp<Epetra_VbrMatrix>
 EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
-{
+{ 
+    Teuchos::TimeMonitor LocalTimer(*mMatrixConversionTimer);
+
     auto tRowMap_host = Kokkos::create_mirror_view(tInMatrix.rowMap());
     auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
     auto tNumBlocks = tRowMap_host.extent(0)-1;
@@ -87,6 +91,8 @@ EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
 rcp<Epetra_Vector>
 EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
 {
+    Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
+
     auto tRetVal = std::make_shared<Epetra_Vector>(*mBlockRowMap);
     if(tInVector.extent(0) != tRetVal->MyLength())
       throw std::domain_error("ScalarVector size does not match EpetraSystem map\n");
@@ -107,6 +113,8 @@ EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
 void 
 EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const
 {
+    Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
+
     auto tLength = tInVector->MyLength();
     auto tTemp = std::make_shared<Epetra_Vector>(*mBlockRowMap);
     if(tLength != tTemp->MyLength())
@@ -132,25 +140,16 @@ EpetraLinearSolver::EpetraLinearSolver(
     int                     aDofsPerNode
 ) :
     mSolverParams(aSolverParams),
-    mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode))
+    mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode)),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Epetra Linear Solve"))
 {
+    mIterations = 1000;
     if(mSolverParams.isType<int>("Iterations"))
-    {
         mIterations = mSolverParams.get<int>("Iterations");
-    }
-    else
-    {
-        mIterations = 1000;
-    }
 
+    mTolerance = 1e-14;
     if(mSolverParams.isType<double>("Tolerance"))
-    {
         mTolerance = mSolverParams.get<double>("Tolerance");
-    }
-    else
-    {
-        mTolerance = 1e-14;
-    }
 }
 
 /******************************************************************************//**
@@ -172,7 +171,9 @@ EpetraLinearSolver::solve(
 
     setupSolver(tSolver);
 
+    mLinearSolverTimer->start();
     tSolver.Iterate( mIterations, mTolerance );
+    mLinearSolverTimer->stop(); mLinearSolverTimer->incrementNumCalls();
     
     const double* tSolverStatus = tSolver.GetAztecStatus();
     if (tSolverStatus[AZ_why] == AZ_normal)
@@ -191,8 +192,8 @@ EpetraLinearSolver::solve(
     {
         const std::string tWarningMessage = std::string("Epetra Warning: Specified maximum iterations (")
               + std::to_string(mIterations) + ") reached without convergence to requested tolerance ("
-              + std::to_string(mTolerance) + ").\n";
-        printf(tWarningMessage.c_str());
+              + std::to_string(mTolerance) + ").";
+        std::cout << tWarningMessage << std::endl;
     }
     else if (tSolverStatus[AZ_why] == AZ_param)
     {
@@ -217,9 +218,7 @@ EpetraLinearSolver::setupSolver(AztecOO& aSolver)
 {
     int tDisplayIterations = 0;
     if(mSolverParams.isType<int>("Display Iterations"))
-    {
         tDisplayIterations = mSolverParams.get<int>("Display Iterations");
-    }
 
     std::string tSolverType = "GMRES";
     if(mSolverParams.isType<std::string>("Solver"))

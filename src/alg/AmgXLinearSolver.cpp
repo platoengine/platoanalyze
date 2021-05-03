@@ -84,7 +84,8 @@ AmgXLinearSolver::AmgXLinearSolver(
     int aDofsPerNode
 ) :
     mDofsPerNode(aDofsPerNode),
-    mDivergenceIsFatal(false)
+    mDivergenceIsFatal(false),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: AmgX Linear Solve"))
 {
     AMGX_SAFE_CALL(AMGX_initialize());
     AMGX_SAFE_CALL(AMGX_initialize_plugins());
@@ -127,6 +128,7 @@ AmgXLinearSolver::solve(
     Plato::ScalarVector   aX,
     Plato::ScalarVector   aB
 ) {
+    Teuchos::TimeMonitor LocalTimer(*mLinearSolverTimer);
 
 #ifndef NDEBUG
     check_inputs(aA, aX, aB);

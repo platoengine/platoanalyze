@@ -310,7 +310,7 @@ TpetraLinearSolver::TpetraLinearSolver(
 ) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))),
     mPreLinearSolveTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Pre Linear Solve Setup")),
     mPreconditionerSetupTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Preconditioner Setup")),
-    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Linear Solve")),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Tpetra Linear Solve")),
     mSolverEndTime(mPreLinearSolveTimer->wallTime())
 {
   mPreLinearSolveTimer->start();
@@ -370,13 +370,7 @@ TpetraLinearSolver::TpetraLinearSolver(
 **********************************************************************************/
 TpetraLinearSolver::~TpetraLinearSolver()
 {
-  const std::string tTimerFilter = ""; //"Analyze:"; // Only timers beginning with this string get summarized.
-  const bool tAlwaysWriteLocal = false;
-  const bool tWriteGlobalStats = true;
-  const bool tWriteZeroTimers  = false;
-  if (mDisplayIterations)
-    Teuchos::TimeMonitor::summarize(std::cout, tAlwaysWriteLocal, tWriteGlobalStats, tWriteZeroTimers, 
-                                    Teuchos::ECounterSetOp::Intersection, tTimerFilter);
+  
 }
 
 template<class MV, class OP>
