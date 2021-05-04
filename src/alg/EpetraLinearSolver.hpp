@@ -76,6 +76,7 @@ class EpetraLinearSolver : public AbstractSolver
 
     Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
 
+    int mDisplayIterations;
     int mIterations;
     Plato::Scalar mTolerance;
 

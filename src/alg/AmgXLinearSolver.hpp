@@ -28,6 +28,10 @@ class AmgXLinearSolver : public AbstractSolver
 
     int mDofsPerNode;
 
+    int mDisplayIterations;
+
+    double mSolverTime;
+
     bool mDivergenceIsFatal;
 
     Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
@@ -35,6 +39,8 @@ class AmgXLinearSolver : public AbstractSolver
     Plato::ScalarVector mSolution;
 
     static std::string loadConfigString(std::string aConfigFile);
+
+    void checkStatusAndPrintIteration();
 
   public:
     AmgXLinearSolver(

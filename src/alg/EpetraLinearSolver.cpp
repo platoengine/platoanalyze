@@ -150,6 +150,10 @@ EpetraLinearSolver::EpetraLinearSolver(
     mTolerance = 1e-14;
     if(mSolverParams.isType<double>("Tolerance"))
         mTolerance = mSolverParams.get<double>("Tolerance");
+    
+    mDisplayIterations = 0;
+    if(mSolverParams.isType<int>("Display Iterations"))
+        mDisplayIterations = mSolverParams.get<int>("Display Iterations");
 }
 
 /******************************************************************************//**
@@ -204,8 +208,9 @@ EpetraLinearSolver::solve(
         THROWERR("Epetra Error: Numerical breakdown occured during linear solve.")
     }
 
-    printf("Lin. Solve %5.1f second(s), %4.0f iteration(s), %7.1e achieved tolerance (%7.1e requested)\n",
-            tSolverStatus[AZ_solve_time], tSolverStatus[AZ_its], tSolverStatus[AZ_scaled_r], mTolerance);
+    if (mDisplayIterations > 0)
+        printf("Epetra Lin. Solve %5.1f second(s), %4.0f iteration(s), %7.1e achieved tolerance (%7.1e requested)\n",
+                tSolverStatus[AZ_solve_time], tSolverStatus[AZ_its], tSolverStatus[AZ_scaled_r], mTolerance);
 
     mSystem->toVector(aX, tSolution);
 }
@@ -216,37 +221,34 @@ EpetraLinearSolver::solve(
 void
 EpetraLinearSolver::setupSolver(AztecOO& aSolver)
 {
-    int tDisplayIterations = 0;
-    if(mSolverParams.isType<int>("Display Iterations"))
-        tDisplayIterations = mSolverParams.get<int>("Display Iterations");
-
-    std::string tSolverType = "GMRES";
+    std::string tSolverType = "gmres";
     if(mSolverParams.isType<std::string>("Solver"))
         tSolverType = mSolverParams.get<std::string>("Solver");
+    //std::transform(tSolverType.begin(), tSolverType.end(), tSolverType.begin(), std::tolower);
 
-    aSolver.SetAztecOption(AZ_output, tDisplayIterations);
+    aSolver.SetAztecOption(AZ_output, 0); // Previously used tDisplayIterations here but now perform our own output.
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
     aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
-    if (tSolverType == "GMRES")
+    if (tSolverType == "gmres")
     {
         aSolver.SetAztecOption(AZ_kspace,  mIterations);
         aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
         aSolver.SetAztecOption(AZ_solver,  AZ_gmres);
     }
-    else if (tSolverType == "Cg")
+    else if (tSolverType == "cg")
     {
         aSolver.SetAztecOption(AZ_type_overlap, AZ_symmetric);
         aSolver.SetAztecOption(AZ_overlap, 0);
         aSolver.SetAztecOption(AZ_solver, AZ_cg);
     }
-    else if (tSolverType == "Bicgstab")
+    else if (tSolverType == "bicgstab")
     {
         aSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
     }
     else
     {
         const std::string tErrorMessage = std::string("Epetra Error: Specified solver '")
-              + tSolverType + "' not implemented. Current options are 'GMRES', 'Cg', and 'Bicgstab'";
+              + tSolverType + "' not implemented. Current options are 'gmres', 'cg', and 'bicgstab'";
         THROWERR(tErrorMessage)
     }
 }

@@ -311,13 +311,15 @@ TpetraLinearSolver::TpetraLinearSolver(
     mPreLinearSolveTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Pre Linear Solve Setup")),
     mPreconditionerSetupTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Preconditioner Setup")),
     mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Tpetra Linear Solve")),
-    mSolverEndTime(mPreLinearSolveTimer->wallTime())
+    mSolverEndTime(mPreLinearSolveTimer->wallTime()),
+    mDisplayIterations(0)
 {
   mPreLinearSolveTimer->start();
 
   mSolverPackage = "Belos";
   if(aSolverParams.isType<std::string>("Solver Package"))
     mSolverPackage = aSolverParams.get<std::string>("Solver Package");
+  //std::transform(mSolverPackage.begin(), mSolverPackage.end(), mSolverPackage.begin(), std::tolower);
 
   if(aSolverParams.isType<std::string>("Solver"))
     mSolver = aSolverParams.get<std::string>("Solver");
@@ -325,10 +327,11 @@ TpetraLinearSolver::TpetraLinearSolver(
     mSolver = "GMRES";
   else
     throw std::invalid_argument("Solver not specified in input parameter list.\n");
+  //std::transform(mSolver.begin(), mSolver.end(), mSolver.begin(), std::tolower);
   
-  mDisplayIterations = false;
-  if(aSolverParams.isType<bool>("Display Iterations"))
-    mDisplayIterations = aSolverParams.get<bool>("Display Iterations");
+  mDisplayIterations = 0;
+  if(aSolverParams.isType<int>("Display Iterations"))
+    mDisplayIterations = aSolverParams.get<int>("Display Iterations");
 
   if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
     mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
@@ -349,6 +352,7 @@ TpetraLinearSolver::TpetraLinearSolver(
   mPreconditionerPackage = "IFpack2";
   if(aSolverParams.isType<std::string>("Preconditioner Package"))
     mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
+  //std::transform(mPreconditionerPackage.begin(), mPreconditionerPackage.end(), mPreconditionerPackage.begin(), std::tolower);
 
   if(aSolverParams.isType<std::string>("Preconditioner Type"))
     mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
@@ -414,7 +418,7 @@ TpetraLinearSolver::amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tp
   else
   {
     const std::string tErrorMessage = std::string("The specified Amesos2 solver '") + mSolver 
-                                    + "' is not currently enabled. Typical options: "
+                                    + "' is not currently enabled. Typical options (if compiled with): "
                                     + "{'superlu','superlu_dist','klu2','mumps','umfpack'}";
     THROWERR(tErrorMessage)
   }
@@ -447,7 +451,8 @@ TpetraLinearSolver::solve(
     M = MueLu::CreateTpetraPreconditioner(static_cast<Teuchos::RCP<Tpetra_Operator>>(A), mPreconditionerOptions);
   else
   {
-    std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage + " is not currently a valid option\n";
+    std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage 
+                                + " is not currently a valid option. Valid options: ('IFpack2', 'MueLu')\n";
     throw std::invalid_argument(tInvalid_solver);
   }
   mPreconditionerSetupTimer->stop(); mPreconditionerSetupTimer->incrementNumCalls(); 
@@ -458,7 +463,8 @@ TpetraLinearSolver::solve(
     amesos2Solve(A, X, B);
   else
   {
-    std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";
+    std::string tInvalid_solver = "Solver Package " + mSolverPackage 
+                                + " is not currently a valid option. Valid options: ('Belos','Amesos2')\n";
     throw std::invalid_argument(tInvalid_solver);
   }
   mSystem->toVector(aX,X);
@@ -466,7 +472,7 @@ TpetraLinearSolver::solve(
   mSolverEndTime = mPreLinearSolveTimer->wallTime();
   const double tTpetraElapsedTime = mSolverEndTime - mSolverStartTime;
   if (mDisplayIterations)
-    printf("Pre Lin. Solve %5.1f second(s) || Lin. Solve %5.1f second(s), %4d iteration(s), %7.1e achieved tolerance\n",
+    printf("Pre Lin. Solve %5.1f second(s) || Tpetra Lin. Solve %5.1f second(s), %4d iteration(s), %7.1e achieved tolerance\n",
            tAnalyzeElapsedTime, tTpetraElapsedTime, mNumIterations, mAchievedTolerance);
   mPreLinearSolveTimer->start();
 }

@@ -91,7 +91,7 @@ class TpetraLinearSolver : public AbstractSolver
     Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
     double mSolverStartTime, mSolverEndTime;
 
-    bool   mDisplayIterations;
+    int    mDisplayIterations;
     int    mNumIterations;
     double mAchievedTolerance;
   public:
