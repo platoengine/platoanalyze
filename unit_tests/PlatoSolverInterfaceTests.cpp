@@ -1047,6 +1047,31 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
   auto stateTpetraWithMueLuPreconditioner_host = Kokkos::create_mirror_view(stateTpetraWithMueLuPreconditioner);
   Kokkos::deep_copy(stateTpetraWithMueLuPreconditioner_host, stateTpetraWithMueLuPreconditioner);
+
+  // *** use Tpetra solver interface with Amesos2 Direct Solver*** //
+  //
+  Kokkos::deep_copy(state, 0.0);
+  {
+    Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
+      Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Linear Solver'>                               \n"
+      "  <Parameter name='Solver Stack' type='string' value='Tpetra'/>    \n"
+      "  <Parameter name='Solver Package' type='string' value='Amesos2'/> \n"
+      "  <Parameter name='Solver' type='string' value='Superlu'/>         \n"
+      "</ParameterList>                                                   \n"
+    );
+
+    Plato::SolverFactory tSolverFactory(*tSolverParams);
+
+    auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
+
+    tSolver->solve(*jacobian, state, residual);
+  }
+  Plato::ScalarVector stateTpetraWithAmesos2DirectSolver("state", tNumDofs);
+  Kokkos::deep_copy(stateTpetraWithAmesos2DirectSolver, state);
+
+  auto stateTpetraWithAmesos2DirectSolver_host = Kokkos::create_mirror_view(stateTpetraWithAmesos2DirectSolver);
+  Kokkos::deep_copy(stateTpetraWithAmesos2DirectSolver_host, stateTpetraWithAmesos2DirectSolver);
 #endif
 
   // compare solutions
@@ -1059,6 +1084,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
       {
           TEST_FLOATING_EQUALITY(stateTpetra_host(i), stateEpetra_host(i), 1.0e-12);
           TEST_FLOATING_EQUALITY(stateTpetra_host(i), stateTpetraWithMueLuPreconditioner_host(i), 1.0e-11);
+          TEST_FLOATING_EQUALITY(stateTpetra_host(i), stateTpetraWithAmesos2DirectSolver_host(i), 1.0e-11);
       }
   }
 #endif
