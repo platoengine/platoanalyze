@@ -44,33 +44,6 @@ template <typename ScalarType>
 using HostScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
 using HostScalarArray3D  = HostScalarArray3DT<Plato::Scalar>;
 
-struct Solution {
-  explicit
-  Solution(){}
-
-  explicit
-  Solution(ScalarMultiVector aState) : State(aState) {}
-
-  explicit
-  Solution(ScalarMultiVector aState,
-           ScalarMultiVector aStateDot
-          ) : State(aState), StateDot(aStateDot) {}
-
-  explicit
-  Solution(ScalarMultiVector aState,
-           ScalarMultiVector aStateDot,
-           ScalarMultiVector aStateDotDot
-          ) : State(aState), StateDot(aStateDot), StateDotDot(aStateDotDot) {}
-
-  ScalarMultiVector State;
-  ScalarMultiVector StateDot;
-  ScalarMultiVector StateDotDot;
-  
-  ScalarMultiVector LocalState;
-};
-typedef Solution Adjoint;
-
-
 struct DataMap
 {
   std::map<std::string, Plato::Scalar> mScalarValues;

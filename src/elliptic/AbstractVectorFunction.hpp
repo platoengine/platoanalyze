@@ -14,7 +14,7 @@ namespace Elliptic
 {
 
 /******************************************************************************//**
- * @brief Abstract vector function (i.e. PDE) interface
+ * \brief Abstract vector function (i.e. PDE) interface
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
  **********************************************************************************/
@@ -27,9 +27,9 @@ protected:
 
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aSpatialDomain Plato spatial model
-     * @param [in] aDataMap Plato Analyze database
+     * \brief Constructor
+     * \param [in] aSpatialDomain Plato spatial model
+     * \param [in] aDataMap Plato Analyze database
     **********************************************************************************/
     explicit
     AbstractVectorFunction(
@@ -42,15 +42,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
     **********************************************************************************/
     virtual ~AbstractVectorFunction()
     {
     }
 
     /****************************************************************************//**
-    * @brief Return reference to Omega_h mesh database
-    * @return volume mesh database
+    * \brief Return reference to Omega_h mesh database
+    * \return volume mesh database
     ********************************************************************************/
     decltype(mSpatialDomain.Mesh) getMesh() const
     {
@@ -58,8 +58,8 @@ public:
     }
 
     /****************************************************************************//**
-    * @brief Return reference to Omega_h mesh sets
-    * @return surface mesh database
+    * \brief Return reference to Omega_h mesh sets
+    * \return surface mesh database
     ********************************************************************************/
     decltype(mSpatialDomain.MeshSets) getMeshSets() const
     {
@@ -67,12 +67,12 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate vector function
-     * @param [in] aState 2D array with state variables (C,DOF)
-     * @param [in] aControl 2D array with control variables (C,N)
-     * @param [in] aConfig 3D array with control variables (C,N,D)
-     * @param [in] aResult 1D array with control variables (C,DOF)
-     * @param [in] aTimeStep current time step
+     * \brief Evaluate vector function
+     * \param [in] aState 2D array with state variables (C,DOF)
+     * \param [in] aControl 2D array with control variables (C,N)
+     * \param [in] aConfig 3D array with control variables (C,N,D)
+     * \param [in] aResult 1D array with control variables (C,DOF)
+     * \param [in] aTimeStep current time step
      * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
@@ -85,12 +85,12 @@ public:
               Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
-     * @brief Evaluate vector function
-     * @param [in] aState 2D array with state variables (C,DOF)
-     * @param [in] aControl 2D array with control variables (C,N)
-     * @param [in] aConfig 3D array with control variables (C,N,D)
-     * @param [in] aResult 1D array with control variables (C,DOF)
-     * @param [in] aTimeStep current time step
+     * \brief Evaluate vector function
+     * \param [in] aState 2D array with state variables (C,DOF)
+     * \param [in] aControl 2D array with control variables (C,N)
+     * \param [in] aConfig 3D array with control variables (C,N,D)
+     * \param [in] aResult 1D array with control variables (C,DOF)
+     * \param [in] aTimeStep current time step
      * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/

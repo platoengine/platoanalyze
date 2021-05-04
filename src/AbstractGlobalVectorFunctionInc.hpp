@@ -34,7 +34,7 @@ protected:
 public:
     /***************************************************************************//**
      * \brief Constructor
-     * @param [in] aSpatialDomain Plato spatial model
+     * \param [in] aSpatialDomain Plato spatial model
      * \param [in]  aDataMap output data map
     *******************************************************************************/
     explicit

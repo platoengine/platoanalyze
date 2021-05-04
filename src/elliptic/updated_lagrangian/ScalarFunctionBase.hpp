@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PlatoStaticsTypes.hpp"
+#include "Solutions.hpp"
 
 namespace Plato
 {
@@ -35,7 +35,7 @@ public:
      **********************************************************************************/
     virtual Plato::Scalar
     value(
-        const Plato::Solution                  & aSolution,
+        const Plato::Solutions                 & aSolution,
         const Plato::ScalarMultiVector         & aLocalState,
         const Plato::ScalarVector              & aControl,
               Plato::Scalar                      aTimeStep = 0.0) const = 0;
@@ -50,7 +50,7 @@ public:
      **********************************************************************************/
     virtual Plato::ScalarVector
     gradient_z(
-        const Plato::Solution                  & aSolution,
+        const Plato::Solutions                 & aSolution,
         const Plato::ScalarMultiVector         & aLocalState,
         const Plato::ScalarVector              & aControl,
               Plato::Scalar                      aTimeStep = 0.0) const = 0;
@@ -66,7 +66,7 @@ public:
      **********************************************************************************/
     virtual Plato::ScalarVector
     gradient_u(
-        const Plato::Solution          & aSolution,
+        const Plato::Solutions         & aSolution,
         const Plato::ScalarMultiVector & aLocalState,
         const Plato::ScalarVector      & aControl,
               Plato::OrdinalType         aStepIndex,
@@ -83,7 +83,7 @@ public:
      **********************************************************************************/
     virtual Plato::ScalarVector
     gradient_c(
-        const Plato::Solution          & aSolution,
+        const Plato::Solutions         & aSolution,
         const Plato::ScalarMultiVector & aLocalState,
         const Plato::ScalarVector      & aControl,
               Plato::OrdinalType         aStepIndex,
@@ -99,7 +99,7 @@ public:
      **********************************************************************************/
     virtual Plato::ScalarVector
     gradient_x(
-        const Plato::Solution                  & aSolution,
+        const Plato::Solutions                 & aSolution,
         const Plato::ScalarMultiVector         & aLocalState,
         const Plato::ScalarVector              & aControl,
               Plato::Scalar                      aTimeStep = 0.0) const = 0;

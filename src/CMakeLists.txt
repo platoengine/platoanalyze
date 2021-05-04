@@ -33,6 +33,10 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
 
 ## core sources
 set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    WorkSets.cpp
+    Variables.cpp
+    Solutions.cpp 
+    AnalyzeAppUtils.cpp     
     ExpressionEvaluator.cpp
     PlatoMask.cpp
     alg/ParseInput.cpp
@@ -131,6 +135,26 @@ endif()
 ## hyperbolic sources
 if(HYPERBOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    hyperbolic/BrinkmanForces.cpp
+    hyperbolic/ThermalBuoyancy.cpp
+    hyperbolic/PressureResidual.cpp
+    hyperbolic/CriterionFlowRate.cpp
+    hyperbolic/TemperatureResidual.cpp
+    hyperbolic/FluidsQuasiImplicit.cpp
+    hyperbolic/FluidsScalarFunction.cpp
+    hyperbolic/FluidsVectorFunction.cpp
+    hyperbolic/FluidsWorkSetBuilders.cpp
+    hyperbolic/InternalThermalForces.cpp
+    hyperbolic/MomentumSurfaceForces.cpp
+    hyperbolic/FluidsCriterionFactory.cpp
+    hyperbolic/AbstractScalarFunction.cpp
+    hyperbolic/AbstractVectorFunction.cpp
+    hyperbolic/AverageSurfacePressure.cpp
+    hyperbolic/AverageSurfaceTemperature.cpp
+    hyperbolic/VelocityCorrectorResidual.cpp
+    hyperbolic/VelocityPredictorResidual.cpp
+    hyperbolic/FluidsWeightedScalarFunction.cpp
+    hyperbolic/FluidsLeastSquaresScalarFunction.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
   )

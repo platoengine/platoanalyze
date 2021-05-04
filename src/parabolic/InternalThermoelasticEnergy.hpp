@@ -28,7 +28,7 @@ namespace Parabolic
 {
 
 /******************************************************************************//**
- * @brief Compute internal thermo-elastic energy criterion, given by
+ * \brief Compute internal thermo-elastic energy criterion, given by
  *                  /f$ f(z) = u^{T}K_u(z)u + T^{T}K_t(z)T /f$
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)

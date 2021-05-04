@@ -24,11 +24,116 @@
 namespace PlatoUtestHelpers
 {
 
-/******************************************************************************//**
- * @brief get view from device
+/***************************************************************************//**
+ * \fn get_box_mesh_sets
+ * \brief Return collection of element, side, and node sets for a box mesh model.
  *
- * @param[in] aView data on device
- * @returns Mirror on host
+ * 1D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'x+', 'body'
+ *  Side Set Names   : 'x-', 'x+'
+ *  Element Set Names: 'body'
+ * 2D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'x+', 'y+', 'body'
+ *  Side Set Names   : 'x-', 'y-', 'x+', 'y+'
+ *  Element Set Names: 'body'
+ * 3D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+', 'body'
+ *  Side Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+'
+ *  Element Set Names: 'body'
+ *
+ * \param [in] aMesh mesh database
+ * \return collection of element, side, and node sets
+*******************************************************************************/
+Omega_h::MeshSets
+inline get_box_mesh_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    return tMeshSets;
+}
+
+/***************************************************************************//**
+ * \fn get_box_side_sets
+ * \brief Return side set for a box mesh model.
+ *
+ * 1D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'x+', 'body'
+ * 2D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'x+', 'y+', 'body'
+ * 3D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+', 'body'
+ *
+ * \param [in] aMesh mesh database
+ * \return side set
+*******************************************************************************/
+Omega_h::MeshDimSets
+inline get_box_node_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    const auto tNodeSets = tMeshSets[Omega_h::NODE_SET];
+    return tNodeSets;
+}
+
+/***************************************************************************//**
+ * \fn get_box_side_sets
+ * \brief Return side set for a box mesh model.
+ *
+ * 1D Mesh Sets Description:
+ *  Side Set Names   : 'x-', 'x+'
+ * 2D Mesh Sets Description:
+ *  Side Set Names   : 'x-', 'y-', 'x+', 'y+'
+ * 3D Mesh Sets Description:
+ *  Side Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+'
+ *
+ * \param [in] aMesh mesh database
+ * \return side set
+*******************************************************************************/
+Omega_h::MeshDimSets
+inline get_box_side_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    const auto tSideSets = tMeshSets[Omega_h::SIDE_SET];
+    return tSideSets;
+}
+
+/***************************************************************************//**
+ * \fn get_box_elem_sets
+ * \brief Return element set for a box mesh model.
+ *
+ * 1D Mesh Sets Description:
+ *  Element Set Names: 'body'
+ * 2D Mesh Sets Description:
+ *  Element Set Names: 'body'
+ * 3D Mesh Sets Description:
+ *  Element Set Names: 'body'
+ *
+ * \param [in] aMesh mesh database
+ * \return element set
+*******************************************************************************/
+Omega_h::MeshDimSets
+inline get_box_elem_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    const auto tElemSets = tMeshSets[Omega_h::ELEM_SET];
+    return tElemSets;
+}
+
+/******************************************************************************//**
+ * \brief get view from device
+ *
+ * \param[in] aView data on device
+ * \returns Mirror on host
 **********************************************************************************/
 template <typename ViewType>
 typename ViewType::HostMirror

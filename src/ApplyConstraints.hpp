@@ -1,5 +1,4 @@
-#ifndef APPLY_CONSTRAINTS_HPP
-#define APPLY_CONSTRAINTS_HPP
+#pragma once
 
 #include "PlatoStaticsTypes.hpp"
 
@@ -198,10 +197,87 @@ applyConstraints(
     Scalar value = aScale*bcValues[bcOrdinal];
     rhs(nodeNumber) = value;
   },"BC imposition");
-
 }
 
-} // namespace Plato
+/******************************************************************************//**
+ * \fn inline void apply_constraints
+ *
+ * \tparam DofsPerNode degrees of freedom per node (integer)
+ *
+ * \brief Apply constraints to system of equations by modifying left and right hand sides.
+ *
+ * \param [in]     aBcDofs   degrees of freedom (dofs) associated with the boundary conditions
+ * \param [in]     aBcValues scalar values forced at the dofs where the boundary conditions are applied
+ * \param [in]     aScale    scalar multiplier
+ * \param [in/out] aMatrix   left-hand-side matrix
+ * \param [in/out] aRhs      right-hand-side vector
+ *
+ **********************************************************************************/
+template<Plato::OrdinalType DofsPerNode>
+inline void apply_constraints
+(const Plato::LocalOrdinalVector          & aBcDofs,
+ const Plato::ScalarVector                & aBcValues,
+ const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+       Plato::ScalarVector                & aRhs,
+       Plato::Scalar                        aScale = 1.0)
+{
+    if(aMatrix->isBlockMatrix())
+    {
+        Plato::applyBlockConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
+    }
+    else
+    {
+        Plato::applyConstraints<DofsPerNode>(aMatrix, aRhs, aBcDofs, aBcValues, aScale);
+    }
+}
+// function apply_constraints
 
+/******************************************************************************//**
+ * \fn inline void enforce_boundary_condition
+ *
+ * \brief Enforce boundary conditions.
+ *
+ * \param [in] aBcDofs    degrees of freedom associated with the boundary conditions
+ * \param [in] aBcValues  values enforced in boundary degrees of freedom
+ * \param [in/out] aState physical field
+ *
+ **********************************************************************************/
+inline void
+enforce_boundary_condition
+(const Plato::LocalOrdinalVector & aBcDofs,
+ const Plato::ScalarVector       & aBcValues,
+ const Plato::ScalarVector       & aState)
+{
+    auto tLength = aBcValues.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        auto tDOF = aBcDofs(aOrdinal);
+        aState(tDOF) = aBcValues(aOrdinal);
+    }, "enforce boundary condition");
+}
+// function enforce_boundary_condition
 
-#endif
+/******************************************************************************//**
+ * \fn inline void set_dofs_values
+ *
+ * \brief Set values at degrees of freedom to input scalar (default scalar = 0.0).
+ *
+ * \param [in]     aBcDofs list of degrees of freedom (dofs)
+ * \param [in]     aValue  scalar value (default = 0.0)
+ * \param [in/out] aOutput output vector
+ *
+ **********************************************************************************/
+inline void set_dofs_values
+(const Plato::LocalOrdinalVector & aBcDofs,
+       Plato::ScalarVector & aOutput,
+       Plato::Scalar aValue = 0.0)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aBcDofs.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        aOutput(aBcDofs(aOrdinal)) = aValue;
+    }, "set values at bc dofs to zero");
+}
+// function set_dofs_values
+
+}
+// namespace Plato

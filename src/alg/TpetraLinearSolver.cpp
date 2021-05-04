@@ -9,9 +9,9 @@
 
 namespace Plato {
 /******************************************************************************//**
- * @brief get view from device
+ * \brief get view from device
  *
- * @param[in] aView data on device
+ * \param[in] aView data on device
  * @returns Mirror on host
 **********************************************************************************/
 template <typename ViewType>
@@ -25,7 +25,7 @@ get(ViewType aView)
 }
 
 /******************************************************************************//**
- * @brief Abstract system interface
+ * \brief Abstract system interface
 
    This class contains the node and dof map information and permits persistence
    of this information between solutions.
@@ -120,7 +120,7 @@ TpetraSystem::TpetraSystem(
 // }
 
 // /******************************************************************************//**
-//  * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
+//  * \brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
 // **********************************************************************************/
 // Teuchos::RCP<Tpetra_Matrix>
 // TpetraSystem::fromMatrix(const Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
@@ -142,7 +142,7 @@ TpetraSystem::TpetraSystem(
 // }
 
 // /******************************************************************************//**
-//  * @brief Check if intput Plato::CrsMatrix is consistent with TpetraSystem map 
+//  * \brief Check if intput Plato::CrsMatrix is consistent with TpetraSystem map 
 // **********************************************************************************/
 // void TpetraSystem::checkInputMatrixSize(const Plato::CrsMatrix<Plato::OrdinalType> aInMatrix,
 //       Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const
@@ -159,7 +159,7 @@ TpetraSystem::TpetraSystem(
 // }
 
 /******************************************************************************//**
- * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
+ * \brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
 **********************************************************************************/
 Teuchos::RCP<Tpetra_Matrix>
 TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
@@ -212,7 +212,7 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
 }
 
 /******************************************************************************//**
- * @brief Convert from ScalarVector to Tpetra_MultiVector
+ * \brief Convert from ScalarVector to Tpetra_MultiVector
 **********************************************************************************/
 Teuchos::RCP<Tpetra_MultiVector>
 TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
@@ -230,7 +230,7 @@ TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
 }
 
 /******************************************************************************//**
- * @brief Convert from Tpetra_MultiVector to ScalarVector
+ * \brief Convert from Tpetra_MultiVector to ScalarVector
 **********************************************************************************/
 void 
 TpetraSystem::toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const
@@ -292,7 +292,7 @@ createIFpack2Preconditioner (const Teuchos::RCP<const TpetraMatrixType>& A,
 
 
 /******************************************************************************//**
- * @brief TpetraLinearSolver constructor
+ * \brief TpetraLinearSolver constructor
 
  This constructor takes an Omega_h::Mesh and creates a new TpetraSystem.
 **********************************************************************************/
@@ -384,7 +384,7 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
 }
 
 /******************************************************************************//**
- * @brief Solve the linear system
+ * \brief Solve the linear system
 **********************************************************************************/
 void
 TpetraLinearSolver::solve(

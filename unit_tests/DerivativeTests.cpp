@@ -30,6 +30,7 @@
 #include "alg/ParallelComm.hpp"
 
 #include "Simp.hpp"
+#include "Solutions.hpp"
 #include "ScalarProduct.hpp"
 #include "SimplexFadTypes.hpp"
 #include "SimplexMechanics.hpp"
@@ -580,7 +581,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(Plato::Solution(U),z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto value = eeScalarFunction.value(tSolution,z);
 
   Plato::Scalar value_gold = 46.125;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -588,7 +591,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+  tSolution.set("State", U);
+  auto grad_u = eeScalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -634,7 +638,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U),z);
+  tSolution.set("State", U);
+  auto grad_z = eeScalarFunction.gradient_z(tSolution,z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -657,7 +662,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U),z);
+  tSolution.set("State", U);
+  auto grad_x = eeScalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -783,14 +789,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D )
 
   // compute and test objective value
   //
-  auto value = scalarFunction.value(Plato::Solution(U),z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto value = scalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 0.5;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+  auto grad_u = scalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -807,7 +815,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U),z);
+  auto grad_z = scalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -818,7 +826,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U),z);
+  auto grad_x = scalarFunction.gradient_x(tSolution, z);
 
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -917,14 +925,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D_Mag )
 
   // compute and test objective value
   //
-  auto value = scalarFunction.value(Plato::Solution(U),z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto value = scalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 0.5;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+  auto grad_u = scalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -941,7 +951,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D_Mag )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U),z);
+  auto grad_z = scalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -952,7 +962,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Solution2D_Mag )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U),z);
+  auto grad_x = scalarFunction.gradient_x(tSolution, z);
 
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1053,7 +1063,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(Plato::Solution(U), z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto value = eeScalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 14525.25169157000;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1061,7 +1073,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+  auto grad_u = eeScalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1089,7 +1101,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
+  auto grad_z = eeScalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1112,7 +1124,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
+  auto grad_x = eeScalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1256,7 +1268,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(Plato::Solution(solution), z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", solution);
+  auto value = eeScalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 1346153.84615384578;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1264,7 +1278,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
+  auto grad_u = eeScalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1310,7 +1324,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
+  auto grad_z = eeScalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1332,7 +1346,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
+  auto grad_x = eeScalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1479,7 +1493,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(Plato::Solution(solution), z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", solution);
+  auto value = eeScalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 384615.384615384275;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1487,7 +1503,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
+  auto grad_u = eeScalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1520,7 +1536,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
+  auto grad_z = eeScalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1543,7 +1559,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
+  auto grad_x = eeScalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1864,7 +1880,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test criterion value
   //
-  auto value = eeScalarFunction.value(Plato::Solution(U), z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto value = eeScalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 611.666666666666;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1872,7 +1890,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+  auto grad_u = eeScalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1900,7 +1918,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
+  auto grad_z = eeScalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1923,7 +1941,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
+  auto grad_x = eeScalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -2037,7 +2055,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test criterion value
   //
-  auto value = scalarFunction.value(Plato::Solution(U), z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", U);
+  auto value = scalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 444.0866631427854;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -2045,7 +2065,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
+  tSolution.set("State", U);
+  auto grad_u = scalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -2073,7 +2094,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U), z);
+  auto grad_z = scalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -2096,7 +2117,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U), z);
+  auto grad_x = scalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -2413,6 +2434,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
       "    </ParameterList>                                                          \n"
       "  </ParameterList>                                                            \n"
       "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+      "  <Parameter name='Physics' type='string' value='Mechanical'/>                \n"
       "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
       "  <ParameterList name='Elliptic'>                                             \n"
       "    <ParameterList name='Penalty Function'>                                   \n"
@@ -2491,7 +2513,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
 
     // TEST RESULTS    
     const Plato::OrdinalType tTimeStep = 0;
-    auto tSolution = Kokkos::subview(tElasticitySolution.State, tTimeStep, Kokkos::ALL());
+    auto tState = tElasticitySolution.get("State");
+    auto tSolution = Kokkos::subview(tState, tTimeStep, Kokkos::ALL());
     auto tHostSolution = Kokkos::create_mirror_view(tSolution);
     Kokkos::deep_copy(tHostSolution, tSolution);
 
@@ -2499,7 +2522,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
                                         2e-4, -2.5714285714e-4, 2e-4, -1.7142857143e-4, 4e-4, -1.7142857143e-4, 4e-4, -2.5714285714e-4, 6e-4, -2.5714285714e-4,
                                         6e-4, -1.7142857143e-4, 6e-4, -8.5714285714e-5, 4e-4, -8.5714285714e-5, 4e-4, 0.0, 6e-4, 0.0};
 
-    constexpr Plato::Scalar tTolerance = 1e-8;
+    constexpr Plato::Scalar tTolerance = 1e-4;
     for(Plato::OrdinalType tDofIndex=0; tDofIndex < tHostSolution.size(); tDofIndex++)
     {
         if(tGold[tDofIndex] == 0.0){

@@ -23,7 +23,7 @@ class NaturalBCs
 // private member data
 private:
     /*!< list of natural boundary condition */
-    std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
+    std::vector<std::shared_ptr<Plato::NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
 
 // private functions
 private:

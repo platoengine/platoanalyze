@@ -2198,7 +2198,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -2206,28 +2206,30 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
            3.118233e-4, -1.0e-3, 4.815153e-5, 1.97175e+06, 2.340348e-4, -1.0e-3, 4.357691e-5, -418444.0,
            -3.927496e-4, -1.0e-3, 5.100447e-5, -1.10956e+07, -1.803906e-4, -1.0e-3, 9.081316e-5, -7.77742e+06}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostState = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostState, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
         {
             //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
-            TEST_FLOATING_EQUALITY(tHostSolution(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostState(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
         }
     }
 
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("ElasticSolution");
+        tPlasticityProblem.output("ElasticSolution");
     }
 
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2349,13 +2351,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices * tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2404,9 +2407,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamTraction2D");
+        tPlasticityProblem.output("SimplySupportedBeamTraction2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2473,7 +2477,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='double'        value='100'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -2527,13 +2531,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2582,9 +2587,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2654,7 +2660,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='double'        value='100'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
@@ -2709,13 +2715,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2766,9 +2773,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2839,7 +2847,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='double'        value='100'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -2894,13 +2902,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2951,9 +2960,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 #endif
 
@@ -3025,7 +3035,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-100'/>                     \n"
+      "     <Parameter  name='Value'    type='double'        value='100'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -3061,6 +3071,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
 
+    // 1. Construct plasticity problem
+    auto tFaceIDs = PlatoUtestHelpers::get_edge_ids_on_y1(*tMesh);
+    tMeshSets[Omega_h::SIDE_SET]["Load"] = tFaceIDs;
     using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     // 1. Construct plasticity problem
@@ -3080,13 +3093,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -3137,12 +3151,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 #endif
-
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPressure2D_PlasticSteps)
 {
@@ -3216,7 +3230,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                         \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-150'/>                     \n"
+      "     <Parameter  name='Value'    type='double'        value='150'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "  </ParameterList>                                                                       \n"
@@ -3264,10 +3278,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
-
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tSolution = tPlasticityProblem.solution(tControls);
+    
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     std::vector<Plato::Scalar> tGold =
         {
@@ -3307,7 +3322,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
         };
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
     {
         //printf("X(%d,%d) = %f\n", 3, tIndexJ, tHostInput(3, tIndexJ));
@@ -3326,12 +3341,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.output("SimplySupportedBeamPressure2D");
     }
 
     if(tDeleteSolverStats)
     {
-        std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+        auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+        if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
     }
 }
 
@@ -3458,7 +3474,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_2D)
     }
 }
 
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ_2D)
 {
     // 1. DEFINE PROBLEM
@@ -3562,9 +3577,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
-
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_3D)
 {
@@ -3703,7 +3718,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_3D)
         //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -3822,10 +3838,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
-
+#ifdef HAVE_AMGX
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
 {
     // 1. DEFINE PROBLEM
@@ -3948,9 +3965,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
         //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
-
+#endif
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ_2D)
 {
@@ -4055,7 +4073,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4195,7 +4214,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
         //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4313,7 +4333,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4420,7 +4441,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4538,7 +4560,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4655,7 +4678,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -4783,7 +4807,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 //#endif

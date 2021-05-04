@@ -64,28 +64,28 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Cylinder geometry model class
+ * \brief Cylinder geometry model class
 **********************************************************************************/
 class Cylinder : public Plato::GeometryModel
 {
 public:
     /******************************************************************************//**
-     * @brief Default constructor
+     * \brief Default constructor
     **********************************************************************************/
     explicit Cylinder()
     {
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
     **********************************************************************************/
     virtual ~Cylinder()
     {
     }
 
     /******************************************************************************//**
-     * @brief Return cylinder's radius
-     * @return radius
+     * \brief Return cylinder's radius
+     * \return radius
     **********************************************************************************/
     Plato::Scalar radius() const
     {
@@ -93,8 +93,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return cylinder's length
-     * @return length
+     * \brief Return cylinder's length
+     * \return length
     **********************************************************************************/
     Plato::Scalar length() const
     {
@@ -102,7 +102,7 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief compute the area of the side of a cylinder.
+     * \brief compute the area of the side of a cylinder.
     **********************************************************************************/
     Plato::Scalar area() override
     {
@@ -111,8 +111,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Compute the reference rate that gas mass is begin produced
-     * @return mass production rate
+     * \brief Compute the reference rate that gas mass is begin produced
+     * \return mass production rate
      **********************************************************************************/
     Plato::Scalar referenceMassProductionRate()  override
     {
@@ -120,8 +120,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief compute the gradient with respect to geometric parameters
-     * @param aOutput gradient
+     * \brief compute the gradient with respect to geometric parameters
+     * \param aOutput gradient
     **********************************************************************************/
     void gradient(std::vector<Plato::Scalar>& aOutput)  override
     {
@@ -131,8 +131,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update geometry
-     * @param [in] aParam optimization parameters
+     * \brief Update geometry
+     * \param [in] aParam optimization parameters
      **********************************************************************************/
     void initialize(const Plato::ProblemParams & aParam)  override
     {
@@ -140,8 +140,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update geometry
-     * @param [in] aParam optimization parameters
+     * \brief Update geometry
+     * \param [in] aParam optimization parameters
     **********************************************************************************/
     void updateGeometry(const Plato::ProblemParams & aParam) override
     {
@@ -154,9 +154,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evolve geometry in time
-     * @param [in] aDeltaTime time step
-     * @param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
+     * \brief Evolve geometry in time
+     * \param [in] aDeltaTime time step
+     * \param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
      **********************************************************************************/
     void evolveGeometry(const Plato::Scalar aDeltaTime, const Plato::Scalar aBurnRateMultiplier) override
     {
@@ -164,8 +164,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Output geometry and field data
-     * @param [in] aOutput output flag (true = output, false = do not output)
+     * \brief Output geometry and field data
+     * \param [in] aOutput output flag (true = output, false = do not output)
     **********************************************************************************/
     void output(bool aOutput = false) override
     {

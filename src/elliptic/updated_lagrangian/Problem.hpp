@@ -9,8 +9,10 @@
 #include <Omega_h_assoc.hpp>
 
 #include "BLAS1.hpp"
+#include "Solutions.hpp"
 #include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
+#include "AnalyzeOutput.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 #include "SpatialModel.hpp"
@@ -96,6 +98,9 @@ private:
 
     Plato::LagrangianUpdate<PhysicsT> mLagrangianUpdate;
 
+    std::string mPDEType; /*!< partial differential equation type */
+    std::string mPhysics; /*!< physics used for the simulation */
+
 public:
     /******************************************************************************//**
      * \brief PLATO problem constructor
@@ -122,7 +127,9 @@ public:
       mLocalStates   ("Local states",  mSequence.getNumSteps(), mPDE->stateSize()),
       mGlobalJacobian(Teuchos::null),
       mIsSelfAdjoint (aProblemParams.get<bool>("Self-Adjoint", false)),
-      mLagrangianUpdate(mSpatialModel)
+      mLagrangianUpdate(mSpatialModel),
+      mPDEType       (aProblemParams.get<std::string>("PDE Constraint")),
+      mPhysics       (aProblemParams.get<std::string>("Physics"))
     {
         this->initialize(aProblemParams);
 
@@ -169,49 +176,6 @@ public:
     }
 
     /******************************************************************************//**
-     * \brief Return number of degrees of freedom in solution.
-     * \return Number of degrees of freedom
-    **********************************************************************************/
-    Plato::OrdinalType getNumSolutionDofs()
-    {
-        return PhysicsT::mNumDofsPerNode;
-    }
-
-    /******************************************************************************//**
-     * \brief Set state variables
-     * \param [in] aGlobalState 2D view of state variables
-    **********************************************************************************/
-    void setGlobalSolution(const Plato::Solution & aSolution)
-    {
-        auto tState = aSolution.State;
-        assert(tState.extent(0) == mGlobalStates.extent(0));
-        assert(tState.extent(1) == mGlobalStates.extent(1));
-        Kokkos::deep_copy(mGlobalStates, tState);
-    }
-
-    /******************************************************************************//**
-     * \brief Return 2D view of state variables
-     * \return aGlobalState 2D view of state variables
-    **********************************************************************************/
-    Plato::Solution getGlobalSolution()
-    {
-        return Plato::Solution(mGlobalStates);
-    }
-
-    /******************************************************************************//**
-     * \brief Return 2D view of adjoint variables
-     * \return 2D view of adjoint variables
-    **********************************************************************************/
-    Plato::Adjoint getAdjoint()
-    {
-        return Plato::Adjoint(mGlobalAdjoints);
-    }
-
-    void applyConstraints(
-      const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-      const Plato::ScalarVector & aVector
-    ){}
-    /******************************************************************************//**
      * \brief Apply Dirichlet constraints
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
      * \param [in] aVector 1D view of Right-Hand-Side forces
@@ -221,7 +185,6 @@ public:
       const Plato::ScalarVector & aVector,
             Plato::Scalar aScale
     )
-    //**********************************************************************************/
     {
         if(mGlobalJacobian->isBlockMatrix())
         {
@@ -232,18 +195,28 @@ public:
             Plato::applyConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
         }
     }
-
-    void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
+    
+    /******************************************************************************//**
+     * \brief Output solution to visualization file.
+     * \param [in] aFilepath output/visualizaton file path
+    **********************************************************************************/
+    void output(const std::string & aFilepath) override
+    {
+        auto tDataMap = this->getDataMap();
+        auto tSolution = this->getSolution();
+        Plato::output<SpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+    }
 
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aGlobalState 2D container of state variables
      * \param [in] aControl 1D container of control variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution)
     {
+        auto tState = aSolution.get("State");
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
 
         for( auto tCriterion : mCriteria )
         {
@@ -260,8 +233,9 @@ public:
      * \param [in] aControl 1D view of control variables
      * \return Plato::Solution composed of state variables    
      ***********************************************************************************/
-    Plato::Solution
-    solution(const Plato::ScalarVector & aControl)
+    Plato::Solutions
+    solution
+    (const Plato::ScalarVector & aControl)
     {
         mDataMap.clearAll();
 
@@ -345,9 +319,8 @@ public:
 
         } // end sequence loop
 
-        auto tSol = Plato::Solution(mGlobalStates);
-        tSol.LocalState = mLocalStates;
-        return tSol;
+        auto tSolution = this->getSolution();
+        return tSolution;
     }
 
     /******************************************************************************//**
@@ -364,8 +337,10 @@ public:
     {
         if( mCriteria.count(aName) )
         {
+            Plato::Solutions tSolutions;
+            tSolutions.set("State", mGlobalStates);
             Criterion tCriterion = mCriteria[aName];
-            return tCriterion->value(Plato::Solution(mGlobalStates), mLocalStates, aControl);
+            return tCriterion->value(tSolutions, mLocalStates, aControl);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -389,7 +364,7 @@ public:
     Plato::Scalar
     criterionValue(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -426,7 +401,7 @@ public:
     Plato::ScalarVector
     criterionGradient(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -458,7 +433,7 @@ public:
     Plato::ScalarVector
     criterionGradient(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
               Criterion             aCriterion
     )
     {
@@ -473,8 +448,6 @@ public:
         {
             THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
         }
-
-        auto tSolution = Plato::Solution(mGlobalStates);
 
         // F_{,z}
         auto t_dFdz = aCriterion->gradient_z(aSolution, mLocalStates, aControl);
@@ -571,7 +544,7 @@ public:
     Plato::ScalarVector
     criterionGradientX(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const std::string         & aName
     ) override
     {
@@ -603,15 +576,13 @@ public:
     Plato::ScalarVector
     criterionGradientX(
         const Plato::ScalarVector & aControl,
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
               Criterion             aCriterion)
     {
         if(aCriterion == nullptr)
         {
             THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
         }
-
-        auto tSolution = Plato::Solution(mGlobalStates);
 
         // F_{,z}
         auto t_dFdx = aCriterion->gradient_x(aSolution, mLocalStates, aControl);
@@ -719,8 +690,10 @@ public:
     {
         if( mCriteria.count(aName) )
         {
+            Plato::Solutions tSolution;
+            tSolution.set("State", mGlobalStates);
             Criterion tCriterion = mCriteria[aName];
-            return criterionGradient(aControl, Plato::Solution(mGlobalStates), tCriterion);
+            return criterionGradient(aControl, tSolution, tCriterion);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -748,8 +721,10 @@ public:
     {
         if( mCriteria.count(aName) )
         {
+            Plato::Solutions Solutions;
+            Solutions.set("State", mGlobalStates);
             Criterion tCriterion = mCriteria[aName];
-            return criterionGradientX(aControl, Plato::Solution(mGlobalStates), tCriterion);
+            return criterionGradientX(aControl, Solutions, tCriterion);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -857,6 +832,19 @@ private:
         {
             Plato::applyConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
         }
+    }
+
+    /******************************************************************************/ /**
+    * \brief Return solution database.
+    * \return solution database
+    **********************************************************************************/
+    Plato::Solutions 
+    getSolution() const
+    {
+        Plato::Solutions tSolution(mPhysics, mPDEType);
+        tSolution.set("State", mGlobalStates);
+        tSolution.set("Local State", mLocalStates);
+        return tSolution;
     }
 
 };

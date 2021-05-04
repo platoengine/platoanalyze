@@ -13,29 +13,29 @@ namespace Plato
 namespace Parabolic
 {
 /******************************************************************************//**
- * @brief Scalar function base factory
+ * \brief Scalar function base factory
  **********************************************************************************/
 template<typename PhysicsT>
 class ScalarFunctionBaseFactory
 {
 public:
     /******************************************************************************//**
-     * @brief Constructor
+     * \brief Constructor
      **********************************************************************************/
     ScalarFunctionBaseFactory () {}
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     ~ScalarFunctionBaseFactory() {}
 
     /******************************************************************************//**
-     * @brief Create method
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams parameter input
-     * @param [in] aFunctionName name of function in parameter list
+     * \brief Create method
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams parameter input
+     * \param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     std::shared_ptr<Plato::Parabolic::ScalarFunctionBase> 
     create(

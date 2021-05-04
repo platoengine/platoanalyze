@@ -41,8 +41,8 @@ private:
 
 private:
     /******************************************************************************//**
-     * @brief Initialization of Weighted Sum of Local Scalar Functions
-     * @param [in] aInputParams input parameters database
+     * \brief Initialization of Weighted Sum of Local Scalar Functions
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void
     initialize (
@@ -268,6 +268,7 @@ public:
                 printf("Scalar Function Name = %s \t Value = %f\n", tFunctionName.c_str(), tMyFunctionValue);
             }
         }
+
         if(mWriteDiagnostics)
         {
             printf("Weighted Sum Name = %s \t Value = %f\n", mWeigthedSumFunctionName.c_str(), tResult);

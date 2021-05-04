@@ -53,7 +53,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Basic math expression evaluator
+ * \brief Basic math expression evaluator
  *  This evaluator executes exclusively on the host.
  *  The function is of the form y = f(t) where y and t are doubles.
  *  The expression, f(t), is provided as a string argument to the constructor and
@@ -64,7 +64,7 @@ class MathExpr
   public:
 
     /******************************************************************************//**
-     * @brief Constructor
+     * \brief Constructor
     **********************************************************************************/
     explicit MathExpr(std::string aExpression) : mExpression(aExpression)
     {
@@ -72,9 +72,9 @@ class MathExpr
     }
 
     /******************************************************************************//**
-     * @brief Return f(aInVal)
-     * @param aInVal input value
-     * @return f(aInVal)
+     * \brief Return f(aInVal)
+     * \param aInVal input value
+     * \return f(aInVal)
     **********************************************************************************/
     inline Plato::Scalar
     value(Plato::Scalar aInVal) const

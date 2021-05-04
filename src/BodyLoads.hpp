@@ -7,10 +7,10 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "alg/Basis.hpp"
+#include "UtilsOmegaH.hpp"
 #include "alg/Cubature.hpp"
 #include "PlatoTypes.hpp"
 #include "SpatialModel.hpp"
-#include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "PlatoMeshExpr.hpp"

@@ -10,12 +10,12 @@ namespace Plato
 namespace Hyperbolic
 {
     /******************************************************************************//**
-     * @brief Create method
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams parameter input
-     * @param [in] aFunctionName name of function in parameter list
+     * \brief Create method
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams parameter input
+     * \param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     template <typename PhysicsT>
     std::shared_ptr<Plato::Hyperbolic::ScalarFunctionBase>

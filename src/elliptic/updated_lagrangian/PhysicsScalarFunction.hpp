@@ -7,6 +7,7 @@
 #include <cassert>
 #include <vector>
 
+#include "Solutions.hpp"
 #include "WorksetBase.hpp"
 #include "PlatoSequence.hpp"
 #include "PlatoStaticsTypes.hpp"
@@ -259,7 +260,7 @@ public:
     **********************************************************************************/
     Plato::Scalar
     value(
-        const Plato::Solution                  & aSolution,
+        const Plato::Solutions                 & aSolution,
         const Plato::ScalarMultiVector         & aLocalStates,
         const Plato::ScalarVector              & aControl,
               Plato::Scalar                      aTimeStep = 0.0
@@ -273,7 +274,7 @@ public:
 
         Plato::Scalar tReturnVal(0.0);
 
-        auto tGlobalStates = aSolution.State;
+        auto tGlobalStates = aSolution.get("State");
         auto tNumStates = tGlobalStates.extent(0);
 
         const auto& tSequenceSteps = mSequence.getSteps();
@@ -354,7 +355,7 @@ public:
     **********************************************************************************/
     Plato::ScalarVector
     gradient_x(
-        const Plato::Solution                  & aSolution,
+        const Plato::Solutions                 & aSolution,
         const Plato::ScalarMultiVector         & aLocalStates,
         const Plato::ScalarVector              & aControl,
               Plato::Scalar                      aTimeStep = 0.0
@@ -371,7 +372,7 @@ public:
         Plato::Scalar tValue(0.0);
         Plato::ScalarVector tObjGradientX("objective gradient configuration", mNumSpatialDims * mNumNodes);
 
-        auto tGlobalStates = aSolution.State;
+        auto tGlobalStates = aSolution.get("State");
         auto tNumSteps = tGlobalStates.extent(0);
 
         auto& tSequenceSteps = mSequence.getSteps();
@@ -451,7 +452,7 @@ public:
     **********************************************************************************/
     Plato::ScalarVector
     gradient_u(
-        const Plato::Solution          & aSolution,
+        const Plato::Solutions         & aSolution,
         const Plato::ScalarMultiVector & aLocalStates,
         const Plato::ScalarVector      & aControl,
               Plato::OrdinalType         aStepIndex,
@@ -478,7 +479,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            auto tGlobalStates = aSolution.State;
+            auto tGlobalStates = aSolution.get("State");
             auto tGlobalState = Kokkos::subview(tGlobalStates, aStepIndex, Kokkos::ALL());
 
             // workset global state
@@ -540,7 +541,7 @@ public:
     **********************************************************************************/
     Plato::ScalarVector
     gradient_c(
-        const Plato::Solution          & aSolution,
+        const Plato::Solutions         & aSolution,
         const Plato::ScalarMultiVector & aLocalStates,
         const Plato::ScalarVector      & aControl,
               Plato::OrdinalType         aStepIndex,
@@ -570,7 +571,7 @@ public:
                 auto tNumCells = tDomain.numCells();
                 auto tName     = tDomain.getDomainName();
 
-                auto tGlobalStates = aSolution.State;
+                auto tGlobalStates = aSolution.get("State");
                 auto tGlobalState = Kokkos::subview(tGlobalStates, aStepIndex+1, Kokkos::ALL());
 
                 // workset global state
@@ -620,7 +621,7 @@ public:
     **********************************************************************************/
     Plato::ScalarVector
     gradient_z(
-        const Plato::Solution                  & aSolution,
+        const Plato::Solutions                 & aSolution,
         const Plato::ScalarMultiVector         & aLocalStates,
         const Plato::ScalarVector              & aControl,
               Plato::Scalar                      aTimeStep = 0.0
@@ -637,7 +638,7 @@ public:
         Plato::Scalar tValue(0.0);
         Plato::ScalarVector tObjGradientZ("objective gradient control", mNumNodes);
 
-        auto tGlobalStates = aSolution.State;
+        auto tGlobalStates = aSolution.get("State");
         auto tNumSteps = tGlobalStates.extent(0);
 
         auto& tSequenceSteps = mSequence.getSteps();
