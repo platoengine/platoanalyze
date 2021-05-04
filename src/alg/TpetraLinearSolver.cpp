@@ -312,55 +312,38 @@ TpetraLinearSolver::TpetraLinearSolver(
     mPreconditionerSetupTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Preconditioner Setup")),
     mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Tpetra Linear Solve")),
     mSolverEndTime(mPreLinearSolveTimer->wallTime()),
-    mDisplayIterations(0)
+    mDisplayIterations(0),
+    mDofsPerNode(aDofsPerNode)
 {
   mPreLinearSolveTimer->start();
 
   mSolverPackage = "Belos";
   if(aSolverParams.isType<std::string>("Solver Package"))
     mSolverPackage = aSolverParams.get<std::string>("Solver Package");
-  //std::transform(mSolverPackage.begin(), mSolverPackage.end(), mSolverPackage.begin(), std::tolower);
 
   if(aSolverParams.isType<std::string>("Solver"))
     mSolver = aSolverParams.get<std::string>("Solver");
   else if (mSolverPackage == "Belos")
-    mSolver = "GMRES";
+    mSolver = "Pseudoblock GMRES";
   else
     throw std::invalid_argument("Solver not specified in input parameter list.\n");
-  //std::transform(mSolver.begin(), mSolver.end(), mSolver.begin(), std::tolower);
   
   mDisplayIterations = 0;
   if(aSolverParams.isType<int>("Display Iterations"))
     mDisplayIterations = aSolverParams.get<int>("Display Iterations");
 
-  if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
-    mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
-  else if(mSolverPackage == "Belos")
-  {
-    int tMaxIterations = 300;
-    if(aSolverParams.isType<int>("Iterations"))
-      tMaxIterations = aSolverParams.get<int>("Iterations");
-
-    double tTolerance = 1e-14;
-    if(aSolverParams.isType<double>("Tolerance"))
-      tTolerance = aSolverParams.get<double>("Tolerance");      
-
-    mSolverOptions.set ("Maximum Iterations", tMaxIterations);
-    mSolverOptions.set ("Convergence Tolerance", tTolerance);
-  }
+  setupSolverOptions(aSolverParams);
 
   mPreconditionerPackage = "IFpack2";
   if(aSolverParams.isType<std::string>("Preconditioner Package"))
     mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
-  //std::transform(mPreconditionerPackage.begin(), mPreconditionerPackage.end(), mPreconditionerPackage.begin(), std::tolower);
 
   if(aSolverParams.isType<std::string>("Preconditioner Type"))
     mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
   else if(mPreconditionerPackage == "IFpack2")
     mPreconditionerType = "ILUT";
 
-  if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
-    mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
+  setupPreconditionerOptions(aSolverParams);
 }
 
 /******************************************************************************//**
@@ -369,6 +352,83 @@ TpetraLinearSolver::TpetraLinearSolver(
 TpetraLinearSolver::~TpetraLinearSolver()
 {
   
+}
+
+template<typename T>
+inline void
+TpetraLinearSolver::addDefaultToParameterList (Teuchos::ParameterList &aParams, const std::string &aEntryName, const T &aDefaultValue)
+{
+  if(!aParams.isType<T>(aEntryName))
+    aParams.set(aEntryName, aDefaultValue);
+}
+
+void
+TpetraLinearSolver::setupSolverOptions (const Teuchos::ParameterList &aSolverParams) 
+{
+  // Set default values here
+  int tMaxIterations = 300;
+  double tTolerance  = 1e-14;
+
+  if(aSolverParams.isType<int>("Iterations"))
+    tMaxIterations = aSolverParams.get<int>("Iterations");
+  
+  if(aSolverParams.isType<double>("Tolerance"))
+    tTolerance = aSolverParams.get<double>("Tolerance");
+
+  if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
+    mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
+  
+  addDefaultToParameterList(mSolverOptions, "Maximum Iterations",    tMaxIterations);
+  addDefaultToParameterList(mSolverOptions, "Convergence Tolerance", tTolerance);
+  addDefaultToParameterList(mSolverOptions, "Block Size",            mDofsPerNode);
+
+  if (mSolver == "Pseudoblock GMRES" || mSolver == "GMRES")
+    addDefaultToParameterList(mSolverOptions, "Num Blocks", tMaxIterations); // This is the number of iterations between restarts
+}
+
+void
+TpetraLinearSolver::setupPreconditionerOptions (const Teuchos::ParameterList &aSolverParams) 
+{
+  if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
+    mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
+  
+  if (mPreconditionerPackage != "MueLu") return;
+
+  this->addDefaultToParameterList(mPreconditionerOptions, "number of equations", mDofsPerNode);
+  this->addDefaultToParameterList(mPreconditionerOptions, "verbosity", std::string("none"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "coarse: max size", static_cast<int>(128));
+  this->addDefaultToParameterList(mPreconditionerOptions, "multigrid algorithm", std::string("unsmoothed"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "transpose: use implicit", true);
+  this->addDefaultToParameterList(mPreconditionerOptions, "max levels", static_cast<int>(10));
+  this->addDefaultToParameterList(mPreconditionerOptions, "sa: use filtered matrix", true);
+  this->addDefaultToParameterList(mPreconditionerOptions, "aggregation: type", std::string("uncoupled"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "aggregation: drop scheme", std::string("classical"));
+  //this->addDefaultToParameterList(mPreconditionerOptions, "aggregation: drop tol", static_cast<double>(0.02));
+
+  this->addDefaultToParameterList(mPreconditionerOptions, "smoother: type", std::string("SCHWARZ"));
+  Teuchos::ParameterList tSmootherParams = mPreconditionerOptions.sublist("smoother: params");
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: num iterations", static_cast<int>(1));
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: overlap level", static_cast<int>(1));
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: combine mode", std::string("Zero"));
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: use reordering", false);
+  Teuchos::ParameterList tSchwarzReorderingParams = tSmootherParams.sublist("schwarz: reordering list");
+  this->addDefaultToParameterList(tSchwarzReorderingParams, "order_method", std::string("rcm"));
+  this->addDefaultToParameterList(tSmootherParams, "subdomain solver name", std::string("RILUK"));
+  Teuchos::ParameterList tSubdomainSolverParams = tSmootherParams.sublist("subdomain solver parameters");
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: iluk level-of-fill", static_cast<int>(0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: ilut level-of-fill", static_cast<double>(1.0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: absolute threshold", static_cast<double>(0.0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: relative threshold", static_cast<double>(1.0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: relax value", static_cast<double>(0.0));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: enable", false);
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: partitioner", std::string("zoltan2"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: start level", static_cast<int>(2));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: min rows per proc", static_cast<int>(800));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: max imbalance", static_cast<double>(1.1));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: remap parts", false);
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: rebalance P and R", false);
+  Teuchos::ParameterList tRepartitionParams = mPreconditionerOptions.sublist("repartition: params");
+  this->addDefaultToParameterList(tRepartitionParams, "algorithm", std::string("multijagged"));
 }
 
 template<class MV, class OP>

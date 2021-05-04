@@ -93,6 +93,7 @@ class TpetraLinearSolver : public AbstractSolver
 
     int    mDisplayIterations;
     int    mNumIterations;
+    int    mDofsPerNode;
     double mAchievedTolerance;
   public:
     /******************************************************************************//**
@@ -135,6 +136,25 @@ class TpetraLinearSolver : public AbstractSolver
     ********************************************************************* ************/
     void
     amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tpetra_MultiVector> X, Teuchos::RCP<Tpetra_MultiVector> B);
+
+    /******************************************************************************//**
+     * @brief Setup the solver options
+    ********************************************************************* ************/
+    void
+    setupSolverOptions (const Teuchos::ParameterList &aSolverParams);
+
+    /******************************************************************************//**
+     * @brief Setup the preconditioner options
+    ********************************************************************* ************/
+    void
+    setupPreconditionerOptions (const Teuchos::ParameterList &aSolverParams);
+
+    /******************************************************************************//**
+     * @brief Add to parameter list if not set by user
+    ********************************************************************* ************/
+    template<typename T>
+    inline void
+    addDefaultToParameterList (Teuchos::ParameterList &aParams, const std::string &aEntryName, const T &aDefaultValue);
 };
 
 } // end namespace Plato
