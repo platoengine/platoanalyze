@@ -3,7 +3,7 @@
 namespace Plato {
 
 /******************************************************************************//**
- * @brief Abstract system interface
+ * \brief Abstract system interface
 
    This class contains the node and dof map information and permits persistence
    of this information between solutions.
@@ -23,7 +23,7 @@ EpetraSystem::EpetraSystem(
 }
 
 /******************************************************************************//**
- * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Epetra_VbrMatrix
+ * \brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Epetra_VbrMatrix
 **********************************************************************************/
 rcp<Epetra_VbrMatrix>
 EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
@@ -86,7 +86,7 @@ EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
 }
 
 /******************************************************************************//**
- * @brief Convert from ScalarVector to Epetra_Vector
+ * \brief Convert from ScalarVector to Epetra_Vector
 **********************************************************************************/
 rcp<Epetra_Vector>
 EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
@@ -108,7 +108,7 @@ EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
     return tRetVal;
 }
 /******************************************************************************//**
- * @brief Convert from Epetra_Vector to ScalarVector
+ * \brief Convert from Epetra_Vector to ScalarVector
 **********************************************************************************/
 void 
 EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const
@@ -129,7 +129,7 @@ EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVec
 }
 
 /******************************************************************************//**
- * @brief EpetraLinearSolver constructor
+ * \brief EpetraLinearSolver constructor
 
  This constructor takes an Omega_h::Mesh and creates a new System.
 **********************************************************************************/
@@ -157,7 +157,7 @@ EpetraLinearSolver::EpetraLinearSolver(
 }
 
 /******************************************************************************//**
- * @brief Solve the linear system
+ * \brief Solve the linear system
 **********************************************************************************/
 void
 EpetraLinearSolver::solve(
@@ -216,7 +216,7 @@ EpetraLinearSolver::solve(
 }
 
 /******************************************************************************//**
- * @brief Setup the AztecOO solver
+ * \brief Setup the AztecOO solver
 **********************************************************************************/
 void
 EpetraLinearSolver::setupSolver(AztecOO& aSolver)

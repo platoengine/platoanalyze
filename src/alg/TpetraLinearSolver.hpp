@@ -23,7 +23,7 @@ namespace Plato {
   using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, int, Plato::OrdinalType>;
 
 /******************************************************************************//**
- * @brief Abstract system interface
+ * \brief Abstract system interface
 
    This class contains the node and dof map information and permits persistence
    of this information between solutions.
@@ -44,25 +44,25 @@ class TpetraSystem
     );
 
     /******************************************************************************//**
-     * @brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
+     * \brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Matrix>
     fromMatrix(const Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const;
 
     /******************************************************************************//**
-     * @brief Convert from ScalarVector to Tpetra_MultiVector
+     * \brief Convert from ScalarVector to Tpetra_MultiVector
     **********************************************************************************/
     Teuchos::RCP<Tpetra_MultiVector>
     fromVector(const Plato::ScalarVector tInVector) const;
 
     /******************************************************************************//**
-     * @brief Convert from Tpetra_MultiVector to ScalarVector
+     * \brief Convert from Tpetra_MultiVector to ScalarVector
     **********************************************************************************/
     void
     toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const;
 
     /******************************************************************************//**
-     * @brief get TpetraSystem map 
+     * \brief get TpetraSystem map 
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Map> getMap() const {return mMap;}
 
@@ -72,7 +72,7 @@ class TpetraSystem
 };
 
 /******************************************************************************//**
- * @brief Concrete TpetraLinearSolver
+ * \brief Concrete TpetraLinearSolver
 **********************************************************************************/
 class TpetraLinearSolver : public AbstractSolver
 {
@@ -97,7 +97,7 @@ class TpetraLinearSolver : public AbstractSolver
     double mAchievedTolerance;
   public:
     /******************************************************************************//**
-     * @brief TpetraLinearSolver constructor
+     * \brief TpetraLinearSolver constructor
 
      This constructor takes an Omega_h::Mesh and creates a new System.
     **********************************************************************************/
@@ -107,11 +107,6 @@ class TpetraLinearSolver : public AbstractSolver
         Comm::Machine           aMachine,
         int                     aDofsPerNode
     );
-
-    /******************************************************************************//**
-     * @brief TpetraLinearSolver destructor
-    **********************************************************************************/
-    ~TpetraLinearSolver();
 
     /******************************************************************************//**
      * @brief Interface function to solve the linear system
@@ -125,7 +120,7 @@ class TpetraLinearSolver : public AbstractSolver
 
   private:
     /******************************************************************************//**
-     * @brief Setup the Belos solver and solve
+     * \brief Setup the Belos solver and solve
     **********************************************************************************/
     template<class MV, class OP>
     void

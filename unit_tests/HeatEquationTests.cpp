@@ -13,6 +13,7 @@
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
+#include "Solutions.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ThermalConductivityMaterial.hpp"
 #include "ThermalMassMaterial.hpp"
@@ -699,14 +700,17 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
 
   // compute and test objective value
   //
-  auto value = scalarFunction.value(Plato::Solution(T, Tdot), z, timeStep);
+  Plato::Solutions tSolution;
+  tSolution.set("State", T);
+  tSolution.set("StateDot", Tdot);
+  auto value = scalarFunction.value(tSolution, z, timeStep);
 
   Plato::Scalar value_gold = 7.95166666666666603e9;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(Plato::Solution(T, Tdot), z, timeIncIndex, timeStep);
+  auto grad_u = scalarFunction.gradient_u(tSolution, z, timeIncIndex, timeStep);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -734,7 +738,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(Plato::Solution(T, Tdot), z, timeStep);
+  auto grad_z = scalarFunction.gradient_z(tSolution, z, timeStep);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -757,7 +761,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(Plato::Solution(T, Tdot), z, timeStep);
+  auto grad_x = scalarFunction.gradient_x(tSolution, z, timeStep);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);

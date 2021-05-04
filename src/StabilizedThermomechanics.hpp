@@ -133,7 +133,7 @@ struct FunctionFactory
 
 
 /****************************************************************************//**
- * @brief Concrete class for use as the SimplexPhysics template argument in
+ * \brief Concrete class for use as the SimplexPhysics template argument in
  *        EllipticVMSProblem
  *******************************************************************************/
 template<Plato::OrdinalType SpaceDimParam>

@@ -25,7 +25,7 @@ namespace Elliptic
 {
 
 /******************************************************************************//**
- * @brief Internal energy criterion, given by /f$ f(z) = u^{T}K(z)u /f$
+ * \brief Internal energy criterion, given by /f$ f(z) = u^{T}K(z)u /f$
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
  * @tparam IndicatorFunctionType penalty function (e.g. simp)
@@ -58,10 +58,10 @@ class InternalThermalEnergy :
 
   public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param aSpatialDomain Plato Analyze spatial domain
-     * @param aProblemParams input database for overall problem
-     * @param aPenaltyParams input database for penalty function
+     * \brief Constructor
+     * \param aSpatialDomain Plato Analyze spatial domain
+     * \param aProblemParams input database for overall problem
+     * \param aPenaltyParams input database for penalty function
     **********************************************************************************/
     InternalThermalEnergy(
         const Plato::SpatialDomain   & aSpatialDomain,
@@ -86,12 +86,12 @@ class InternalThermalEnergy :
     }
 
     /******************************************************************************//**
-     * @brief Evaluate internal elastic energy function
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Evaluate internal elastic energy function
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void evaluate(
         const Plato::ScalarMultiVectorT <StateScalarType>   & aState,

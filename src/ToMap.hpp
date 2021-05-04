@@ -105,6 +105,31 @@ toMap(
 // function toMap
 
 /******************************************************************************//**
+ * \brief Store 1D container in data map. The data map is used for output purposes
+ * \param [in/out] aDataMap output data storage
+ * \param [in] aInput 1D container
+ * \param [in] aEntryName output data name
+ * \param [in] aSpatialDomain Plato Analyze spatial domain
+ **********************************************************************************/
+inline void
+toMap(
+          std::map<std::string, Plato::ScalarVector> & aTo,
+    const Plato::LocalOrdinalVector                  & aFrom,
+          std::string                                  aName
+)
+{
+    auto tNumEntries = aFrom.extent(0);
+    Plato::ScalarVector tTo(aName, tNumEntries);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumEntries), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tTo(aOrdinal) = aFrom(aOrdinal);
+    }, "cast");
+
+    aTo[aName] = tTo;
+}
+// function toMap
+
+/******************************************************************************//**
  * \brief Store 2D container in data map. The data map is used for output purposes
  * \param [in/out] aDataMap output data storage
  * \param [in] aInput 2D container

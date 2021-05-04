@@ -10,7 +10,7 @@ template <typename ClassT>
 using rcp = std::shared_ptr<ClassT>;
 
 /******************************************************************************//**
- * @brief Abstract solver interface
+ * \brief Abstract solver interface
 
   Note that the solve() function takes 'native' matrix and vector types.  A next
   step would be to adopt generic matrix and vector interfaces that we can wrap

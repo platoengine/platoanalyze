@@ -9,6 +9,7 @@
 #include <Omega_h_mesh.hpp>
 
 #include "BLAS1.hpp"
+#include "Solutions.hpp"
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -33,7 +34,9 @@ inline Plato::Scalar
 test_criterion_grad_wrt_control(
     PlatoProblem  & aProblem,
     Omega_h::Mesh & aMesh,
-    std::string     aCriterionName
+    std::string     aCriterionName,
+    Plato::OrdinalType aSuperscriptLowerBound = 1,
+    Plato::OrdinalType aSuperscriptUpperBound = 6
 )
 {
     // Allocate Data
@@ -55,12 +58,9 @@ test_criterion_grad_wrt_control(
     tOutput << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
         << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
 
-    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
-    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
-    auto tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
-
     std::vector<Plato::Scalar> tFiniteDiffApproxError;
-    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    auto tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
+    for(Plato::OrdinalType tIndex = aSuperscriptLowerBound; tIndex <= aSuperscriptUpperBound; tIndex++)
     {
         auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
 
@@ -418,7 +418,9 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
     Kokkos::deep_copy(tState, tHostState);
 
     // FINITE DIFFERENCE TEST
-    Plato::ScalarVector tPartialZ = aScalarFuncBase.gradient_z(Plato::Solution(tStates), tControl, 0.0);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    Plato::ScalarVector tPartialZ = aScalarFuncBase.gradient_z(tSolution, tControl, 0.0);
 
 
     Plato::ScalarVector tStep("step", tNumVerts);
@@ -438,19 +440,19 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
         // four point finite difference approximation
         Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
         Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::Scalar tObjFuncValueOne = aScalarFuncBase.value(Plato::Solution(tStates), tTrialControl, 0.0);
+        Plato::Scalar tObjFuncValueOne = aScalarFuncBase.value(tSolution, tTrialControl, 0.0);
 
         Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
         Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::Scalar tObjFuncValueTwo = aScalarFuncBase.value(Plato::Solution(tStates), tTrialControl, 0.0);
+        Plato::Scalar tObjFuncValueTwo = aScalarFuncBase.value(tSolution, tTrialControl, 0.0);
 
         Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
         Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::Scalar tObjFuncValueThree = aScalarFuncBase.value(Plato::Solution(tStates), tTrialControl, 0.0);
+        Plato::Scalar tObjFuncValueThree = aScalarFuncBase.value(tSolution, tTrialControl, 0.0);
 
         Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
         Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::Scalar tObjFuncValueFour = aScalarFuncBase.value(Plato::Solution(tStates), tTrialControl, 0.0);
+        Plato::Scalar tObjFuncValueFour = aScalarFuncBase.value(tSolution, tTrialControl, 0.0);
 
         Plato::Scalar tNumerator = -tObjFuncValueThree + static_cast<Plato::Scalar>(8.) * tObjFuncValueOne
                 - static_cast<Plato::Scalar>(8.) * tObjFuncValueTwo + tObjFuncValueFour;
@@ -495,7 +497,9 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::Elliptic::ScalarFun
     Plato::blas1::random(1, 5, tHostState);
     Kokkos::deep_copy(tState, tHostState);
 
-    Plato::ScalarVector tPartialU = aScalarFuncBase.gradient_u(Plato::Solution(tStates), tControl, 0.0);
+    Plato::Solutions tSolution;
+    tSolution.set("State", tStates);
+    Plato::ScalarVector tPartialU = aScalarFuncBase.gradient_u(tSolution, tControl, 0.0);
 
     Plato::ScalarMultiVector tTrialStates("trial state", /*numSteps=*/1, tTotalNumDofs);
     auto tTrialState = Kokkos::subview(tTrialStates, 0, Kokkos::ALL());
@@ -518,19 +522,23 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::Elliptic::ScalarFun
         // four point finite difference approximation
         Plato::blas1::update<Plato::ScalarVector>(1.0, tState, 0.0, tTrialState);
         Plato::blas1::update<Plato::ScalarVector>(tEpsilon, tStep, 1.0, tTrialState);
-        Plato::Scalar tObjFuncValueOne = aScalarFuncBase.value(Plato::Solution(tTrialStates), tControl, 0.0);
+        tSolution.set("State", tTrialStates);
+        Plato::Scalar tObjFuncValueOne = aScalarFuncBase.value(tSolution, tControl, 0.0);
 
         Plato::blas1::update<Plato::ScalarVector>(1.0, tState, 0.0, tTrialState);
         Plato::blas1::update<Plato::ScalarVector>(-tEpsilon, tStep, 1.0, tTrialState);
-        Plato::Scalar tObjFuncValueTwo = aScalarFuncBase.value(Plato::Solution(tTrialStates), tControl, 0.0);
+        tSolution.set("State", tTrialStates);
+        Plato::Scalar tObjFuncValueTwo = aScalarFuncBase.value(tSolution, tControl, 0.0);
 
         Plato::blas1::update<Plato::ScalarVector>(1.0, tState, 0.0, tTrialState);
         Plato::blas1::update<Plato::ScalarVector>(2.0 * tEpsilon, tStep, 1.0, tTrialState);
-        Plato::Scalar tObjFuncValueThree = aScalarFuncBase.value(Plato::Solution(tTrialStates), tControl, 0.0);
+        tSolution.set("State", tTrialStates);
+        Plato::Scalar tObjFuncValueThree = aScalarFuncBase.value(tSolution, tControl, 0.0);
 
         Plato::blas1::update<Plato::ScalarVector>(1.0, tState, 0.0, tTrialState);
         Plato::blas1::update<Plato::ScalarVector>(-2.0 * tEpsilon, tStep, 1.0, tTrialState);
-        Plato::Scalar tObjFuncValueFour = aScalarFuncBase.value(Plato::Solution(tTrialStates), tControl, 0.0);
+        tSolution.set("State", tTrialStates);
+        Plato::Scalar tObjFuncValueFour = aScalarFuncBase.value(tSolution, tControl, 0.0);
 
         Plato::Scalar tNumerator = -tObjFuncValueThree + static_cast<Plato::Scalar>(8.) * tObjFuncValueOne
                 - static_cast<Plato::Scalar>(8.) * tObjFuncValueTwo + tObjFuncValueFour;

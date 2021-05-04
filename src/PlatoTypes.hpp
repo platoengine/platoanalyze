@@ -20,6 +20,8 @@ using Scalar = double;
 #endif
 using ExecSpace = Kokkos::DefaultExecutionSpace;
 using MemSpace = typename ExecSpace::memory_space;
+using DeviceType = Kokkos::Device<ExecSpace, MemSpace>;
+
 // using Layout = typename ExecSpace::array_layout;
 using Layout = typename Kokkos::LayoutRight;
 

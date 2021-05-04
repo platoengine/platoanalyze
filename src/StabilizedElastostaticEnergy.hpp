@@ -25,7 +25,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Compute internal elastic energy criterion for stabilized form.
+ * \brief Compute internal elastic energy criterion for stabilized form.
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
  * @tparam IndicatorFunctionType penalty function (e.g. simp)

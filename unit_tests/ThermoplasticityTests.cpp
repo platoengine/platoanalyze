@@ -6,6 +6,7 @@
 
 #include "Teuchos_UnitTestHarness.hpp"
 
+#include "Solutions.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoTestHelpers.hpp"
 #include "Plato_Diagnostics.hpp"
@@ -149,13 +150,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    auto tState = tSolution.get("State");
+    Plato::ScalarMultiVector tPressure("Pressure", tState.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tState.extent(0), tNumVertices * tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tState, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tState, tDisplacements);
 
     // 5.1 test pressure
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -201,9 +203,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamTractionThermoPlasticity2D_Elastic");
+        tPlasticityProblem.output("SimplySupportedBeamTractionThermoPlasticity2D_Elastic");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -334,12 +337,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
+    auto tState = tSolution.get("State");
     constexpr Plato::Scalar tTolerance = 1e-4;
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
     std::vector<std::vector<Plato::Scalar>> tGoldSolution =
         {
          {   0.00000e+00,  0.00000e+00,  0.00000e+00, -9.04362e-01, 
@@ -377,7 +381,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
             -1.64809e-02, -3.16034e-01,  4.62963e-01, -3.29448e-01}
         };
     Plato::OrdinalType tTimeStep = 4;
-    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
+    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tState.extent(1); tOrdinal++)
     {
         const Plato::Scalar tValue = std::abs(tHostSolution(tTimeStep, tOrdinal)) < 1.0e-14 ? 0.0 : tHostSolution(tTimeStep, tOrdinal);
         TEST_FLOATING_EQUALITY(tValue, tGoldSolution[0][tOrdinal], tTolerance);
@@ -400,9 +404,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("CantileverBeamTractionForce2D_Plastic");
+        tPlasticityProblem.output("CantileverBeamTractionForce2D_Plastic");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -546,12 +551,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
+    auto tState = tSolution.get("State");
     constexpr Plato::Scalar tTolerance = 1e-4;
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
     std::vector<std::vector<Plato::Scalar>> tGoldSolution =
         {
          {    0.00000e+00,  0.00000e+00,  0.00000e+00,  0.00000e+00,  9.00297e-01, 
@@ -600,7 +606,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
               2.40773e-02,  2.28849e-01,  0.00000e+00,  4.62963e-01, -1.67758e-01}
         };
     Plato::OrdinalType tTimeStep = 4;
-    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
+    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tState.extent(1); tOrdinal++)
     {
         const Plato::Scalar tValue = std::abs(tHostSolution(tTimeStep, tOrdinal)) < 1.0e-14 ? 0.0 : tHostSolution(tTimeStep, tOrdinal);
         TEST_FLOATING_EQUALITY(tValue, tGoldSolution[0][tOrdinal], tTolerance);
@@ -625,9 +631,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("CantileverBeamTractionForce3D_Plastic");
+        tPlasticityProblem.output("CantileverBeamTractionForce3D_Plastic");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -758,7 +765,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_2D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -786,9 +793,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_2D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_PlasticWork_2D");
+        tPlasticityProblem.output("Thermoplasticity_PlasticWork_2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -932,7 +940,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -962,7 +970,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_PlasticWork_3D");
+        tPlasticityProblem.output("Thermoplasticity_PlasticWork_3D");
     }
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -1094,7 +1102,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1373,7 +1382,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_2D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -1403,9 +1412,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_2D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_ElasticWork_2D");
+        tPlasticityProblem.output("Thermoplasticity_ElasticWork_2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1549,7 +1559,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_3D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -1581,7 +1591,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_3D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_ElasticWork_3D");
+        tPlasticityProblem.output("Thermoplasticity_ElasticWork_3D");
     }
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -1712,7 +1722,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_2
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_3D)
@@ -1860,7 +1871,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_3
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2092,7 +2104,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -2101,12 +2113,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
            2.000e-02, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling,
            2.000e-02, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -2129,9 +2142,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_RodElasticSolution2D");
+        tPlasticityProblem.output("Thermoplasticity_RodElasticSolution2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2257,7 +2271,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -2270,12 +2284,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
            2.000e-02, 0.000e+00, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling,
            2.000e-02, 0.000e+00, 0.000e+00, 1.100e+02/tTemperatureScaling, -1.000e+01/tPressureScaling}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -2298,9 +2313,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_RodElasticSolution3D");
+        tPlasticityProblem.output("Thermoplasticity_RodElasticSolution3D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2416,7 +2432,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -2429,12 +2445,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
            1.000e-02, 0.000e+00, 1.000e-02, 1.100e+02/tTemperatureScaling, 0.0/tPressureScaling,
            1.000e-02, 0.000e+00, 0.000e+00, 1.100e+02/tTemperatureScaling, 0.0/tPressureScaling}
         };
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
+    auto tState = tSolution.get("State");
+    auto tHostSolution = Kokkos::create_mirror(tState);
+    Kokkos::deep_copy(tHostSolution, tState);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    const Plato::OrdinalType tDim0 = tState.extent(0);
+    const Plato::OrdinalType tDim1 = tState.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -2458,9 +2475,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_ElasticSolution3D");
+        tPlasticityProblem.output("Thermoplasticity_ElasticSolution3D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2590,7 +2608,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2620,7 +2638,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_TotalWork_2D");
+        tPlasticityProblem.output("Thermoplasticity_TotalWork_2D");
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -2765,7 +2783,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -2797,7 +2815,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_TotalWork_3D");
+        tPlasticityProblem.output("Thermoplasticity_TotalWork_3D");
     }
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -3200,7 +3218,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -3230,7 +3248,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_ThermalEnergy_2D");
+        tPlasticityProblem.output("Thermoplasticity_ThermalEnergy_2D");
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -3375,7 +3393,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls).State;
+    auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -3407,7 +3425,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D)
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("Thermoplasticity_ThermalEnergy_3D");
+        tPlasticityProblem.output("Thermoplasticity_ThermalEnergy_3D");
     }
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }

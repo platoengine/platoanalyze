@@ -13,7 +13,7 @@
 namespace Plato {
 
 /******************************************************************************//**
- * @brief Concrete AmgXLinearSolver
+ * \brief Concrete AmgXLinearSolver
 **********************************************************************************/
 class AmgXLinearSolver : public AbstractSolver
 {

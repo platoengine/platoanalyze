@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BLAS1.hpp"
+#include "Solutions.hpp"
 #include "EssentialBCs.hpp"
 #include "AnalyzeMacros.hpp"
 #include "SimplexMechanics.hpp"
@@ -14,6 +15,7 @@
 #include "Geometrical.hpp"
 #include "ComputedField.hpp"
 #include "SpatialModel.hpp"
+#include "AnalyzeOutput.hpp"
 #include "parabolic/TrapezoidIntegrator.hpp"
 #include "parabolic/VectorFunction.hpp"
 #include "parabolic/ScalarFunctionBase.hpp"
@@ -40,7 +42,7 @@ namespace Parabolic
         using LinearCriterion = std::shared_ptr<Plato::Geometric::ScalarFunctionBase>;
         using LinearCriteria  = std::map<std::string, LinearCriterion>;
 
-        static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims;
+        static constexpr Plato::OrdinalType mSpatialDim = SimplexPhysics::mNumSpatialDims;
         static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
         Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
@@ -71,12 +73,16 @@ namespace Parabolic
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianU;
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianV;
 
-        Teuchos::RCP<Plato::ComputedFields<SpatialDim>> mComputedFields;
+        Teuchos::RCP<Plato::ComputedFields<mSpatialDim>> mComputedFields;
 
         Plato::LocalOrdinalVector mStateBcDofs;
         Plato::ScalarVector mStateBcValues;
 
         rcp<Plato::AbstractSolver> mSolver;
+
+        std::string mPDE; /*!< partial differential equation type */
+        std::string mPhysics; /*!< physics used for the simulation */
+
       public:
         /******************************************************************************/
         Problem(
@@ -93,12 +99,14 @@ namespace Parabolic
             mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aProblemParams, "Newton Iteration", "Maximum Iterations",  1  )),
             mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Increment Tolerance", 0.0)),
             mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Residual Tolerance",  0.0)),
-            mSaveState    (aProblemParams.sublist("Parabolic").isType<Teuchos::Array<std::string>>("Plottable")),
-            mResidual     ("MyResidual", mPDEConstraint.size()),
-            mState        ("State",      mNumSteps, mPDEConstraint.size()),
-            mStateDot     ("StateDot",   mNumSteps, mPDEConstraint.size()),
-            mJacobianU    (Teuchos::null),
-            mJacobianV    (Teuchos::null)
+            mSaveState     (aProblemParams.sublist("Parabolic").isType<Teuchos::Array<std::string>>("Plottable")),
+            mResidual      ("MyResidual", mPDEConstraint.size()),
+            mState         ("State",      mNumSteps, mPDEConstraint.size()),
+            mStateDot      ("StateDot",   mNumSteps, mPDEConstraint.size()),
+            mJacobianU     (Teuchos::null),
+            mJacobianV     (Teuchos::null),
+            mPDE           (aProblemParams.get<std::string>("PDE Constraint")),
+            mPhysics       (aProblemParams.get<std::string>("Physics"))
         /******************************************************************************/
         {
             // parse boundary constraints
@@ -112,7 +120,7 @@ namespace Parabolic
             if(aProblemParams.isSublist("Criteria"))
             {
                 Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
-                Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tLinearFunctionBaseFactory;
+                Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<mSpatialDim>> tLinearFunctionBaseFactory;
 
                 auto tCriteriaParams = aProblemParams.sublist("Criteria");
                 for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
@@ -152,7 +160,7 @@ namespace Parabolic
             //
             if(aProblemParams.isSublist("Computed Fields"))
             {
-              mComputedFields = Teuchos::rcp(new Plato::ComputedFields<SpatialDim>(aMesh, aProblemParams.sublist("Computed Fields")));
+              mComputedFields = Teuchos::rcp(new Plato::ComputedFields<mSpatialDim>(aMesh, aProblemParams.sublist("Computed Fields")));
             }
 
             // parse initial state
@@ -204,44 +212,6 @@ namespace Parabolic
             return mLinearCriteria.count(aName) > 0 ? true : false;
         }
 
-        /******************************************************************************//**
-         * @brief Return number of degrees of freedom in solution.
-         * @return Number of degrees of freedom
-        **********************************************************************************/
-        Plato::OrdinalType getNumSolutionDofs()
-        {
-            return SimplexPhysics::mNumDofsPerNode;
-        }
-        /******************************************************************************/
-        Plato::Solution getGlobalSolution()
-        /******************************************************************************/
-        {
-            return Plato::Solution(mState, mStateDot);
-        }
-
-        /******************************************************************************/
-        Plato::Adjoint getAdjoint()
-        /******************************************************************************/
-        {
-            return Plato::Adjoint(mAdjoints_U, mAdjoints_V);
-        }
-        /******************************************************************************/
-        void setGlobalSolution(const Plato::Solution & aSolution)
-        /******************************************************************************/
-        {
-            auto tStates = aSolution.State;
-            assert(tStates.extent(0) == mState.extent(0));
-            assert(tStates.extent(1) == mState.extent(1));
-
-            Kokkos::deep_copy(mState, tStates);
-
-            auto tStatesDot = aSolution.StateDot;
-            assert(tStatesDot.extent(0) == mStateDot.extent(0));
-            assert(tStatesDot.extent(1) == mStateDot.extent(1));
-
-            Kokkos::deep_copy(mStateDot, tStatesDot);
-        }
-
         void applyConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
           const Plato::ScalarVector & aVector
@@ -264,16 +234,28 @@ namespace Parabolic
                 Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues, aScale);
             }
         }
-        void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
-        /******************************************************************************//**
-         * @brief Update physics-based parameters within optimization iterations
-         * @param [in] aState 2D container of state variables
-         * @param [in] aControl 1D container of control variables
+
+        /******************************************************************************/ /**
+        * \brief Output solution to visualization file.
+        * \param [in] aFilepath output/visualizaton file path
         **********************************************************************************/
-        void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
+        void output(const std::string &aFilepath) override
+        {
+            auto tDataMap = this->getDataMap();
+            auto tSolution = this->getSolution();
+            Plato::output<mSpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+        }
+
+        /******************************************************************************//**
+         * \brief Update physics-based parameters within optimization iterations
+         * \param [in] aState 2D container of state variables
+         * \param [in] aControl 1D container of control variables
+        **********************************************************************************/
+        void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution)
         { return; }
+
         /******************************************************************************/
-        Plato::Solution
+        Plato::Solutions
         solution(
           const Plato::ScalarVector & aControl
         )
@@ -362,7 +344,9 @@ namespace Parabolic
                 mDataMap.saveState();
               }
             }
-            return Plato::Solution(mState, mStateDot);
+
+            auto tSolution = this->getSolution();
+            return tSolution;
         }
 
         /******************************************************************************//**
@@ -379,8 +363,9 @@ namespace Parabolic
         {
             if( mCriteria.count(aName) )
             {
+                auto tSolution = this->getSolution();
                 Criterion tCriterion = mCriteria[aName];
-                return tCriterion->value(getGlobalSolution(), aControl);
+                return tCriterion->value(tSolution, aControl);
             }
             else
             if( mLinearCriteria.count(aName) )
@@ -398,14 +383,14 @@ namespace Parabolic
         /******************************************************************************//**
          * \brief Evaluate criterion function
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution composed of state variables
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return criterion function value
         **********************************************************************************/
         Plato::Scalar
         criterionValue(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
             const std::string         & aName
         ) override
         {
@@ -441,7 +426,8 @@ namespace Parabolic
             if( mCriteria.count(aName) )
             {
                 Criterion tCriterion = mCriteria[aName];
-                return criterionGradient(aControl, getGlobalSolution(), tCriterion);
+                auto tSolution = this->getSolution();
+                return criterionGradient(aControl, tSolution, tCriterion);
             }
             else
             if( mLinearCriteria.count(aName) )
@@ -458,14 +444,14 @@ namespace Parabolic
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt control variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution containing state
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradient(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
             const std::string         & aName
         ) override
         {
@@ -489,14 +475,14 @@ namespace Parabolic
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt control variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution composed of state variables
+         * \param [in] aSolution solution database
          * \param [in] aCriterion criterion to be evaluated
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradient(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
                   Criterion             aCriterion
         )
         {
@@ -505,7 +491,9 @@ namespace Parabolic
                 THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
             }
 
-            auto tSolution = Plato::Solution(mState, mStateDot);
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mState);
+            tSolution.set("StateDot", mStateDot);
 
             // F_{,z}
             auto t_dFdz = aCriterion->gradient_z(tSolution, aControl, mTimeStep);
@@ -596,7 +584,8 @@ namespace Parabolic
             if( mCriteria.count(aName) )
             {
                 Criterion tCriterion = mCriteria[aName];
-                return criterionGradientX(aControl, getGlobalSolution(), tCriterion);
+                auto tSolution = this->getSolution();
+                return criterionGradientX(aControl, tSolution, tCriterion);
             }
             else
             if( mLinearCriteria.count(aName) )
@@ -613,14 +602,14 @@ namespace Parabolic
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt configuration variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution containing state
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradientX(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
             const std::string         & aName
         ) override
         {
@@ -651,7 +640,7 @@ namespace Parabolic
         Plato::ScalarVector
         criterionGradientX(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
                   Criterion             aCriterion
         )
         {
@@ -660,7 +649,9 @@ namespace Parabolic
                 THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
             }
 
-            auto tSolution = Plato::Solution(mState, mStateDot);
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mState);
+            tSolution.set("StateDot", mStateDot);
 
             // F_{,x}
             auto t_dFdx = aCriterion->gradient_x(tSolution, aControl, mTimeStep);
@@ -735,6 +726,19 @@ namespace Parabolic
             }
 
             return t_dFdx;
+        }
+
+        private:
+        /******************************************************************************//**
+         * \brief Return solution database.
+         * \return solution database
+        **********************************************************************************/
+        Plato::Solutions getSolution() const
+        {
+            Plato::Solutions tSolution(mPhysics, mPDE);
+            tSolution.set("State", mState);
+            tSolution.set("StateDot", mStateDot);
+            return tSolution;
         }
     };
 
