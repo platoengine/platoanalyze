@@ -427,7 +427,6 @@ public:
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialCriterionWRT_State);
 
             // compute dgdu: partial of PDE wrt state
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             mJacobian = mPDE->gradient_u_T(tStatesSubView, aControl);
 
             this->applyAdjointConstraints(mJacobian, tPartialCriterionWRT_State);

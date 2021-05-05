@@ -386,7 +386,7 @@ TpetraLinearSolver::setupPreconditionerOptions (const Teuchos::ParameterList &aS
   
   if (mPreconditionerPackage != "MueLu") return;
 
-  this->addDefaultToParameterList(mPreconditionerOptions, "number of equations", mDofsPerNode);
+  this->addDefaultToParameterList(mPreconditionerOptions, "number of equations", mDofsPerNode); // Same as block size above in solver options
   this->addDefaultToParameterList(mPreconditionerOptions, "verbosity", std::string("none"));
   this->addDefaultToParameterList(mPreconditionerOptions, "coarse: max size", static_cast<int>(128));
   this->addDefaultToParameterList(mPreconditionerOptions, "multigrid algorithm", std::string("unsmoothed"));
