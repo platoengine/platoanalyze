@@ -318,6 +318,43 @@ namespace Plato
     // function thermal_output
 
     /******************************************************************************/ /**
+    * \brief Output data for all your output needs
+    * \param [in] aOutputFilePath  output viz file path
+    * \param [in] aSolutionsOutput global solution data for output
+    * \param [in] aStateDataMap    Plato Analyze data map
+    * \param [in] aMesh            mesh database
+    **********************************************************************************/
+    template <const Plato::OrdinalType SpatialDim>
+    inline void
+    universal_solution_output(
+        const std::string      & aOutputFilePath,
+        const Plato::Solutions & aSolutionsOutput,
+        const Plato::DataMap   & aStateDataMap,
+              Omega_h::Mesh    & aMesh)
+    {
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, 0.0);
+        auto tNumTimeSteps = aSolutionsOutput.getNumTimeSteps();
+        for (Plato::OrdinalType tStepIndex = 0; tStepIndex < tNumTimeSteps; ++tStepIndex)
+        {
+            for (auto &tSolutionOutputTag : aSolutionsOutput.tags())
+            {
+                auto tSolutions = aSolutionsOutput.get(tSolutionOutputTag);
+                auto tNumDofs = aSolutionsOutput.getNumDofs(tSolutionOutputTag);
+                Plato::ScalarVector tSolution = Kokkos::subview(tSolutions, tStepIndex, Kokkos::ALL());
+                Omega_h::Write<Omega_h::Real> tSolutionOmegaH(tSolution.size(), "OmegaH Solution");
+                Plato::copy_1Dview_to_write(tSolution, tSolutionOmegaH);
+                if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+                {
+                    Plato::omega_h::add_state_tags(aMesh, aStateDataMap, tStepIndex);
+                }
+                aMesh.add_tag(Omega_h::VERT, tSolutionOutputTag, tNumDofs, Omega_h::Reals(tSolutionOmegaH));
+            }
+            Omega_h::TagSet tTagsOmegaH = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
+            tWriter.write(/*time_index*/ tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTagsOmegaH);
+        }
+    }
+
+    /******************************************************************************/ /**
     * \brief Output data associated with a Plato Analyze simulation.
     * \param [in] aOutputFilePath  output viz file path
     * \param [in] aState           global state data

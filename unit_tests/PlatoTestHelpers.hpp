@@ -1024,6 +1024,13 @@ toFull( Teuchos::RCP<Plato::CrsMatrixType> aInMatrix )
     return retMatrix;
 }
 
+/******************************************************************************//**
+ * \brief ignore a variable and suppress compiler warnings :)
+ *
+ * \tparam [in] Any typename
+ **********************************************************************************/
+template <typename T>
+void ignore_unused_variable_warning(T &&) {}
 
 } // namespace PlatoUtestHelpers
 

@@ -59,6 +59,36 @@ Plato::ScalarMultiVector Solutions::get(const std::string& aTag) const
     return tItr->second;
 }
 
+void Solutions::setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs)
+{
+    auto tLowerTag = Plato::tolower(aTag);
+    mSolutionNameToNumDofsMap[tLowerTag] = aNumDofs;
+}
+
+Plato::OrdinalType Solutions::getNumDofs(const std::string& aTag) const
+{
+    auto tLowerTag = Plato::tolower(aTag);
+    auto tItr = mSolutionNameToNumDofsMap.find(tLowerTag);
+    if(tItr == mSolutionNameToNumDofsMap.end())
+    {
+        THROWERR(std::string("Solution NumDofs with tag '") + aTag + "' is not defined.")
+    }
+    return tItr->second;
+}
+
+Plato::OrdinalType Solutions::getNumTimeSteps() const
+{
+    if(this->empty())
+    {
+        THROWERR("Solution map is empty.")
+    }
+    auto tTags = this->tags();
+    const std::string tTag = tTags[0];
+    auto tItr = mSolution.find(tTag);
+    auto tSolution = tItr->second;
+    return tSolution.extent(0);
+}
+
 void Solutions::print() const
 {
     if(mSolution.empty())

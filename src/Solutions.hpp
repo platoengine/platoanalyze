@@ -25,6 +25,7 @@ private:
     std::string mPDE; /*!< partial differential equation constraint */
     std::string mPhysics; /*!< physics to be analyzed/simulated */
     std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution; /*!< map from state solution name to 2D POD array */
+    std::unordered_map<std::string, Plato::OrdinalType> mSolutionNameToNumDofsMap; /*!< map from state solution name to number of dofs */
 
 public:
     /***************************************************************************//**
@@ -84,6 +85,31 @@ public:
      * \param aTag data tag
      ******************************************************************************/
     Plato::ScalarMultiVector get(const std::string& aTag) const;
+
+    /***************************************************************************//**
+     * \fn void set number of dofs in map
+     *
+     * \brief Set value of an element in the solution-to-numdofs map.
+     * \param aTag  data tag
+     * \param aNumDofs number of dofs
+     ******************************************************************************/
+    void setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs);
+
+    /***************************************************************************//**
+     * \fn Plato::OrdinalType get the number of dofs
+     *
+     * \brief Return the number of dofs
+     * \param aTag data tag
+     ******************************************************************************/
+    Plato::OrdinalType getNumDofs(const std::string& aTag) const;
+
+    /***************************************************************************//**
+     * \fn Plato::OrdinalType get the number of time steps
+     *
+     * \brief Return the number of time steps
+     * \param aTag data tag
+     ******************************************************************************/
+    Plato::OrdinalType getNumTimeSteps() const;
 
     /***************************************************************************//**
      * \fn void print

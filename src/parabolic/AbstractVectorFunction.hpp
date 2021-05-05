@@ -3,6 +3,7 @@
 
 #include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
+#include "Solutions.hpp"
 
 namespace Plato
 {
@@ -65,6 +66,10 @@ public:
         return (mDofNames);
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    ********************************************************************************/
+    virtual Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const = 0;
 
     /******************************************************************************/
     virtual void
