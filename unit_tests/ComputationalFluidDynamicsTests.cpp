@@ -1023,7 +1023,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCrit
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 4, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 1, 6);
     TEST_ASSERT(tError < 1e-4);
 
     auto tSysMsg = std::system("rm -rf solution_history");
@@ -1132,7 +1132,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCrite
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Flow Rate", 4, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Flow Rate", 1, 6);
     TEST_ASSERT(tError < 1e-4);
 
     auto tSysMsg = std::system("rm -rf solution_history");
