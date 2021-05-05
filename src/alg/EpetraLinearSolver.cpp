@@ -1,4 +1,5 @@
 #include "EpetraLinearSolver.hpp"
+#include "PlatoUtilities.hpp"
 
 namespace Plato {
 
@@ -209,7 +210,7 @@ EpetraLinearSolver::solve(
     }
 
     if (mDisplayIterations > 0)
-        printf("Epetra Lin. Solve %5.1f second(s), %4.0f iteration(s), %7.1e achieved tolerance (%7.1e requested)\n",
+        printf("Epetra Lin. Solve %5.1f second(s), %4.0f iteration(s), %7.1e achieved relative tolerance (%7.1e requested)\n",
                 tSolverStatus[AZ_solve_time], tSolverStatus[AZ_its], tSolverStatus[AZ_scaled_r], mTolerance);
 
     mSystem->toVector(aX, tSolution);
@@ -224,24 +225,24 @@ EpetraLinearSolver::setupSolver(AztecOO& aSolver)
     std::string tSolverType = "gmres";
     if(mSolverParams.isType<std::string>("Solver"))
         tSolverType = mSolverParams.get<std::string>("Solver");
-    //std::transform(tSolverType.begin(), tSolverType.end(), tSolverType.begin(), std::tolower);
+    std::string tLowerSolverType = Plato::tolower(tSolverType);
 
     aSolver.SetAztecOption(AZ_output, 0); // Previously used tDisplayIterations here but now perform our own output.
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
     aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
-    if (tSolverType == "gmres")
+    if (tLowerSolverType == "gmres")
     {
         aSolver.SetAztecOption(AZ_kspace,  mIterations);
         aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
         aSolver.SetAztecOption(AZ_solver,  AZ_gmres);
     }
-    else if (tSolverType == "cg")
+    else if (tLowerSolverType == "cg")
     {
         aSolver.SetAztecOption(AZ_type_overlap, AZ_symmetric);
         aSolver.SetAztecOption(AZ_overlap, 0);
         aSolver.SetAztecOption(AZ_solver, AZ_cg);
     }
-    else if (tSolverType == "bicgstab")
+    else if (tLowerSolverType == "bicgstab")
     {
         aSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
     }

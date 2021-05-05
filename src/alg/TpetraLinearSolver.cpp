@@ -8,6 +8,8 @@
 #include <Xpetra_CrsMatrixWrap.hpp>
 #include "Amesos2.hpp"
 #include "Amesos2_Version.hpp"
+#include "PlatoUtilities.hpp"
+#include <limits>
 
 namespace Plato {
 /******************************************************************************//**
@@ -174,6 +176,9 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
   auto tNumColsPerBlock = aInMatrix.numColsPerBlock();
   auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
 
+  std::vector<Plato::OrdinalType> tGlobalColumnIndices(tNumColsPerBlock);
+  std::vector<Plato::Scalar>      tGlobalColumnValues (tNumColsPerBlock);
+
   auto tRowMap = get(aInMatrix.rowMap());
   auto tColMap = get(aInMatrix.columnIndices());
   auto tValues = get(aInMatrix.entries());
@@ -194,14 +199,12 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
           for(Plato::OrdinalType iLocalRowIndex=0; iLocalRowIndex<tNumRowsPerBlock; iLocalRowIndex++)
           {
               auto tRowIndex = iRowIndex * tNumRowsPerBlock + iLocalRowIndex;
-              std::vector<Plato::OrdinalType> tGlobalColumnIndices;
-              std::vector<Plato::Scalar> tGlobalColumnValues;
               for(Plato::OrdinalType iLocalColIndex=0; iLocalColIndex<tNumColsPerBlock; iLocalColIndex++)
               {
                   auto tColIndex = tBlockColIndex * tNumColsPerBlock + iLocalColIndex;
                   auto tSparseIndex = iColMapEntryIndex * tBlockSize + iLocalRowIndex * tNumColsPerBlock + iLocalColIndex;
-                  tGlobalColumnIndices.push_back(tColIndex);
-                  tGlobalColumnValues.push_back(tValues[tSparseIndex]);
+                  tGlobalColumnIndices[iLocalColIndex] = tColIndex;
+                  tGlobalColumnValues[iLocalColIndex]  = tValues[tSparseIndex];
               }
               Teuchos::ArrayView<const Plato::OrdinalType> tGlobalColumnIndicesView(tGlobalColumnIndices);
               Teuchos::ArrayView<const Plato::Scalar> tGlobalColumnValuesView(tGlobalColumnValues);
@@ -317,16 +320,32 @@ TpetraLinearSolver::TpetraLinearSolver(
 {
   mPreLinearSolveTimer->start();
 
-  mSolverPackage = "Belos";
+  std::string tSolverPackage = "belos";
   if(aSolverParams.isType<std::string>("Solver Package"))
-    mSolverPackage = aSolverParams.get<std::string>("Solver Package");
+    tSolverPackage = aSolverParams.get<std::string>("Solver Package");
+  mSolverPackage = Plato::tolower(tSolverPackage);
 
+  std::string tSolver = "";
   if(aSolverParams.isType<std::string>("Solver"))
-    mSolver = aSolverParams.get<std::string>("Solver");
-  else if (mSolverPackage == "Belos")
-    mSolver = "Pseudoblock GMRES";
+    tSolver = aSolverParams.get<std::string>("Solver");
+  else if (mSolverPackage == "belos")
+    tSolver = "pseudoblock gmres";
+  else if (mSolverPackage == "amesos2")
+    tSolver = "superlu";
   else
     throw std::invalid_argument("Solver not specified in input parameter list.\n");
+  mSolver = Plato::tolower(tSolver);
+
+  if (mSolver == "gmres")
+  {
+    mSolver = "pseudoblock gmres";
+    REPORT("Tpetra using 'Pseudoblock GMRES' solver instead of user-specified 'GMRES' since matrix has block structure.")
+  }
+  else if (mSolver == "cg")
+  {
+    mSolver = "pseudoblock cg";
+    REPORT("Tpetra using 'Pseudoblock CG' solver instead of user-specified 'CG' since matrix has block structure.")
+  }
   
   mDisplayIterations = 0;
   if(aSolverParams.isType<int>("Display Iterations"))
@@ -334,13 +353,14 @@ TpetraLinearSolver::TpetraLinearSolver(
 
   setupSolverOptions(aSolverParams);
 
-  mPreconditionerPackage = "IFpack2";
+  std::string tPreconditionerPackage = "ifpack2";
   if(aSolverParams.isType<std::string>("Preconditioner Package"))
-    mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
+    tPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
+  mPreconditionerPackage = Plato::tolower(tPreconditionerPackage);
 
   if(aSolverParams.isType<std::string>("Preconditioner Type"))
     mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
-  else if(mPreconditionerPackage == "IFpack2")
+  else if(mPreconditionerPackage == "ifpack2")
     mPreconditionerType = "ILUT";
 
   setupPreconditionerOptions(aSolverParams);
@@ -374,7 +394,7 @@ TpetraLinearSolver::setupSolverOptions (const Teuchos::ParameterList &aSolverPar
   addDefaultToParameterList(mSolverOptions, "Convergence Tolerance", tTolerance);
   addDefaultToParameterList(mSolverOptions, "Block Size",            mDofsPerNode);
 
-  if (mSolver == "Pseudoblock GMRES" || mSolver == "GMRES")
+  if (mSolver == "pseudoblock gmres")
     addDefaultToParameterList(mSolverOptions, "Num Blocks", tMaxIterations); // This is the number of iterations between restarts
 }
 
@@ -384,9 +404,9 @@ TpetraLinearSolver::setupPreconditionerOptions (const Teuchos::ParameterList &aS
   if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
     mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
   
-  if (mPreconditionerPackage != "MueLu") return;
+  if (mPreconditionerPackage != "muelu") return;
 
-  this->addDefaultToParameterList(mPreconditionerOptions, "number of equations", mDofsPerNode); // Same as block size above in solver options
+  this->addDefaultToParameterList(mPreconditionerOptions, "number of equations", mDofsPerNode); // Same as 'Block Size' above in solver options
   this->addDefaultToParameterList(mPreconditionerOptions, "verbosity", std::string("none"));
   this->addDefaultToParameterList(mPreconditionerOptions, "coarse: max size", static_cast<int>(128));
   this->addDefaultToParameterList(mPreconditionerOptions, "multigrid algorithm", std::string("unsmoothed"));
@@ -447,7 +467,9 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
   mAchievedTolerance       = solver->achievedTol();
 
   if (result == Belos::Unconverged) {
-    printf("Belos solver did not achieve desired tolerance. Completed %d iterations with an achieved tolerance of %7.1e\n",
+    Plato::Scalar tTolerance = static_cast<Plato::Scalar>(100.0) * std::numeric_limits<Plato::Scalar>::epsilon();
+    if (mAchievedTolerance > tTolerance)
+    printf("Tpetra Warning: Belos solver did not achieve desired tolerance. Completed %d iterations, achieved absolute tolerance of %7.1e (not relative)\n",
             mNumIterations, mAchievedTolerance);
   }
 }
@@ -496,34 +518,37 @@ TpetraLinearSolver::solve(
 
   Teuchos::RCP<Tpetra_Operator> M;
 
-  mPreconditionerSetupTimer->start();
-  if(mPreconditionerPackage == "IFpack2")
-    M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
-  else if(mPreconditionerPackage == "MueLu")
-    M = MueLu::CreateTpetraPreconditioner(static_cast<Teuchos::RCP<Tpetra_Operator>>(A), mPreconditionerOptions);
-  else
+  if(mSolverPackage == "belos")
   {
-    std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage 
-                                + " is not currently a valid option. Valid options: ('IFpack2', 'MueLu')\n";
-    throw std::invalid_argument(tInvalid_solver);
+    mPreconditionerSetupTimer->start();
+    if(mPreconditionerPackage == "ifpack2")
+      M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
+    else if(mPreconditionerPackage == "muelu")
+      M = MueLu::CreateTpetraPreconditioner(static_cast<Teuchos::RCP<Tpetra_Operator>>(A), mPreconditionerOptions);
+    else
+    {
+      std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage 
+                                  + " is not currently a valid option. Valid options: ('ifpack2', 'muelu')\n";
+      throw std::invalid_argument(tInvalid_solver);
+    }
+    mPreconditionerSetupTimer->stop(); mPreconditionerSetupTimer->incrementNumCalls(); 
   }
-  mPreconditionerSetupTimer->stop(); mPreconditionerSetupTimer->incrementNumCalls(); 
 
-  if(mSolverPackage == "Belos")
+  if(mSolverPackage == "belos")
     belosSolve<Tpetra_MultiVector, Tpetra_Operator> (A, X, B, M);
-  else if (mSolverPackage == "Amesos2")
+  else if (mSolverPackage == "amesos2")
     amesos2Solve(A, X, B);
   else
   {
     std::string tInvalid_solver = "Solver Package " + mSolverPackage 
-                                + " is not currently a valid option. Valid options: ('Belos','Amesos2')\n";
+                                + " is not currently a valid option. Valid options: ('belos','amesos2')\n";
     throw std::invalid_argument(tInvalid_solver);
   }
   mSystem->toVector(aX,X);
 
   mSolverEndTime = mPreLinearSolveTimer->wallTime();
   const double tTpetraElapsedTime = mSolverEndTime - mSolverStartTime;
-  if (mDisplayIterations)
+  if (mDisplayIterations > 0)
     printf("Pre Lin. Solve %5.1f second(s) || Tpetra Lin. Solve %5.1f second(s), %4d iteration(s), %7.1e achieved tolerance\n",
            tAnalyzeElapsedTime, tTpetraElapsedTime, mNumIterations, mAchievedTolerance);
   mPreLinearSolveTimer->start();
