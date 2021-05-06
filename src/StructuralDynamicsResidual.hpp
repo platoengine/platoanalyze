@@ -236,7 +236,12 @@ public:
     * \param [in] state solution database
     * \return output state solution database
     ********************************************************************************/
-    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override { /* TODO */ }
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override 
+    {
+        THROWERR("Structural dynamics output not implemented yet.")
+        /* TODO */ Plato::Solutions tSolutions;
+        return tSolutions;
+    }
 
     /******************************************************************************//**
      *

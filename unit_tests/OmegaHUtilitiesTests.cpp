@@ -547,7 +547,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_SolutionOutput)
             TEST_FLOATING_EQUALITY(tTemperatureInHost   (tIndex),  2.0, tTolerance);
             TEST_FLOATING_EQUALITY(tTemperatureDotInHost(tIndex), 80.0, tTolerance);
         }
-        auto tTrash = std::system("rm -f SolutionStateOutput");
+        auto tTrash = std::system("rm -rf SolutionStateOutput");
         PlatoUtestHelpers::ignore_unused_variable_warning(tTrash);
     }
 
