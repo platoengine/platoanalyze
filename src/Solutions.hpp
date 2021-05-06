@@ -87,7 +87,7 @@ public:
     Plato::ScalarMultiVector get(const std::string& aTag) const;
 
     /***************************************************************************//**
-     * \fn void set number of dofs in map
+     * \fn void set number of degrees of freedom (dofs) per node in map
      *
      * \brief Set value of an element in the solution-to-numdofs map.
      * \param aTag  data tag
@@ -96,7 +96,7 @@ public:
     void setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs);
 
     /***************************************************************************//**
-     * \fn Plato::OrdinalType get the number of dofs
+     * \fn Plato::OrdinalType get the number of degrees of freedom (dofs)
      *
      * \brief Return the number of dofs
      * \param aTag data tag

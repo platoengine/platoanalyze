@@ -231,6 +231,13 @@ public:
         mCellStiffness = tMaterialModel.getStiffnessMatrix();
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override { /* TODO */ }
+
     /******************************************************************************//**
      *
      * \brief Evaluate structural dynamics residual.

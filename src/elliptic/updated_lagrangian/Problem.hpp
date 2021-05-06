@@ -204,7 +204,8 @@ public:
     {
         auto tDataMap = this->getDataMap();
         auto tSolution = this->getSolution();
-        Plato::output<SpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+        auto tSolutionOutput = mPDE->getSolutionStateOutputData(tSolution);
+        Plato::universal_solution_output<SpatialDim>(aFilepath, tSolutionOutput, tDataMap, mSpatialModel.Mesh);
     }
 
     /******************************************************************************//**
