@@ -49,7 +49,6 @@ private:
     Plato::WorksetBase<PhysicsT> mWorksetBase;   /*!< interface for assembly routines */
 
     Plato::Scalar mStoppingTolerance;            /*!< stopping tolerance */
-    Plato::Scalar mDirichletValuesMultiplier;    /*!< multiplier for Dirichlet values */
     Plato::Scalar mCurrentResidualNormTolerance; /*!< current residual norm stopping tolerance - avoids unnecessary solves */
 
     Plato::OrdinalType mMaxNumSolverIter;  /*!< maximum number of iterations */
@@ -108,7 +107,7 @@ private:
         auto tNumCells = mLocalEquation->numCells();
         auto tDhDc = mLocalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                 aStates.mCurrentLocalState , aStates.mPreviousLocalState,
-                                                aControls, aStates.mCurrentStepIndex);
+                                                aControls, *(aStates.mTimeData));
         Plato::blas3::inverse<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, Output);
     }
 
@@ -137,7 +136,6 @@ private:
             printf("Newton Raphson Solver: Apply Constraints\n");
             Plato::print_array_ordinals_1D(mDirichletDofs, "Dirichlet Dofs");
             Plato::print(mDirichletValues, "Dirichlet Values");
-            printf("Newton Raphson Solver: Displacement Control Multiplier: %e\n", mDirichletValuesMultiplier);
             Plato::print(tDispControlledDirichletValues, "Disp Controlled Dirichlet Values");
         }
 
@@ -210,7 +208,7 @@ private:
         // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
         auto tDhDu = mLocalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                  aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                 aControls, aStates.mCurrentStepIndex);
+                                                 aControls, *(aStates.mTimeData));
 
         // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
         Plato::Scalar tBeta = 0.0;
@@ -222,7 +220,7 @@ private:
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
         auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                   aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                  aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                                  aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
 
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
@@ -259,7 +257,7 @@ private:
         // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
         auto tDrDu = mGlobalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                    aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                   aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                                   aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
 
         // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
         const Plato::Scalar tBeta = 1.0;
@@ -298,13 +296,13 @@ private:
         auto tGlobalResidual =
             mGlobalEquation->value(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                      aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                     aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                     aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
 
         // compute local residual workset (WS)
         auto tLocalResidualWS =
                 mLocalEquation->valueWorkSet(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                               aControls, aStates.mCurrentStepIndex);
+                                               aControls, *(aStates.mTimeData));
 
         // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
         auto tNumCells = mLocalEquation->numCells();
@@ -316,7 +314,7 @@ private:
         Plato::ScalarMultiVector tLocalResidualTerm("LocalResidualTerm", tNumCells, mNumGlobalDofsPerCell);
         auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                    aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                   aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
+                                                   aStates.mProjectedPressGrad, aControls, *(aStates.mTimeData));
         Plato::blas2::matrix_times_vector("N", tAlpha, tDrDc, tInvLocalJacTimesLocalRes, tBeta, tLocalResidualTerm);
 
         // assemble local residual contribution
@@ -439,8 +437,6 @@ private:
     void initialize(Teuchos::ParameterList& aInputs)
     {
         this->openDiagnosticsFile();
-        auto tInitialNumTimeSteps = Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20);
-        mDirichletValuesMultiplier = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(tInitialNumTimeSteps);
         auto tStopMeasure = Plato::ParseTools::getSubParam<std::string>(aInputs, "Newton-Raphson", "Stopping Measure", "absolute residual norm");
         mStopMeasure = Plato::newton_raphson_stopping_criterion(tStopMeasure);
     }
@@ -456,7 +452,6 @@ public:
     NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
         mWorksetBase(aMesh),
         mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
-        mDirichletValuesMultiplier(1),
         mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-8)),
         mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
         mCurrentSolverIter(0),
@@ -476,7 +471,6 @@ public:
     explicit NewtonRaphsonSolver(Omega_h::Mesh& aMesh) :
         mWorksetBase(aMesh),
         mStoppingTolerance(1e-6),
-        mDirichletValuesMultiplier(1),
         mCurrentResidualNormTolerance(5e-7),
         mMaxNumSolverIter(20),
         mCurrentSolverIter(0),
@@ -506,14 +500,6 @@ public:
         mDebugFlag = aInput;
     }
 
-    /***************************************************************************//**
-     * \brief Set multiplier for Dirichlet values
-     * \param [in] aInput multiplier
-    *******************************************************************************/
-    void setDirichletValuesMultiplier(const Plato::Scalar & aInput)
-    {
-        mDirichletValuesMultiplier = aInput;
-    }
 
     /***************************************************************************//**
      * \brief Append local system of equation interface
@@ -582,7 +568,7 @@ public:
         // Elastic trial step
         mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                          aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                         aControls, aStates.mCurrentStepIndex);
+                                         aControls, *(aStates.mTimeData));
         while(true)
         {
             tOutputData.mCurrentIteration = mCurrentSolverIter;
@@ -618,7 +604,7 @@ public:
             // update local states
             mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                              aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                             aControls, aStates.mCurrentStepIndex);
+                                             aControls, *(aStates.mTimeData));
             mCurrentSolverIter++;
         }
         if (mDebugFlag) printf("Newton iteration completed.\n");

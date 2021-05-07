@@ -149,6 +149,16 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         return mResidualFunctions.at(tFirstBlockName)->getDofNames();
     }
 
+    /**************************************************************************//**
+    *
+    * \brief Call the output state function in the residual
+    * 
+    ******************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const
+    {
+        return mBoundaryLoadsResidualFunction->getSolutionStateOutputData(aSolutions);
+    }
+
     /**************************************************************************/
     Plato::ScalarVector
     value(

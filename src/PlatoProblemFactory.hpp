@@ -423,7 +423,7 @@ public:
             return ( Plato::create_plasticity_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
         }
         else 
-        if(tPhysics == "thermoplasticity") 
+        if(tLowerPhysics == "thermoplasticity") 
         {
             return ( Plato::create_thermoplasticity_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
         }

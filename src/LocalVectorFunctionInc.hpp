@@ -12,6 +12,7 @@
 #include "WorksetBase.hpp"
 #include "AbstractLocalVectorFunctionInc.hpp"
 #include "SimplexFadTypes.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -232,7 +233,7 @@ public:
     * \param [out] aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     ******************************************************************************/
     void
     updateLocalState(
@@ -241,7 +242,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename Residual::ConfigScalarType;
@@ -292,7 +293,7 @@ public:
             mResidualFunctions.at(tName)->updateLocalState( tGlobalStateWS, tPrevGlobalStateWS, 
                                                             tLocalStateWS , tPrevLocalStateWS,
                                                             tControlWS    , tConfigWS, 
-                                                            aTimeStep );
+                                                            aTimeData );
 
             Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tDomain, tLocalStateWS, aLocalState);
         }
@@ -305,7 +306,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return local residual vector
     ******************************************************************************/
     Plato::ScalarVectorT<typename Residual::ResultScalarType>
@@ -315,7 +316,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename Residual::ConfigScalarType;
@@ -372,7 +373,7 @@ public:
             //
             mResidualFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS,
                                                    tLocalStateWS,  tPrevLocalStateWS,
-                                                   tControlWS, tConfigWS, tResidualWS, aTimeStep);
+                                                   tControlWS, tConfigWS, tResidualWS, aTimeData);
 
             Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tResidualWS, tResidualVector);
         }
@@ -386,7 +387,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return local residual workset
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename Residual::ResultScalarType>
@@ -396,7 +397,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename Residual::ConfigScalarType;
@@ -454,7 +455,7 @@ public:
             //
             mResidualFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS,
                                                    tLocalStateWS,  tPrevLocalStateWS,
-                                                   tControlWS, tConfigWS, tResidualWS, aTimeStep);
+                                                   tControlWS, tConfigWS, tResidualWS, aTimeData);
 
             Plato::assemble_vector_workset<mNumLocalDofsPerCell>(tDomain, tResidualWS, tFullResidualWS);
         }
@@ -468,7 +469,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return gradient wrt configuration of the local residual vector
     ******************************************************************************/
     Plato::ScalarArray3D
@@ -478,7 +479,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename GradientX::ConfigScalarType;
@@ -535,7 +536,7 @@ public:
             //
             mJacobianXFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                     tLocalStateWS,  tPrevLocalStateWS, 
-                                                    tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+                                                    tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
             Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, tNumConfigDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
@@ -549,7 +550,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return gradient wrt global state of the local residual vector
     ******************************************************************************/
     ScalarArray3D
@@ -559,7 +560,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename GlobalJacobian::ConfigScalarType;
@@ -615,7 +616,7 @@ public:
             //
             mJacobianUFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                     tLocalStateWS,  tPrevLocalStateWS, 
-                                                    tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+                                                    tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
             Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
@@ -629,7 +630,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return gradient wrt previous global state of the local residual vector
     ******************************************************************************/
     Plato::ScalarArray3D
@@ -639,7 +640,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename GlobalJacobianP::ConfigScalarType;
@@ -695,7 +696,7 @@ public:
             //
             mJacobianUPFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                      tLocalStateWS,  tPrevLocalStateWS, 
-                                                     tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+                                                     tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
             Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
@@ -709,7 +710,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return gradient wrt local state of the local residual vector
     ******************************************************************************/
     Plato::ScalarArray3D
@@ -719,7 +720,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename LocalJacobian::ConfigScalarType;
@@ -775,7 +776,7 @@ public:
             //
             mJacobianCFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                     tLocalStateWS,  tPrevLocalStateWS, 
-                                                    tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+                                                    tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
             Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
@@ -789,7 +790,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return gradient wrt previous local state of the local residual vector
     ******************************************************************************/
     Plato::ScalarArray3D
@@ -799,7 +800,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename LocalJacobianP::ConfigScalarType;
@@ -855,7 +856,7 @@ public:
             //
             mJacobianCPFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                      tLocalStateWS,  tPrevLocalStateWS,
-                                                     tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+                                                     tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
             Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
@@ -869,7 +870,7 @@ public:
     * \param [in]  aLocalState local state at current time step
     * \param [in]  aPrevLocalState local state at previous time step
     * \param [in]  aControl control parameters
-    * \param [in]  aTimeStep time step
+    * \param [in]  aTimeData time data
     * \return gradient wrt control of the local residual vector
     ******************************************************************************/
     Plato::ScalarArray3D
@@ -879,7 +880,7 @@ public:
         const Plato::ScalarVector & aLocalState,
         const Plato::ScalarVector & aPrevLocalState,
         const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const
     {
         using ConfigScalar         = typename GradientZ::ConfigScalarType;
@@ -935,7 +936,7 @@ public:
             //
             mJacobianZFunctions.at(tName)->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                     tLocalStateWS,  tPrevLocalStateWS, 
-                                                    tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+                                                    tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
             Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         }
@@ -947,13 +948,13 @@ public:
      * \param [in] aGlobalStates global states for all time steps
      * \param [in] aLocalStates  local states for all time steps
      * \param [in] aControls     current controls, i.e. design variables
-     * \param [in] aTimeStep     current time step increment
+     * \param [in] aTimeData     current time data
     *******************************************************************************/
     void updateProblem(
         const Plato::ScalarMultiVector & aGlobalStates,
         const Plato::ScalarMultiVector & aLocalStates,
         const Plato::ScalarVector      & aControls,
-              Plato::Scalar              aTimeStep = 0.0
+        const Plato::TimeData          & aTimeData
     ) const
     {
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -961,13 +962,13 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            mResidualFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianUFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianUPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianCFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianCPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
-            mJacobianZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+            mResidualFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianUFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianUPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianCFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianCPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mJacobianZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
         }
     }
 };

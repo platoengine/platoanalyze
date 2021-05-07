@@ -18,7 +18,7 @@
 #include "StrainDivergence.hpp"
 #include "SimplexThermoPlasticity.hpp"
 #include "PressureDivergence.hpp"
-#include "ComputeCauchyStress.hpp"
+#include "ComputeStabilizedCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "InterpolateGradientFromScalarNodal.hpp"
@@ -82,8 +82,8 @@ private:
     Plato::Scalar mTemperatureScaling;             /*!< Temperature scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
-    Plato::Scalar mThermalConductivityCoefficient; /*!< thermal conductivity coefficient */
-    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mThermalConductivityCoefficient; /*!< Thermal Conductivity */
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< Thermal Expansivity */
     Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
 
     Plato::Scalar mPenaltySIMP;               /*!< SIMP penalty for elastic properties */
@@ -233,9 +233,9 @@ private:
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
 
-            mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+            mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansivity");
             mReferenceTemperature           = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
-            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
+            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity");
         }
         else
         {
@@ -265,6 +265,7 @@ private:
      * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in]     aControls    design variables
      * \param [in]     aConfig      configuration variables
+     * \param [in]     aTimeData    current time data
      * \param [in/out] aResult      residual evaluation
     ****************************************************************************/
     void addExternalForces(
@@ -272,24 +273,19 @@ private:
         const Plato::ScalarMultiVectorT <GlobalStateT> & aGlobalState,
         const Plato::ScalarMultiVectorT <ControlT>     & aControl,
         const Plato::ScalarArray3DT     <ConfigT>      & aConfig,
+        const Plato::TimeData                          & aTimeData,
         const Plato::ScalarMultiVectorT <ResultT>      & aResult)
     {
-        auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
-        if(tSearch == mDataMap.mScalarValues.end())
-        {
-            THROWERR("Infinitesimal Strain Thermoplasticity Residual: 'Load Control Constant' is NOT defined in data map.")
-        }
-
-        auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
+        const Plato::Scalar tCurrentTime = aTimeData.mCurrentTime;
+        const Plato::Scalar tMinusOne    = -1.0;
         if( mNeumannMechanicalLoads != nullptr )
         {
-            mNeumannMechanicalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+            mNeumannMechanicalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMinusOne, tCurrentTime );
         }
 
-        //tMultiplier = static_cast<Plato::Scalar>(-1.0);
         if( mNeumannThermalLoads != nullptr )
         {
-            mNeumannThermalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+            mNeumannThermalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMinusOne, tCurrentTime );
         }
     }
 
@@ -414,7 +410,7 @@ public:
      * \param [in]     aControls               design variables workset
      * \param [in]     aConfig                configuration workset
      * \param [in/out] aResult                residual workset
-     * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     * \param [in]     aTimeData              current time data
      *
     ****************************************************************************/
     void
@@ -427,7 +423,7 @@ public:
         const Plato::ScalarMultiVectorT <ControlT>         & aControls,
         const Plato::ScalarArray3DT     <ConfigT>          & aConfig,
         const Plato::ScalarMultiVectorT <ResultT>          & aResult,
-              Plato::Scalar aTimeStep = 0.0
+        const Plato::TimeData                              & aTimeData
     ) override
     {
         auto tNumCells = mSpatialDomain.numCells();
@@ -440,7 +436,7 @@ public:
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
+        Plato::ComputeStabilizedCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
@@ -541,7 +537,7 @@ public:
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
-            Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
+            //Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
 
             // compute the thermal flux
             ControlT tPenalizedThermalConductivityCoefficient = tElasticPropertiesPenalty * tThermalConductivityCoefficient;
@@ -557,7 +553,7 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
 
             // prepare output data
-            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
+            tComputeCauchyStress(aCellOrdinal, tPressure, tDeviatoricStress, tCauchyStress);
             tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
             tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, aCurrentLocalState, tPlasticStrain);
@@ -587,7 +583,7 @@ public:
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
                        const Plato::ScalarVector & aControl,
-                       Plato::Scalar aTimeStep = 0.0) override
+                       const Plato::TimeData     & aTimeData) override
     {
         // update SIMP penalty parameter
         auto tPreviousPenaltySIMP = mPenaltySIMP;
@@ -609,7 +605,7 @@ public:
      * \param [in]     aControls               design variables workset
      * \param [in]     aConfig                configuration workset
      * \param [in/out] aResult                residual workset
-     * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     * \param [in]     aTimeData              current time data
      *
     ****************************************************************************/
     void
@@ -623,10 +619,10 @@ public:
         const Plato::ScalarMultiVectorT <ControlT>         & aControls,
         const Plato::ScalarArray3DT     <ConfigT>          & aConfig,
         const Plato::ScalarMultiVectorT <ResultT>          & aResult,
-              Plato::Scalar aTimeStep = 0.0
+        const Plato::TimeData                              & aTimeData
     ) override
     {
-        this->addExternalForces(aSpatialModel, aCurrentGlobalState, aControls, aConfig, aResult);
+        this->addExternalForces(aSpatialModel, aCurrentGlobalState, aControls, aConfig, aTimeData, aResult);
     }
 };
 // class InfinitesimalStrainThermoPlasticityResidual

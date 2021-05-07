@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PlatoStaticsTypes.hpp"
+#include "Solutions.hpp"
 #include "SpatialModel.hpp"
 
 namespace Plato
@@ -64,6 +64,14 @@ public:
     {
         return (mSpatialDomain.MeshSets);
     }
+
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    virtual Plato::Solutions 
+    getSolutionStateOutputData(const Plato::Solutions &aSolutions) const = 0;
 
     /******************************************************************************//**
      * @brief Evaluate vector function

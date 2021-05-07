@@ -8,6 +8,8 @@
 
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_Comm.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_Time.hpp>
 #include <Tpetra_Core.hpp>
 #include <Tpetra_MultiVector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
@@ -30,6 +32,9 @@ class TpetraSystem
 {
   Teuchos::RCP<Tpetra_Map> mMap;
   Teuchos::RCP<const Teuchos::Comm<int>>  mComm;
+
+  Teuchos::RCP<Teuchos::Time> mMatrixConversionTimer;
+  Teuchos::RCP<Teuchos::Time> mVectorConversionTimer;
 
   public:
     TpetraSystem(
@@ -81,6 +86,15 @@ class TpetraLinearSolver : public AbstractSolver
     Teuchos::ParameterList mSolverOptions;
     Teuchos::ParameterList mPreconditionerOptions;
 
+    Teuchos::RCP<Teuchos::Time> mPreLinearSolveTimer;
+    Teuchos::RCP<Teuchos::Time> mPreconditionerSetupTimer;
+    Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
+    double mSolverStartTime, mSolverEndTime;
+
+    int    mDisplayIterations;
+    int    mNumIterations;
+    int    mDofsPerNode;
+    double mAchievedTolerance;
   public:
     /******************************************************************************//**
      * \brief TpetraLinearSolver constructor
@@ -95,7 +109,7 @@ class TpetraLinearSolver : public AbstractSolver
     );
 
     /******************************************************************************//**
-     * \brief Interface function to solve the linear system
+     * @brief Interface function to solve the linear system
     **********************************************************************************/
     void
     solve(
@@ -111,6 +125,31 @@ class TpetraLinearSolver : public AbstractSolver
     template<class MV, class OP>
     void
     belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
+
+    /******************************************************************************//**
+     * @brief Setup the Amesos2 solver and solve
+    ********************************************************************* ************/
+    void
+    amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tpetra_MultiVector> X, Teuchos::RCP<Tpetra_MultiVector> B);
+
+    /******************************************************************************//**
+     * @brief Setup the solver options
+    ********************************************************************* ************/
+    void
+    setupSolverOptions (const Teuchos::ParameterList &aSolverParams);
+
+    /******************************************************************************//**
+     * @brief Setup the preconditioner options
+    ********************************************************************* ************/
+    void
+    setupPreconditionerOptions (const Teuchos::ParameterList &aSolverParams);
+
+    /******************************************************************************//**
+     * @brief Add to parameter list if not set by user
+    ********************************************************************* ************/
+    template<typename T>
+    inline void
+    addDefaultToParameterList (Teuchos::ParameterList &aParams, const std::string &aEntryName, const T &aDefaultValue);
 };
 
 } // end namespace Plato

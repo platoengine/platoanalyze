@@ -226,6 +226,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
       return mNumNodes*mNumDofsPerNode;
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const
+    {
+        auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+        auto tItr = mResidualFunctions.find(tFirstBlockName);
+        if(tItr == mResidualFunctions.end())
+            { THROWERR(std::string("Element block with name '") + tFirstBlockName + "is not defined in residual function to element block map.") }
+        return tItr->second->getSolutionStateOutputData(aSolutions);
+    }
+
     /**************************************************************************/
     Plato::ScalarVector
     value(

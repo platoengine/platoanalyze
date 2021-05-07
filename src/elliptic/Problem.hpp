@@ -22,6 +22,7 @@
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
+#include "PlatoUtilities.hpp"
 
 #include "Geometrical.hpp"
 #include "geometric/ScalarFunctionBase.hpp"
@@ -178,7 +179,8 @@ public:
     {
         auto tDataMap = this->getDataMap();
         auto tSolution = this->getSolution();
-        Plato::output<mSpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+        auto tSolutionOutput = mPDE->getSolutionStateOutputData(tSolution);
+        Plato::universal_solution_output<mSpatialDim>(aFilepath, tSolutionOutput, tDataMap, mSpatialModel.Mesh);
     }
 
     /******************************************************************************//**
@@ -255,7 +257,7 @@ public:
 
             mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
 
-            Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
+            Plato::Scalar tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
             this->applyStateConstraints(mJacobian, mResidual, tScale);
 
             Plato::ScalarVector tDeltaD("increment", tStatesSubView.extent(0));
@@ -409,10 +411,15 @@ public:
         }
 
         // compute dfdz: partial of criterion wrt z
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        auto tState = aSolution.get("State");
+        auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
+        Plato::ScalarVector tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
         auto tPartialCriterionWRT_Control = aCriterion->gradient_z(aSolution, aControl);
         if(mIsSelfAdjoint)
         {
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialCriterionWRT_Control);
+            Plato::blas1::copy(tStatesSubView, tAdjointSubView);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tAdjointSubView);
         }
         else
         {
@@ -421,27 +428,20 @@ public:
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialCriterionWRT_State);
 
             // compute dgdu: partial of PDE wrt state
-            auto tState = aSolution.get("State");
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
             mJacobian = mPDE->gradient_u_T(tStatesSubView, aControl);
 
             this->applyAdjointConstraints(mJacobian, tPartialCriterionWRT_State);
 
-            // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
-            // system is symmetric.
-
-            Plato::ScalarVector tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tAdjointSubView);
             mSolver->solve(*mJacobian, tAdjointSubView, tPartialCriterionWRT_State);
-
-            // compute dgdz: partial of PDE wrt state.
-            // dgdz is returned transposed, nxm.  n=z.size() and m=u.size().
-            auto tPartialPDE_WRT_Control = mPDE->gradient_z(tStatesSubView, aControl);
-
-            // compute dgdz . adjoint + dfdz
-            Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Control, tAdjointSubView, tPartialCriterionWRT_Control);
         }
+
+        // compute dgdz: partial of PDE wrt state.
+        // dgdz is returned transposed, nxm.  n=z.size() and m=u.size().
+        auto tPartialPDE_WRT_Control = mPDE->gradient_z(tStatesSubView, aControl);
+
+        // compute dgdz . adjoint + dfdz
+        Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Control, tAdjointSubView, tPartialCriterionWRT_Control);
         return tPartialCriterionWRT_Control;
     }
 
@@ -503,7 +503,6 @@ public:
         auto tState = aSolution.get("State");
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
-
         auto tPartialCriterionWRT_Config  = aCriterion->gradient_x(aSolution, aControl);
 
         if(mIsSelfAdjoint)
