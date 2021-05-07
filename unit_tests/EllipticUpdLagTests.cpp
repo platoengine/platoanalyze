@@ -507,7 +507,6 @@ TEUCHOS_UNIT_TEST( EllipticUpdLagProblemTests, 3D )
   Plato::Comm::Machine tMachine(myComm);
 
   using PhysicsType = Plato::Elliptic::UpdatedLagrangian::Mechanics<cSpaceDim>;
-  Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem(*tMesh, tMeshSets, *tInputParams, tMachine);
 
   int tNumNodes = tMesh->nverts();
   Plato::ScalarVector tControl("control", tNumNodes);
@@ -517,13 +516,17 @@ TEUCHOS_UNIT_TEST( EllipticUpdLagProblemTests, 3D )
   Plato::Sequence<cSpaceDim> tSequence(tSpatialModel, *tInputParams);
   Plato::DataMap tDataMap;
 
-  auto tSolution = tProblem.solution(tControl);
-
   // create PDE constraint
   //
   std::string tMyConstraint = tInputParams->get<std::string>("PDE Constraint");
   Plato::Elliptic::UpdatedLagrangian::VectorFunction<PhysicsType>
     vectorFunction(tSpatialModel, tDataMap, *tInputParams, tMyConstraint);
+
+  Plato::Solutions tSolution;
+  {
+    Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem(*tMesh, tMeshSets, *tInputParams, tMachine);
+    tSolution = tProblem.solution(tControl);
+  }
 
   // compute and test constraint gradient_z
   //
@@ -680,58 +683,72 @@ TEUCHOS_UNIT_TEST( EllipticUpdLagProblemTests, 3D )
   auto t_dFdu1_error = testScalarFunction_Partial_u(scalarFunction, tSolution, tControl, /*timeStep=*/ 1, /*stepSize=*/ 1.0e-8);
   TEST_ASSERT(t_dFdu1_error < 1.0e-8);
 
-
-  /*****************************************************
-   Test Problem::criterionValue(aControl);
-   *****************************************************/
-
-  auto tCriterionValue = tProblem.criterionValue(tControl, "Internal Energy");
-  Plato::Scalar tCriterionValue_gold = -0.00125;
-
-  TEST_FLOATING_EQUALITY( tCriterionValue, tCriterionValue_gold, 1e-7);
-
-
-  /*****************************************************
-   Test Problem::criterionGradient(aControl);
-   *****************************************************/
-
-  auto t_dPdz_error = testProblem_Total_z(tProblem, tControl, "Internal Energy", /*stepsize=*/ 1e-4);
-  TEST_ASSERT(t_dPdz_error < 1.0e-6);
-
-
-  /*****************************************************
-   Call Problem::criterionGradientX(aControl);
-   *****************************************************/
   auto tCriterionName = "Internal Energy";
+  Plato::ScalarVector t_dFdx;
+  {
+    Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem(*tMesh, tMeshSets, *tInputParams, tMachine);
+    tSolution = tProblem.solution(tControl);
 
-  // compute initial F and dFdx
-  tSolution = tProblem.solution(tControl);
-  auto t_dFdx = tProblem.criterionGradientX(tControl, tCriterionName);
+    /*****************************************************
+     Test Problem::criterionValue(aControl);
+     *****************************************************/
+
+    auto tCriterionValue = tProblem.criterionValue(tControl, "Internal Energy");
+    Plato::Scalar tCriterionValue_gold = -0.00125;
+
+    TEST_FLOATING_EQUALITY( tCriterionValue, tCriterionValue_gold, 1e-7);
+
+
+    /*****************************************************
+     Test Problem::criterionGradient(aControl);
+     *****************************************************/
+
+    auto t_dPdz_error = testProblem_Total_z(tProblem, tControl, "Internal Energy", /*stepsize=*/ 1e-4);
+    TEST_ASSERT(t_dPdz_error < 1.0e-6);
+
+
+    /*****************************************************
+     Call Problem::criterionGradientX(aControl);
+     *****************************************************/
+
+    // compute initial F and dFdx
+    tSolution = tProblem.solution(tControl);
+    t_dFdx = tProblem.criterionGradientX(tControl, tCriterionName);
+  }
 
   Plato::Scalar tAlpha = 1.0e-4;
   auto tNorm = Plato::blas1::norm(t_dFdx);
 
-    Plato::ScalarVector tStep("step", t_dFdx.extent(0));
-    Kokkos::deep_copy(tStep, t_dFdx);
-    Plato::blas1::scale(-tAlpha/tNorm, tStep);
+  Plato::ScalarVector tStep("step", t_dFdx.extent(0));
+  Kokkos::deep_copy(tStep, t_dFdx);
+  Plato::blas1::scale(-tAlpha/tNorm, tStep);
 
   // compute F at x - deltax
-  perturbMesh(*tMesh, tStep);
-  Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem2(*tMesh, tMeshSets, *tInputParams, tMachine);
-  tSolution = tProblem2.solution(tControl);
-  auto t_valueNeg = tProblem2.criterionValue(tControl, tCriterionName);
+  Plato::Scalar t_valueNeg(0);
+  {
+    perturbMesh(*tMesh, tStep);
+    Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem2(*tMesh, tMeshSets, *tInputParams, tMachine);
+    tSolution = tProblem2.solution(tControl);
+    t_valueNeg = tProblem2.criterionValue(tControl, tCriterionName);
+  }
 
-  Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem3(*tMesh, tMeshSets, *tInputParams, tMachine);
-  tSolution = tProblem3.solution(tControl);
-  auto t_valueNegToo = tProblem3.criterionValue(tControl, tCriterionName);
+  Plato::Scalar t_valueNegToo(0);
+  {
+    Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem3(*tMesh, tMeshSets, *tInputParams, tMachine);
+    tSolution = tProblem3.solution(tControl);
+    t_valueNegToo = tProblem3.criterionValue(tControl, tCriterionName);
+  }
   TEST_FLOATING_EQUALITY(t_valueNeg, t_valueNegToo, 1e-15);
 
   // compute F at x + deltax
   Plato::blas1::scale(-2.0, tStep);
-  perturbMesh(*tMesh, tStep);
-  Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem4(*tMesh, tMeshSets, *tInputParams, tMachine);
-  tSolution = tProblem4.solution(tControl);
-  auto t_valuePos = tProblem4.criterionValue(tControl, tCriterionName);
+  Plato::Scalar t_valuePos(0);
+  {
+    perturbMesh(*tMesh, tStep);
+    Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> tProblem4(*tMesh, tMeshSets, *tInputParams, tMachine);
+    tSolution = tProblem4.solution(tControl);
+    t_valuePos = tProblem4.criterionValue(tControl, tCriterionName);
+  }
 
   // compute actual change in F over 2 * deltax
   auto tDeltaFD = (t_valuePos - t_valueNeg);
