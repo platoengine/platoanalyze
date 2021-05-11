@@ -281,7 +281,7 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
     KOKKOS_LAMBDA (const Plato::OrdinalType& iOrdinal, Plato::OrdinalType& aUpdate, const bool& tIsFinal)
     {
         const Plato::OrdinalType tVal = tNodeCounter(iOrdinal);
-        if( tIsFinal ) 
+        if( tIsFinal && tVal ) 
         { 
             tParentNodes(aUpdate) = iOrdinal; 
         }
@@ -297,6 +297,7 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
         Plato::OrdinalType tGlobalVertId = tParentNodes(parentOrdinal);
         aParentGlobalLocalMap(tGlobalVertId) = parentOrdinal;
     }, "map from global vertex ID to local parent node ID");
+
 }
 
 /****************************************************************************/

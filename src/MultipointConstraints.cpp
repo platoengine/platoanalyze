@@ -70,42 +70,35 @@ void MultipointConstraints::getMaps(LocalOrdinalVector & nodeTypes,
 {
     OrdinalType tNumChildNodes = mChildNodes.size();
 
-    Kokkos::resize(nodeTypes, mNumNodes);
-    Kokkos::resize(nodeConNum, mNumNodes);
+    Kokkos::resize(nodeTypes, mNumNodes);   // new ID after condensation
+    Kokkos::resize(nodeConNum, mNumNodes);  // constraint number for child nodes
+    Plato::LocalOrdinalVector tCondensedNodeCounter("count number of nodes after condensation", mNumNodes);
 
-    Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), nodeTypes);
-    Plato::blas1::fill(static_cast<Plato::OrdinalType>(-1), nodeConNum);
+    Plato::blas1::fill(static_cast<Plato::OrdinalType>(-1), nodeTypes);  // child nodes marked with -1
+    Plato::blas1::fill(static_cast<Plato::OrdinalType>(-1), nodeConNum); // non-child nodes marked with -1
+    Plato::blas1::fill(static_cast<Plato::OrdinalType>(1), tCondensedNodeCounter); // non-child nodes marked with 1
 
     auto tChildNodes = mChildNodes;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType childOrdinal)
     {
         OrdinalType childNode = tChildNodes(childOrdinal);
-        nodeTypes(childNode) = -1; // Mark child DOF
+        tCondensedNodeCounter(childNode) = 0; // mark child DOF with 0
         nodeConNum(childNode) = childOrdinal;
     }, "Set child node type and constraint number");
 
-    /* LocalOrdinalVector tCondensedOrdinals("condensed DOF ordinals", 1); */
-    /* Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), tCondensedOrdinals); */
-    /* Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal) */
-    /* { */
-    /*     if (nodeTypes(nodeOrdinal) != -1) // not child node */
-    /*     { */  
-    /*         nodeTypes(nodeOrdinal) = tCondensedOrdinals(0); */ 
-    /*         Kokkos::atomic_increment(&tCondensedOrdinals(0)); */
-    /*     } */
-    /* }, "Map from global node ID to condensed node ID"); */
-    
     // assign condensed DOF ordinals
     Plato::OrdinalType tNumCondensedDofs(0);
-    Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, mNumNodes),
-    LAMBDA_EXPRESSION(const Plato::OrdinalType& nodeOrdinal, Plato::OrdinalType & aUpdate)
+
+    Kokkos::parallel_scan (Kokkos::RangePolicy<Plato::OrdinalType>(0,mNumNodes),
+    KOKKOS_LAMBDA (const Plato::OrdinalType& nodeOrdinal, Plato::OrdinalType& aUpdate, const bool& tIsFinal)
     {
-        if (nodeTypes(nodeOrdinal) != -1) // not child node
+        const Plato::OrdinalType tVal = tCondensedNodeCounter(nodeOrdinal);
+        if (tIsFinal && tVal) // non-child
         {  
             nodeTypes(nodeOrdinal) = aUpdate; 
-            aUpdate++;
         }
+        aUpdate += tVal;
     }, tNumCondensedDofs);
 }
 
@@ -130,6 +123,35 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
     Plato::CrsMatrixType::OrdinalVector outColumnIndices("transform matrix column indices", tOutNnz);
     Plato::CrsMatrixType::ScalarVector outEntries("transform matrix entries", tOutNnz);
 
+    // build row map
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType iRowOrdinal)
+    {
+        OrdinalType nodeType = aNodeTypes(iRowOrdinal);
+        if(nodeType == -1) // Child Node
+        {
+            OrdinalType conOrdinal = aNodeConNum(iRowOrdinal);
+            OrdinalType tConNnz = tMpcRowMap(conOrdinal + 1) - tMpcRowMap(conOrdinal);
+            outRowMap(iRowOrdinal) = tConNnz; 
+        }
+        else 
+        {
+            outRowMap(iRowOrdinal) = 1;
+        }
+    }, "row map");
+
+    OrdinalType tNumEntries(0);
+    Kokkos::parallel_scan (Kokkos::RangePolicy<Plato::OrdinalType>(0,mNumNodes+1),
+    KOKKOS_LAMBDA (const Plato::OrdinalType& iOrdinal, Plato::OrdinalType& aUpdate, const bool& tIsFinal)
+    {
+        const OrdinalType tVal = outRowMap(iOrdinal);
+        if( tIsFinal )
+        {
+          outRowMap(iOrdinal) = aUpdate;
+        }
+        aUpdate += tVal;
+    }, tNumEntries);
+
+    // build col map and entries
     Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), outEntries);
 
     auto tParentNodes = mParentNodes;
@@ -138,13 +160,12 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
     {
         OrdinalType tColMapOrdinal = outRowMap(nodeOrdinal);
         OrdinalType nodeType = aNodeTypes(nodeOrdinal);
+
         if(nodeType == -1) // Child Node
         {
             OrdinalType conOrdinal = aNodeConNum(nodeOrdinal);
             OrdinalType tConRowStart = tMpcRowMap(conOrdinal);
             OrdinalType tConRowEnd = tMpcRowMap(conOrdinal + 1);
-            OrdinalType tConNnz = tConRowEnd - tConRowStart;
-            outRowMap(nodeOrdinal + 1) = tColMapOrdinal + tConNnz; 
 
             for(OrdinalType parentOrdinal=tConRowStart; parentOrdinal<tConRowEnd; parentOrdinal++)
             {
@@ -161,7 +182,6 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
         }
         else 
         {
-            outRowMap(nodeOrdinal + 1) = tColMapOrdinal + 1;
             outColumnIndices(tColMapOrdinal) = aNodeTypes(nodeOrdinal);
             for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
             {
@@ -171,6 +191,7 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
         }
     }, "Build block transformation matrix");
 
+    // construct full CRS matrix
     OrdinalType tNdof = mNumNodes*mNumDofsPerNode;
     OrdinalType tNumCondensedDofs = (mNumNodes - tNumChildNodes)*mNumDofsPerNode;
     mTransformMatrix = Teuchos::rcp( new Plato::CrsMatrixType(outRowMap, outColumnIndices, outEntries, tNdof, tNumCondensedDofs, mNumDofsPerNode, mNumDofsPerNode) );
