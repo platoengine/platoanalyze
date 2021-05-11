@@ -681,6 +681,7 @@ void MPMD_App::ComputeCriterion::operator()()
     }
 
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
     tGradZ = mMyApp->mProblem->criterionGradient(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
@@ -740,6 +741,7 @@ void MPMD_App::ComputeCriterionX::operator()()
         mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
     }
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
     tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
@@ -804,6 +806,7 @@ void MPMD_App::ComputeCriterionP::operator()()
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
     tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
@@ -860,6 +863,7 @@ void MPMD_App::ComputeCriterionValue::operator()()
         mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
     }
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
 
     if(mMyApp->mDebugAnalyzeApp == true)

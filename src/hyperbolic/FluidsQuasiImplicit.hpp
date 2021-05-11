@@ -63,10 +63,10 @@ private:
     std::ofstream mDiagnostics; /*!< output diagnostics */
 
     Plato::Scalar mTimeStepDamping = 1.0; /*!< time step damping */
-    Plato::Scalar mPressureTolerance = 1e-4; /*!< pressure solver stopping tolerance */
-    Plato::Scalar mPredictorTolerance = 1e-4; /*!< velocity predictor solver stopping tolerance */
-    Plato::Scalar mCorrectorTolerance = 1e-4; /*!< velocity corrector solver stopping tolerance */
-    Plato::Scalar mTemperatureTolerance = 1e-2; /*!< temperature solver stopping tolerance */
+    Plato::Scalar mPressureTolerance = 1e-10; /*!< pressure solver stopping tolerance */
+    Plato::Scalar mPredictorTolerance = 1e-10; /*!< velocity predictor solver stopping tolerance */
+    Plato::Scalar mCorrectorTolerance = 1e-10; /*!< velocity corrector solver stopping tolerance */
+    Plato::Scalar mTemperatureTolerance = 1e-10; /*!< temperature solver stopping tolerance */
     Plato::Scalar mSteadyStateTolerance = 1e-5; /*!< steady-state stopping tolerance */
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
     Plato::Scalar mCriticalThermalDiffusivity = 1.0; /*!< fluid thermal diffusivity - used to calculate stable time step */
@@ -74,10 +74,10 @@ private:
     Plato::Scalar mCriticalVelocityLowerBound = 0.5; /*!< dimensionless critical convective velocity upper bound */
 
     Plato::OrdinalType mOutputFrequency = 1e6; /*!< output frequency */
-    Plato::OrdinalType mMaxPressureIterations = 5; /*!< maximum number of pressure solver iterations */
-    Plato::OrdinalType mMaxPredictorIterations = 5; /*!< maximum number of predictor solver iterations */
-    Plato::OrdinalType mMaxCorrectorIterations = 5; /*!< maximum number of corrector solver iterations */
-    Plato::OrdinalType mMaxTemperatureIterations = 5; /*!< maximum number of temperature solver iterations */
+    Plato::OrdinalType mMaxPressureIterations = 10; /*!< maximum number of pressure solver iterations */
+    Plato::OrdinalType mMaxPredictorIterations = 10; /*!< maximum number of predictor solver iterations */
+    Plato::OrdinalType mMaxCorrectorIterations = 10; /*!< maximum number of corrector solver iterations */
+    Plato::OrdinalType mMaxTemperatureIterations = 10; /*!< maximum number of temperature solver iterations */
     Plato::OrdinalType mNumForwardSolveTimeSteps = 0; /*!< number of time steps taken to reach steady state */
     Plato::OrdinalType mMaxSteadyStateIterations = 1000; /*!< maximum number of steady state iterations */
 
@@ -835,10 +835,10 @@ private:
         if(aInputs.isSublist("Newton Iteration"))
         {
             auto tNewtonIteration = aInputs.sublist("Newton Iteration");
-            mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-4);
-            mPredictorTolerance = tNewtonIteration.get<Plato::Scalar>("Predictor Tolerance", 1e-4);
-            mCorrectorTolerance = tNewtonIteration.get<Plato::Scalar>("Corrector Tolerance", 1e-4);
-            mTemperatureTolerance = tNewtonIteration.get<Plato::Scalar>("Temperature Tolerance", 1e-4);
+            mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-10);
+            mPredictorTolerance = tNewtonIteration.get<Plato::Scalar>("Predictor Tolerance", 1e-10);
+            mCorrectorTolerance = tNewtonIteration.get<Plato::Scalar>("Corrector Tolerance", 1e-10);
+            mTemperatureTolerance = tNewtonIteration.get<Plato::Scalar>("Temperature Tolerance", 1e-10);
             mMaxPressureIterations = tNewtonIteration.get<Plato::OrdinalType>("Pressure Iterations", 10);
             mMaxPredictorIterations = tNewtonIteration.get<Plato::OrdinalType>("Predictor Iterations", 10);
             mMaxCorrectorIterations = tNewtonIteration.get<Plato::OrdinalType>("Corrector Iterations", 10);

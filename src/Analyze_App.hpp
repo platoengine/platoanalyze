@@ -258,14 +258,20 @@ public:
         tValues.resize(aSharedData.size());
         aSharedData.getData(tValues);
         std::stringstream ss;
-        ss << "Importing Scalar Value: " << aName << std::endl;
+        ss << "Importing Scalar Value: " << aName << " with SharedData name '" << aSharedData.myName() << "'." << std::endl;
         ss << "[ ";
+        ss.precision(6);
+        ss << std::scientific;
         const int tMaxDisplay = 5;
         int tNumValues = tValues.size();
         int tNumDisplay = tNumValues < tMaxDisplay ? tNumValues : tMaxDisplay;
         for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
         if(tNumValues > tMaxDisplay) ss << " ... ";
+        auto tMaxValue = *std::max_element(tValues.begin(), tValues.end());
+        auto tMinValue = *std::min_element(tValues.begin(), tValues.end());
         ss << "]" << std::endl;
+        ss << "Max SharedData Value = '" << tMaxValue << "'.\n";
+        ss << "Min SharedData Value = '" << tMinValue << "'.\n";
 
         Plato::Console::Status(ss.str());
     }
@@ -354,8 +360,10 @@ public:
             tValues.resize(aSharedField.size());
             aSharedField.setData(tValues);
             std::stringstream ss;
-            ss << "Exporting Scalar Value: " << aName << std::endl;
+            ss << "Exporting Scalar Value: " << aName << " with SharedData name '" << aSharedField.myName() << "'." << std::endl;
             ss << "[ ";
+            ss.precision(6);
+            ss << std::scientific;
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
 

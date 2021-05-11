@@ -314,7 +314,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -345,7 +345,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -376,7 +376,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -472,7 +472,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -564,7 +564,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.");
         }
     }
 
@@ -595,7 +595,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.");
         }
     }
 
