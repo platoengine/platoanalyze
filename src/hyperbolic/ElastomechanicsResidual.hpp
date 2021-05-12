@@ -3,6 +3,7 @@
 
 #include "Simp.hpp"
 #include "Ramp.hpp"
+#include "BLAS2.hpp"
 #include "ToMap.hpp"
 #include "Strain.hpp"
 #include "Heaviside.hpp"
@@ -10,6 +11,7 @@
 #include "NaturalBCs.hpp"
 #include "Plato_Solve.hpp"
 #include "ProjectToNode.hpp"
+#include "RayleighStress.hpp"
 #include "ApplyWeighting.hpp"
 #include "StressDivergence.hpp"
 #include "SimplexMechanics.hpp"
@@ -118,6 +120,52 @@ class TransientMechanicsResidual :
         {
             mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
         }
+    }
+
+    /**************************************************************************//**
+    *
+    * \brief Call the output state function in the residual
+    * 
+    * \param [in] aSolutions State solutions database
+    * \return output solutions database
+    * 
+    ******************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override
+    {
+      Plato::ScalarMultiVector tSolutionFromSolutions    = aSolutions.get("State");
+      Plato::ScalarMultiVector tSolutionDotFromSolutions = aSolutions.get("StateDot");
+      Plato::ScalarMultiVector tSolutionDotDotFromSolutions = aSolutions.get("StateDotDot");
+
+      auto tNumTimeSteps = tSolutionFromSolutions.extent(0);
+      auto tNumVertices  = mSpatialDomain.Mesh.nverts();
+
+      Plato::ScalarMultiVector tDisplacements("displacements for all time steps", tNumTimeSteps, tNumVertices*mNumDofsPerNode);
+      Plato::ScalarMultiVector tVelocities("velocities for all time steps", tNumTimeSteps, tNumVertices*mNumDofsPerNode);
+      Plato::ScalarMultiVector tAccelerations("accelerations for all time steps", tNumTimeSteps, tNumVertices*mNumDofsPerNode);
+
+      if (tSolutionFromSolutions.extent(0) != tSolutionDotFromSolutions.extent(0))
+          THROWERR("Number of steps provided for State and StateDot differ.")
+
+      if (tSolutionFromSolutions.extent(0) != tSolutionDotDotFromSolutions.extent(0))
+          THROWERR("Number of steps provided for State and StateDotDot differ.")
+
+      Plato::blas2::extract<mNumDofsPerNode/*stride*/, mNumDofsPerNode/* dofs per node*/, 0/*offset*/>
+                          (tNumVertices, tSolutionFromSolutions, tDisplacements);
+      Plato::blas2::extract<mNumDofsPerNode/*stride*/, mNumDofsPerNode/* dofs per node*/, 0/*offset*/>
+                          (tNumVertices, tSolutionDotFromSolutions, tVelocities);
+      Plato::blas2::extract<mNumDofsPerNode/*stride*/, mNumDofsPerNode/* dofs per node*/, 0/*offset*/>
+                          (tNumVertices, tSolutionDotDotFromSolutions, tAccelerations);
+
+      Plato::Solutions tSolutionsOutput(aSolutions.physics(), aSolutions.pde());
+      tSolutionsOutput.set("Displacement",    tDisplacements);
+      tSolutionsOutput.set("Velocity", tVelocities);
+      tSolutionsOutput.set("Acceleration", tAccelerations);
+
+      tSolutionsOutput.setNumDofs("Displacement", 3);
+      tSolutionsOutput.setNumDofs("Velocity", 3);
+      tSolutionsOutput.setNumDofs("Acceleration", 3);
+
+      return tSolutionsOutput;
     }
 
     /**************************************************************************/
@@ -267,8 +315,7 @@ class TransientMechanicsResidual :
 
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tComputeVoigtStrain;
-      Plato::Hyperbolic::HyperbolicLinearStress
-          <EvaluationType, SimplexPhysics>     tComputeVoigtStress(mMaterialModel);
+      Plato::RayleighStress<mSpaceDim>         tComputeVoigtStress(mMaterialModel);
       Plato::StressDivergence<mSpaceDim>       tComputeStressDivergence;
       Plato::InertialContent<mSpaceDim>        tInertialContent(mMaterialModel);
 

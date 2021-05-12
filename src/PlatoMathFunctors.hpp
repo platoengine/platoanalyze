@@ -8,7 +8,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Functor for computing the row sum of a given matrix
+ * \brief Functor for computing the row sum of a given matrix
  **********************************************************************************/
 class RowSum
 {
@@ -20,8 +20,8 @@ private:
 
 public:
     /**********************************************************************//**
-     * @brief Constructor
-     * @param [in] aMatrix Matrix for witch the row sum will be computed
+     * \brief Constructor
+     * \param [in] aMatrix Matrix for witch the row sum will be computed
      **************************************************************************/
     RowSum(Teuchos::RCP<Plato::CrsMatrixType> aMatrix) :
             mRowMap(aMatrix->rowMap()),
@@ -32,9 +32,9 @@ public:
     }
 
     /**********************************************************************//**
-     * @brief Functor
-     * @param [in]  blockRowOrdinal Ordinal for the row for which the sum is to be computed
-     * @param [out] aRowSum Row sum vector (assumed initialized to zero)
+     * \brief Functor
+     * \param [in]  blockRowOrdinal Ordinal for the row for which the sum is to be computed
+     * \param [out] aRowSum Row sum vector (assumed initialized to zero)
      **************************************************************************/
     DEVICE_TYPE
     inline void operator()(Plato::OrdinalType aBlockRowOrdinal, Plato::ScalarVector aRowSum) const
@@ -68,7 +68,7 @@ public:
 };
 
 /******************************************************************************//**
- * @brief Functor for computing the weighted inverse
+ * \brief Functor for computing the weighted inverse
  **********************************************************************************/
 template<Plato::OrdinalType NumDofsPerNode_I, Plato::OrdinalType NumDofsPerNode_J = NumDofsPerNode_I>
 class InverseWeight
@@ -76,11 +76,11 @@ class InverseWeight
 
 public:
     /**********************************************************************//**
-     * @brief Functor
-     * @param [in]  blockRowOrdinal Ordinal for the row for which the sum is to be computed
-     * @param [in]  Row sum vector, R
-     * @param [in]  Input vector, b
-     * @param [out] Output vector, x
+     * \brief Functor
+     * \param [in]  blockRowOrdinal Ordinal for the row for which the sum is to be computed
+     * \param [in]  Row sum vector, R
+     * \param [in]  Input vector, b
+     * \param [out] Output vector, x
      *
      *  x[i] = b[i] / R[i]
      *
@@ -103,7 +103,7 @@ public:
 };
 
 /******************************************************************************//**
- * @brief Functor for computing the row sum of a given matrix
+ * \brief Functor for computing the row sum of a given matrix
  **********************************************************************************/
 class DiagonalInverseMultiply
 {
@@ -115,8 +115,8 @@ private:
 
 public:
     /**********************************************************************//**
-     * @brief Constructor
-     * @param [in] aMatrix Matrix to witch the inverse diagonal multiply will be applied
+     * \brief Constructor
+     * \param [in] aMatrix Matrix to witch the inverse diagonal multiply will be applied
      **************************************************************************/
     DiagonalInverseMultiply(Teuchos::RCP<Plato::CrsMatrixType> aMatrix) :
             mRowMap(aMatrix->rowMap()),
@@ -127,9 +127,9 @@ public:
     }
 
     /**********************************************************************//**
-     * @brief Functor
-     * @param [in]  blockRowOrdinal Ordinal for the block row to which the inverse diagonal multiply is applied
-     * @param [out] aDiagonals Vector of diagonal entries
+     * \brief Functor
+     * \param [in]  blockRowOrdinal Ordinal for the block row to which the inverse diagonal multiply is applied
+     * \param [out] aDiagonals Vector of diagonal entries
      **************************************************************************/
     DEVICE_TYPE
     inline void operator()(Plato::OrdinalType aBlockRowOrdinal, Plato::ScalarVector aDiagonals) const

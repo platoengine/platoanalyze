@@ -8,12 +8,14 @@
 #include <Xpetra_CrsMatrixWrap.hpp>
 #include "Amesos2.hpp"
 #include "Amesos2_Version.hpp"
+#include "PlatoUtilities.hpp"
+#include <limits>
 
 namespace Plato {
 /******************************************************************************//**
- * @brief get view from device
+ * \brief get view from device
  *
- * @param[in] aView data on device
+ * \param[in] aView data on device
  * @returns Mirror on host
 **********************************************************************************/
 template <typename ViewType>
@@ -27,7 +29,7 @@ get(ViewType aView)
 }
 
 /******************************************************************************//**
- * @brief Abstract system interface
+ * \brief Abstract system interface
 
    This class contains the node and dof map information and permits persistence
    of this information between solutions.
@@ -36,7 +38,8 @@ TpetraSystem::TpetraSystem(
     Omega_h::Mesh& aMesh,
     Comm::Machine  aMachine,
     int            aDofsPerNode
-)
+) : mMatrixConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Matrix Conversion")),
+    mVectorConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Vector Conversion"))
 {
     mComm = aMachine.teuchosComm;
 
@@ -122,7 +125,7 @@ TpetraSystem::TpetraSystem(
 // }
 
 // /******************************************************************************//**
-//  * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
+//  * \brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
 // **********************************************************************************/
 // Teuchos::RCP<Tpetra_Matrix>
 // TpetraSystem::fromMatrix(const Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
@@ -144,7 +147,7 @@ TpetraSystem::TpetraSystem(
 // }
 
 // /******************************************************************************//**
-//  * @brief Check if intput Plato::CrsMatrix is consistent with TpetraSystem map 
+//  * \brief Check if intput Plato::CrsMatrix is consistent with TpetraSystem map 
 // **********************************************************************************/
 // void TpetraSystem::checkInputMatrixSize(const Plato::CrsMatrix<Plato::OrdinalType> aInMatrix,
 //       Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const
@@ -161,16 +164,20 @@ TpetraSystem::TpetraSystem(
 // }
 
 /******************************************************************************//**
- * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
+ * \brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Tpetra_Matrix
 **********************************************************************************/
 Teuchos::RCP<Tpetra_Matrix>
 TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
 {
+  Teuchos::TimeMonitor LocalTimer(*mMatrixConversionTimer);
   auto tRetVal = Teuchos::rcp(new Tpetra_Matrix(mMap, 0));
 
   auto tNumRowsPerBlock = aInMatrix.numRowsPerBlock();
   auto tNumColsPerBlock = aInMatrix.numColsPerBlock();
   auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
+
+  std::vector<Plato::OrdinalType> tGlobalColumnIndices(tNumColsPerBlock);
+  std::vector<Plato::Scalar>      tGlobalColumnValues (tNumColsPerBlock);
 
   auto tRowMap = get(aInMatrix.rowMap());
   auto tColMap = get(aInMatrix.columnIndices());
@@ -192,14 +199,12 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
           for(Plato::OrdinalType iLocalRowIndex=0; iLocalRowIndex<tNumRowsPerBlock; iLocalRowIndex++)
           {
               auto tRowIndex = iRowIndex * tNumRowsPerBlock + iLocalRowIndex;
-              std::vector<Plato::OrdinalType> tGlobalColumnIndices;
-              std::vector<Plato::Scalar> tGlobalColumnValues;
               for(Plato::OrdinalType iLocalColIndex=0; iLocalColIndex<tNumColsPerBlock; iLocalColIndex++)
               {
                   auto tColIndex = tBlockColIndex * tNumColsPerBlock + iLocalColIndex;
                   auto tSparseIndex = iColMapEntryIndex * tBlockSize + iLocalRowIndex * tNumColsPerBlock + iLocalColIndex;
-                  tGlobalColumnIndices.push_back(tColIndex);
-                  tGlobalColumnValues.push_back(tValues[tSparseIndex]);
+                  tGlobalColumnIndices[iLocalColIndex] = tColIndex;
+                  tGlobalColumnValues[iLocalColIndex]  = tValues[tSparseIndex];
               }
               Teuchos::ArrayView<const Plato::OrdinalType> tGlobalColumnIndicesView(tGlobalColumnIndices);
               Teuchos::ArrayView<const Plato::Scalar> tGlobalColumnValuesView(tGlobalColumnValues);
@@ -214,11 +219,12 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> aInMatrix) const
 }
 
 /******************************************************************************//**
- * @brief Convert from ScalarVector to Tpetra_MultiVector
+ * \brief Convert from ScalarVector to Tpetra_MultiVector
 **********************************************************************************/
 Teuchos::RCP<Tpetra_MultiVector>
 TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
 {
+  Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
   auto tOutVector = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
   if(tInVector.extent(0) != tOutVector->getLocalLength())
     throw std::domain_error("ScalarVector size does not match TpetraSystem map\n");
@@ -232,11 +238,12 @@ TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
 }
 
 /******************************************************************************//**
- * @brief Convert from Tpetra_MultiVector to ScalarVector
+ * \brief Convert from Tpetra_MultiVector to ScalarVector
 **********************************************************************************/
 void 
 TpetraSystem::toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const
 {
+    Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
     auto tLength = tInVector->getLocalLength();
     auto tTemp = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
     if(tLength != tTemp->getLocalLength())
@@ -294,7 +301,7 @@ createIFpack2Preconditioner (const Teuchos::RCP<const TpetraMatrixType>& A,
 
 
 /******************************************************************************//**
- * @brief TpetraLinearSolver constructor
+ * \brief TpetraLinearSolver constructor
 
  This constructor takes an Omega_h::Mesh and creates a new TpetraSystem.
 **********************************************************************************/
@@ -303,67 +310,152 @@ TpetraLinearSolver::TpetraLinearSolver(
     Omega_h::Mesh&          aMesh,
     Comm::Machine           aMachine,
     int                     aDofsPerNode
-) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))), mSolverEndTime(time(&mTimer))
+) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode))),
+    mPreLinearSolveTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Pre Linear Solve Setup")),
+    mPreconditionerSetupTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Preconditioner Setup")),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Tpetra Linear Solve")),
+    mSolverEndTime(mPreLinearSolveTimer->wallTime()),
+    mDisplayIterations(0),
+    mDofsPerNode(aDofsPerNode)
 {
-  if(aSolverParams.isType<std::string>("Solver Package"))
-    mSolverPackage = aSolverParams.get<std::string>("Solver Package");
-  else
-    mSolverPackage = "Belos";
+  mPreLinearSolveTimer->start();
 
+  std::string tSolverPackage = "belos";
+  if(aSolverParams.isType<std::string>("Solver Package"))
+    tSolverPackage = aSolverParams.get<std::string>("Solver Package");
+  mSolverPackage = Plato::tolower(tSolverPackage);
+
+  std::string tSolver = "";
   if(aSolverParams.isType<std::string>("Solver"))
-    mSolver = aSolverParams.get<std::string>("Solver");
-  else if (mSolverPackage == "Belos")
-    mSolver = "GMRES";
+    tSolver = aSolverParams.get<std::string>("Solver");
+  else if (mSolverPackage == "belos")
+    tSolver = "pseudoblock gmres";
+  else if (mSolverPackage == "amesos2")
+    tSolver = "superlu";
   else
     throw std::invalid_argument("Solver not specified in input parameter list.\n");
+  mSolver = Plato::tolower(tSolver);
 
-  if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
-    mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
-  else if(mSolverPackage == "Belos")
+  if (mSolver == "gmres")
   {
-    int tMaxIterations;
-    if(aSolverParams.isType<int>("Iterations"))
-      tMaxIterations = aSolverParams.get<int>("Iterations");
-    else
-      tMaxIterations = 300;
-
-    double tTolerance;
-    if(aSolverParams.isType<double>("Tolerance"))
-      tTolerance = aSolverParams.get<double>("Tolerance");
-    else
-      tTolerance = 1e-14;
-
-    mSolverOptions.set ("Maximum Iterations", tMaxIterations);
-    mSolverOptions.set ("Convergence Tolerance", tTolerance);
+    mSolver = "pseudoblock gmres";
+    REPORT("Tpetra using 'Pseudoblock GMRES' solver instead of user-specified 'GMRES' since matrix has block structure.")
   }
+  else if (mSolver == "cg")
+  {
+    mSolver = "pseudoblock cg";
+    REPORT("Tpetra using 'Pseudoblock CG' solver instead of user-specified 'CG' since matrix has block structure.")
+  }
+  
+  mDisplayIterations = 0;
+  if(aSolverParams.isType<int>("Display Iterations"))
+    mDisplayIterations = aSolverParams.get<int>("Display Iterations");
 
+  setupSolverOptions(aSolverParams);
+
+  std::string tPreconditionerPackage = "ifpack2";
   if(aSolverParams.isType<std::string>("Preconditioner Package"))
-    mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
-  else
-    mPreconditionerPackage = "IFpack2";
+    tPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
+  mPreconditionerPackage = Plato::tolower(tPreconditionerPackage);
 
   if(aSolverParams.isType<std::string>("Preconditioner Type"))
     mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
-  else if(mPreconditionerPackage == "IFpack2")
+  else if(mPreconditionerPackage == "ifpack2")
     mPreconditionerType = "ILUT";
 
+  setupPreconditionerOptions(aSolverParams);
+}
+
+template<typename T>
+inline void
+TpetraLinearSolver::addDefaultToParameterList (Teuchos::ParameterList &aParams, const std::string &aEntryName, const T &aDefaultValue)
+{
+  if(!aParams.isType<T>(aEntryName))
+    aParams.set(aEntryName, aDefaultValue);
+}
+
+void
+TpetraLinearSolver::setupSolverOptions (const Teuchos::ParameterList &aSolverParams) 
+{
+  // Set default values here
+  int tMaxIterations = 300;
+  double tTolerance  = 1e-14;
+
+  if(aSolverParams.isType<int>("Iterations"))
+    tMaxIterations = aSolverParams.get<int>("Iterations");
+  
+  if(aSolverParams.isType<double>("Tolerance"))
+    tTolerance = aSolverParams.get<double>("Tolerance");
+
+  if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
+    mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
+  
+  addDefaultToParameterList(mSolverOptions, "Maximum Iterations",    tMaxIterations);
+  addDefaultToParameterList(mSolverOptions, "Convergence Tolerance", tTolerance);
+  addDefaultToParameterList(mSolverOptions, "Block Size",            mDofsPerNode);
+
+  if (mSolver == "pseudoblock gmres")
+    addDefaultToParameterList(mSolverOptions, "Num Blocks", tMaxIterations); // This is the number of iterations between restarts
+}
+
+void
+TpetraLinearSolver::setupPreconditionerOptions (const Teuchos::ParameterList &aSolverParams) 
+{
   if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
     mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
+  
+  if (mPreconditionerPackage != "muelu") return;
+
+  this->addDefaultToParameterList(mPreconditionerOptions, "number of equations", mDofsPerNode); // Same as 'Block Size' above in solver options
+  this->addDefaultToParameterList(mPreconditionerOptions, "verbosity", std::string("none"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "coarse: max size", static_cast<int>(128));
+  this->addDefaultToParameterList(mPreconditionerOptions, "multigrid algorithm", std::string("unsmoothed"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "transpose: use implicit", true);
+  this->addDefaultToParameterList(mPreconditionerOptions, "max levels", static_cast<int>(10));
+  this->addDefaultToParameterList(mPreconditionerOptions, "sa: use filtered matrix", true);
+  this->addDefaultToParameterList(mPreconditionerOptions, "aggregation: type", std::string("uncoupled"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "aggregation: drop scheme", std::string("classical"));
+  //this->addDefaultToParameterList(mPreconditionerOptions, "aggregation: drop tol", static_cast<double>(0.02));
+
+  this->addDefaultToParameterList(mPreconditionerOptions, "smoother: type", std::string("SCHWARZ"));
+  Teuchos::ParameterList tSmootherParams = mPreconditionerOptions.sublist("smoother: params");
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: num iterations", static_cast<int>(1));
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: overlap level", static_cast<int>(1));
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: combine mode", std::string("Zero"));
+  this->addDefaultToParameterList(tSmootherParams, "schwarz: use reordering", false);
+  Teuchos::ParameterList tSchwarzReorderingParams = tSmootherParams.sublist("schwarz: reordering list");
+  this->addDefaultToParameterList(tSchwarzReorderingParams, "order_method", std::string("rcm"));
+  this->addDefaultToParameterList(tSmootherParams, "subdomain solver name", std::string("RILUK"));
+  Teuchos::ParameterList tSubdomainSolverParams = tSmootherParams.sublist("subdomain solver parameters");
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: iluk level-of-fill", static_cast<int>(0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: ilut level-of-fill", static_cast<double>(1.0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: absolute threshold", static_cast<double>(0.0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: relative threshold", static_cast<double>(1.0));
+  this->addDefaultToParameterList(tSubdomainSolverParams, "fact: relax value", static_cast<double>(0.0));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: enable", false);
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: partitioner", std::string("zoltan2"));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: start level", static_cast<int>(2));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: min rows per proc", static_cast<int>(800));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: max imbalance", static_cast<double>(1.1));
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: remap parts", false);
+  this->addDefaultToParameterList(mPreconditionerOptions, "repartition: rebalance P and R", false);
+  Teuchos::ParameterList tRepartitionParams = mPreconditionerOptions.sublist("repartition: params");
+  this->addDefaultToParameterList(tRepartitionParams, "algorithm", std::string("multijagged"));
 }
 
 template<class MV, class OP>
 void
 TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
 {
+  Teuchos::TimeMonitor LocalTimer(*mLinearSolverTimer);
+
   using scalar_type = typename MV::scalar_type;
   Teuchos::RCP<Teuchos::ParameterList> tSolverOptions = Teuchos::rcp(new Teuchos::ParameterList(mSolverOptions));
   Belos::SolverFactory<scalar_type, MV, OP> factory;
-  Teuchos::RCP<Belos::SolverManager<scalar_type, MV, OP> > solver = 
-    factory.create (mSolver, tSolverOptions);
+  Teuchos::RCP<Belos::SolverManager<scalar_type, MV, OP> > solver = factory.create (mSolver, tSolverOptions);
 
   typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
-  Teuchos::RCP<problem_type> problem = 
-    Teuchos::rcp (new problem_type(A, X, B));
+  Teuchos::RCP<problem_type> problem = Teuchos::rcp (new problem_type(A, X, B));
 
   problem->setRightPrec(M);
   
@@ -371,23 +463,22 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
   solver->setProblem (problem);
 
   Belos::ReturnType result = solver->solve();
+  mNumIterations           = solver->getNumIters();
+  mAchievedTolerance       = solver->achievedTol();
 
-  // Ask the solver how many iterations the last solve() took.
-  const int numIters = solver->getNumIters();
-
-  const double tTolerance = solver->achievedTol();
-  if (result == Belos::Converged) {
-    //std::cout << "Belos solver required " << numIters << " iterations to reach a tolerance of "
-    //          << tTolerance << "." << std::endl;
-  } else {
-    std::cout << "Belos solver did not converge to desired tolerance. Iterations: " << numIters 
-              << ". Achieved tolerance: " << tTolerance << "." << std::endl;
+  if (result == Belos::Unconverged) {
+    Plato::Scalar tTolerance = static_cast<Plato::Scalar>(100.0) * std::numeric_limits<Plato::Scalar>::epsilon();
+    if (mAchievedTolerance > tTolerance)
+    printf("Tpetra Warning: Belos solver did not achieve desired tolerance. Completed %d iterations, achieved absolute tolerance of %7.1e (not relative)\n",
+            mNumIterations, mAchievedTolerance);
   }
 }
 
 void
 TpetraLinearSolver::amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tpetra_MultiVector> X, Teuchos::RCP<Tpetra_MultiVector> B) 
 {
+  Teuchos::TimeMonitor LocalTimer(*mLinearSolverTimer);
+  
   if( Amesos2::query(mSolver) )
   {
     Teuchos::RCP<Amesos2::Solver<Tpetra_Matrix, Tpetra_MultiVector>> tAmesos2Solver =
@@ -395,18 +486,20 @@ TpetraLinearSolver::amesos2Solve (Teuchos::RCP<Tpetra_Matrix> A, Teuchos::RCP<Tp
     tAmesos2Solver->symbolicFactorization();
     tAmesos2Solver->numericFactorization();
     tAmesos2Solver->solve();
+    mNumIterations = 1;
+    mAchievedTolerance = 0.0;
   }
   else
   {
     const std::string tErrorMessage = std::string("The specified Amesos2 solver '") + mSolver 
-                                    + "' is not currently enabled. Typical options: "
+                                    + "' is not currently enabled. Typical options (if compiled with): "
                                     + "{'superlu','superlu_dist','klu2','mumps','umfpack'}";
     THROWERR(tErrorMessage)
   }
 }
 
 /******************************************************************************//**
- * @brief Solve the linear system
+ * \brief Solve the linear system
 **********************************************************************************/
 void
 TpetraLinearSolver::solve(
@@ -415,9 +508,9 @@ TpetraLinearSolver::solve(
     Plato::ScalarVector   aB
 )
 {
-  mSolverStartTime = time(&mTimer);
-  const double tAnalyzeElapsedTime = difftime(mSolverStartTime, mSolverEndTime);
-  std::cout << "Analyze elapsed time: " << tAnalyzeElapsedTime << ". " << std::flush;
+  mPreLinearSolveTimer->stop(); mPreLinearSolveTimer->incrementNumCalls();
+  mSolverStartTime = mPreLinearSolveTimer->wallTime();
+  const double tAnalyzeElapsedTime = mSolverStartTime - mSolverEndTime;
 
   Teuchos::RCP<Tpetra_Matrix> A = mSystem->fromMatrix(aA);
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
@@ -425,30 +518,40 @@ TpetraLinearSolver::solve(
 
   Teuchos::RCP<Tpetra_Operator> M;
 
-  if(mPreconditionerPackage == "IFpack2")
-    M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
-  else if(mPreconditionerPackage == "MueLu")
-    M = MueLu::CreateTpetraPreconditioner(static_cast<Teuchos::RCP<Tpetra_Operator>>(A), mPreconditionerOptions);
-  else
+  if(mSolverPackage == "belos")
   {
-    std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage + " is not currently a valid option\n";
-    throw std::invalid_argument(tInvalid_solver);
+    mPreconditionerSetupTimer->start();
+    if(mPreconditionerPackage == "ifpack2")
+      M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
+    else if(mPreconditionerPackage == "muelu")
+      M = MueLu::CreateTpetraPreconditioner(static_cast<Teuchos::RCP<Tpetra_Operator>>(A), mPreconditionerOptions);
+    else
+    {
+      std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage 
+                                  + " is not currently a valid option. Valid options: ('ifpack2', 'muelu')\n";
+      throw std::invalid_argument(tInvalid_solver);
+    }
+    mPreconditionerSetupTimer->stop(); mPreconditionerSetupTimer->incrementNumCalls(); 
   }
 
-  if(mSolverPackage == "Belos")
+  if(mSolverPackage == "belos")
     belosSolve<Tpetra_MultiVector, Tpetra_Operator> (A, X, B, M);
-  else if (mSolverPackage == "Amesos2")
+  else if (mSolverPackage == "amesos2")
     amesos2Solve(A, X, B);
   else
   {
-    std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";
+    std::string tInvalid_solver = "Solver Package " + mSolverPackage 
+                                + " is not currently a valid option. Valid options: ('belos','amesos2')\n";
     throw std::invalid_argument(tInvalid_solver);
   }
   mSystem->toVector(aX,X);
 
-  mSolverEndTime = time(&mTimer);
-  const double tTpetraElapsedTime = difftime(mSolverEndTime, mSolverStartTime);
-  std::cout << "Tpetra elapsed time: " << tTpetraElapsedTime << "." << std::endl;
+  mSolverEndTime = mPreLinearSolveTimer->wallTime();
+  const double tTpetraElapsedTime = mSolverEndTime - mSolverStartTime;
+  if (mDisplayIterations > 0)
+    printf("Pre Lin. Solve %5.1f second(s) || Tpetra Lin. Solve %5.1f second(s), %4d iteration(s), %7.1e achieved tolerance\n",
+           tAnalyzeElapsedTime, tTpetraElapsedTime, mNumIterations, mAchievedTolerance);
+  mPreLinearSolveTimer->start();
 }
 
 } // end namespace Plato

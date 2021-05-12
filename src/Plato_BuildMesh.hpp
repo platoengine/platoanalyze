@@ -19,9 +19,9 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Read coordinates from text file on disk
- * @param [in] aCoordsInputFile path to file
- * @return 1D array with coordinates
+ * \brief Read coordinates from text file on disk
+ * \param [in] aCoordsInputFile path to file
+ * \return 1D array with coordinates
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline Omega_h::HostWrite<Plato::Scalar> read_coordinates(const std::string & aCoordsInputFile)
@@ -64,9 +64,9 @@ inline Omega_h::HostWrite<Plato::Scalar> read_coordinates(const std::string & aC
 // function read_coordinates
 
 /******************************************************************************//**
- * @brief Read connectivity from text file on disk
- * @param [in] aConnInputFile path to file
- * @return 1D array with connectivity
+ * \brief Read connectivity from text file on disk
+ * \param [in] aConnInputFile path to file
+ * \return 1D array with connectivity
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline Omega_h::HostWrite<Omega_h::LO> read_connectivity(const std::string & aConnInputFile)
@@ -109,12 +109,12 @@ inline Omega_h::HostWrite<Omega_h::LO> read_connectivity(const std::string & aCo
 // function read_connectivity
 
 /******************************************************************************//**
- * @brief Build Omega_h mesh from text file on disk
- * @param [in] aConnInputFile path to text file with connectivity
- * @param [in] aCoordsInputFile path to text file with coordinates
- * @param [in] aSharpCornerAngle angle within intersecting planes
- * @param [out] aMesh Omega_h mesh database
- * @return 1D array with connectivity
+ * \brief Build Omega_h mesh from text file on disk
+ * \param [in] aConnInputFile path to text file with connectivity
+ * \param [in] aCoordsInputFile path to text file with coordinates
+ * \param [in] aSharpCornerAngle angle within intersecting planes
+ * \param [out] aMesh Omega_h mesh database
+ * \return 1D array with connectivity
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 inline void build_mesh_from_text_files(const std::string & aConnInputFile,
@@ -130,9 +130,9 @@ inline void build_mesh_from_text_files(const std::string & aConnInputFile,
 }
 
 /******************************************************************************//**
- * @brief Read data from text files
- * @param [in] aConnInputFile path to file
- * @return 1D array with connectivity
+ * \brief Read data from text files
+ * \param [in] aConnInputFile path to file
+ * \return 1D array with connectivity
 **********************************************************************************/
 std::vector<Plato::Scalar> read_data(const std::string & aInputFile, const Plato::OrdinalType & aLength)
 {
@@ -151,10 +151,10 @@ std::vector<Plato::Scalar> read_data(const std::string & aInputFile, const Plato
 // function read_data
 
 /******************************************************************************//**
- * @brief Transform standard vector into an omega_h array
- * @param [in] aInput standard vector
- * @param [in] aName vector name
- * @return omega_h array
+ * \brief Transform standard vector into an omega_h array
+ * \param [in] aInput standard vector
+ * \param [in] aName vector name
+ * \return omega_h array
 **********************************************************************************/
 inline Omega_h::HostWrite<Omega_h::Real> transform(const std::vector<Plato::Scalar> & aInput,
                                                    std::string const& aName = "")

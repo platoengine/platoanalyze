@@ -14,12 +14,14 @@
 #include <Epetra_VbrRowMatrix.h>
 #include <Epetra_LinearProblem.h>
 #include <Teuchos_ParameterList.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Teuchos_Time.hpp>
 
 
 namespace Plato {
 
 /******************************************************************************//**
- * @brief Abstract system interface
+ * \brief Abstract system interface
 
    This class contains the node and dof map information and permits persistence
    of this information between solutions.
@@ -29,6 +31,9 @@ class EpetraSystem
     rcp<Epetra_BlockMap> mBlockRowMap;
     rcp<Epetra_Comm>     mComm;
 
+    Teuchos::RCP<Teuchos::Time> mMatrixConversionTimer;
+    Teuchos::RCP<Teuchos::Time> mVectorConversionTimer;
+
   public:
     EpetraSystem(
         Omega_h::Mesh& aMesh,
@@ -37,31 +42,31 @@ class EpetraSystem
     );
 
     /******************************************************************************//**
-     * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Epetra_VbrMatrix
+     * \brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Epetra_VbrMatrix
     **********************************************************************************/
     rcp<Epetra_VbrMatrix>
     fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const;
 
     /******************************************************************************//**
-     * @brief Convert from ScalarVector to Epetra_Vector
+     * \brief Convert from ScalarVector to Epetra_Vector
     **********************************************************************************/
     rcp<Epetra_Vector>
     fromVector(Plato::ScalarVector tInVector) const;
 
     /******************************************************************************//**
-     * @brief Convert from Epetra_Vector to ScalarVector
+     * \brief Convert from Epetra_Vector to ScalarVector
     **********************************************************************************/
     void
     toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const;
 
     /******************************************************************************//**
-     * @brief get EpetraSystem map 
+     * \brief get EpetraSystem map 
     **********************************************************************************/
     rcp<Epetra_BlockMap> getMap() const {return mBlockRowMap;}
 };
 
 /******************************************************************************//**
- * @brief Concrete EpetraLinearSolver
+ * \brief Concrete EpetraLinearSolver
 **********************************************************************************/
 class EpetraLinearSolver : public AbstractSolver
 {
@@ -69,12 +74,15 @@ class EpetraLinearSolver : public AbstractSolver
 
     Teuchos::ParameterList mSolverParams;
 
+    Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
+
+    int mDisplayIterations;
     int mIterations;
     Plato::Scalar mTolerance;
 
   public:
     /******************************************************************************//**
-     * @brief EpetraLinearSolver constructor
+     * \brief EpetraLinearSolver constructor
 
      This constructor takes an Omega_h::Mesh and creates a new System.
     **********************************************************************************/
@@ -86,7 +94,7 @@ class EpetraLinearSolver : public AbstractSolver
     );
 
     /******************************************************************************//**
-     * @brief Solve the linear system
+     * \brief Solve the linear system
     **********************************************************************************/
     void
     solve(
@@ -96,7 +104,7 @@ class EpetraLinearSolver : public AbstractSolver
     );
 
     /******************************************************************************//**
-     * @brief Setup the AztecOO solver
+     * \brief Setup the AztecOO solver
     **********************************************************************************/
     void
     setupSolver(AztecOO& aSolver);

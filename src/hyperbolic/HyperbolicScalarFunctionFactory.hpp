@@ -14,29 +14,29 @@ namespace Hyperbolic
 {
 
 /******************************************************************************//**
- * @brief Scalar function base factory
+ * \brief Scalar function base factory
  **********************************************************************************/
 template<typename PhysicsT>
 class ScalarFunctionFactory
 {
 public:
     /******************************************************************************//**
-     * @brief Constructor
+     * \brief Constructor
      **********************************************************************************/
     ScalarFunctionFactory () {}
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     ~ScalarFunctionFactory() {}
 
     /******************************************************************************//**
-     * @brief Create method
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams parameter input
-     * @param [in] aFunctionName name of function in parameter list
+     * \brief Create method
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams parameter input
+     * \param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     std::shared_ptr<Plato::Hyperbolic::ScalarFunctionBase>
     create(

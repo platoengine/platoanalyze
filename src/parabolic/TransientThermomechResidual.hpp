@@ -18,6 +18,7 @@
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
 #include "ToMap.hpp"
+#include "BLAS2.hpp"
 
 #include "ThermoelasticMaterial.hpp"
 #include "ThermalMassMaterial.hpp"
@@ -131,6 +132,52 @@ class TransientThermomechResidual :
         {
             mPlotTable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
         }
+    }
+
+
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override
+    {
+      constexpr auto tNMechDims = SpaceDim;
+      constexpr auto tNThrmDims = 1;
+
+      Plato::ScalarMultiVector tSolutionFromSolutions    = aSolutions.get("State");
+      Plato::ScalarMultiVector tSolutionDotFromSolutions = aSolutions.get("StateDot");
+
+      auto tNumTimeSteps = tSolutionFromSolutions.extent(0);
+      auto tNumVertices  = mSpatialDomain.Mesh.nverts();
+
+      Plato::ScalarMultiVector tDisplacements("displacements for all time steps", tNumTimeSteps, tNumVertices*tNMechDims);
+      Plato::ScalarMultiVector tVelocities("velocities for all time steps", tNumTimeSteps, tNumVertices*tNMechDims);
+
+      Plato::ScalarMultiVector tTemperatures("temperatures for all time steps", tNumTimeSteps, tNumVertices*tNThrmDims);
+      Plato::ScalarMultiVector tTemperatureDots("temperatureDots for all time steps", tNumTimeSteps, tNumVertices*tNThrmDims);
+
+      if (tSolutionFromSolutions.extent(0) != tSolutionDotFromSolutions.extent(0))
+          THROWERR("Number of steps provided for State and StateDot differ.")
+
+      Plato::blas2::extract<mNumDofsPerNode, tNMechDims, MDofOffset>
+                          (tNumVertices, tSolutionFromSolutions, tDisplacements);
+      Plato::blas2::extract<mNumDofsPerNode, tNMechDims, MDofOffset>
+                          (tNumVertices, tSolutionDotFromSolutions, tVelocities);
+
+      Plato::blas2::extract<mNumDofsPerNode, tNThrmDims, TDofOffset>
+                          (tNumVertices, tSolutionFromSolutions, tTemperatures);
+      Plato::blas2::extract<mNumDofsPerNode, tNThrmDims, TDofOffset>
+                          (tNumVertices, tSolutionDotFromSolutions, tTemperatureDots);
+      // If you want to scale something now is the time cowboy!
+
+      Plato::Solutions tSolutionsOutput(aSolutions.physics(), aSolutions.pde());
+      tSolutionsOutput.set("Displacement",    tDisplacements);
+      tSolutionsOutput.set("Velocity",        tVelocities);
+      tSolutionsOutput.set("Temperature",     tTemperatures);
+      tSolutionsOutput.set("Temperature_Dot", tTemperatureDots);
+
+      tSolutionsOutput.setNumDofs("Displacement",    tNMechDims);
+      tSolutionsOutput.setNumDofs("Velocity",        tNMechDims);
+      tSolutionsOutput.setNumDofs("Temperature",     tNThrmDims);
+      tSolutionsOutput.setNumDofs("Temperature_Dot", tNThrmDims);
+
+      return tSolutionsOutput;
     }
 
 

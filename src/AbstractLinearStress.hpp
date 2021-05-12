@@ -25,17 +25,17 @@ class AbstractLinearStress :
 protected:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
-    using StateT    = typename EvaluationType::StateScalarType;     /*!< state variables automatic differentiation type */
-    using ConfigT   = typename EvaluationType::ConfigScalarType;    /*!< configuration variables automatic differentiation type */
-    using ResultT   = typename EvaluationType::ResultScalarType;    /*!< result variables automatic differentiation type */
+    using StateT  = typename EvaluationType::StateScalarType;  /*!< state variables automatic differentiation type */
+    using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
+    using ResultT = typename EvaluationType::ResultScalarType; /*!< result variables automatic differentiation type */
 
-    using StrainT  = typename Plato::fad_type_t<SimplexPhysics, StateT,    ConfigT>; /*!<   strain variables automatic differentiation type */
+    using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>; /*!< strain variables automatic differentiation type */
 
-    using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms;              /*!< number of stress/strain terms */
+    using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of stress/strain terms */
 
-    const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;  /*!< material stiffness matrix */
+    const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness; /*!< material stiffness matrix */
 
-    Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;                      /*!< reference strain tensor */
+    Omega_h::Vector<mNumVoigtTerms> mReferenceStrain; /*!< reference strain tensor */
 
 public:
     /******************************************************************************//**

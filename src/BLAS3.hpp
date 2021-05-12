@@ -27,6 +27,80 @@ namespace Plato
 namespace blas3
 {
 
+/******************************************************************************//**
+ * \tparam LengthI    number of elements in the i-th index direction
+ * \tparam LengthJ    number of elements in the j-th index direction
+ * \tparam ScalarT    POD type
+ * \tparam AViewTypeT view type
+ * \tparam BViewTypeT view type
+ *
+ * \fn device_type inline void scale
+ *
+ * \brief Scale all the elements by input scalar value
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aScalar      input scalar
+ * \param [in]  aInputWS     input 3D scalar view
+ * \param [out] aOutputWS    output 3D scalar view
+**********************************************************************************/
+template<Plato::OrdinalType LengthI,
+         Plato::OrdinalType LengthJ,
+         typename ScalarT,
+         typename AViewTypeT,
+         typename BViewTypeT>
+DEVICE_TYPE inline void
+scale(const Plato::OrdinalType & aCellOrdinal,
+      const ScalarT & aScalar,
+      const Plato::ScalarArray3DT<AViewTypeT> & aInputWS,
+      const Plato::ScalarArray3DT<BViewTypeT> & aOutputWS)
+{
+    for(Plato::OrdinalType tDimI = 0; tDimI < LengthI; tDimI++)
+    {
+        for(Plato::OrdinalType tDimJ = 0; tDimJ < LengthJ; tDimJ++)
+        {
+            aOutputWS(aCellOrdinal, tDimI, tDimJ) = aScalar * aInputWS(aCellOrdinal, tDimI, tDimJ);
+        }
+    }
+}
+// function scale
+
+/******************************************************************************//**
+ * \tparam LengthI    number of elements in the i-th index direction
+ * \tparam LengthJ    number of elements in the j-th index direction
+ * \tparam ScalarT    POD type
+ * \tparam AViewTypeT view type
+ * \tparam BViewTypeT view type
+ *
+ * \fn device_type inline void dot
+ *
+ * \brief Compute two-dimensional tensor dot product for each cell.
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aTensorA  input 3D scalar view
+ * \param [in]  aTensorB  input 3D scalar view
+ * \param [out] aOutput   output 1D scalar view
+**********************************************************************************/
+template<Plato::OrdinalType LengthI,
+         Plato::OrdinalType LengthJ,
+         typename AViewType,
+         typename BViewType,
+         typename CViewType>
+DEVICE_TYPE inline void
+dot(const Plato::OrdinalType & aCellOrdinal,
+    const Plato::ScalarArray3DT<AViewType> & aTensorA,
+    const Plato::ScalarArray3DT<BViewType> & aTensorB,
+    const Plato::ScalarVectorT <CViewType> & aOutput)
+{
+    for(Plato::OrdinalType tDimI = 0; tDimI < LengthI; tDimI++)
+    {
+        for(Plato::OrdinalType tDimJ = 0; tDimJ < LengthJ; tDimJ++)
+        {
+            aOutput(aCellOrdinal) += aTensorA(aCellOrdinal, tDimI, tDimJ) * aTensorB(aCellOrdinal, tDimI, tDimJ);
+        }
+    }
+}
+// function dot
+
 /************************************************************************//**
  *
  * \brief Build a workset of identity matrices

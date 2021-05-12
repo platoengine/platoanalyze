@@ -2,8 +2,10 @@
 #define PLATO_HYPERBOLIC_PROBLEM_HPP
 
 #include "BLAS1.hpp"
+#include "Solutions.hpp"
 #include "EssentialBCs.hpp"
 #include "SpatialModel.hpp"
+#include "AnalyzeOutput.hpp"
 #include "AnalyzeMacros.hpp"
 #include "SimplexMechanics.hpp"
 #include "PlatoAbstractProblem.hpp"
@@ -73,6 +75,9 @@ namespace Plato
         Plato::ScalarVector mStateBcValues;
 
         rcp<Plato::AbstractSolver> mSolver;
+        std::string mPDE; /*!< partial differential equation type */
+        std::string mPhysics; /*!< physics used for the simulation */
+
       public:
         /******************************************************************************/
         HyperbolicProblem(
@@ -97,7 +102,9 @@ namespace Plato
             mJacobianU     (Teuchos::null),
             mJacobianV     (Teuchos::null),
             mJacobianA     (Teuchos::null),
-            mStateBoundaryConditions(aProblemParams.sublist("Displacement Boundary Conditions",false), aMeshSets)
+            mStateBoundaryConditions(aProblemParams.sublist("Displacement Boundary Conditions",false), aMeshSets),
+            mPDE           (aProblemParams.get<std::string>("PDE Constraint")),
+            mPhysics       (aProblemParams.get<std::string>("Physics"))
         /******************************************************************************/
         {
             // parse criteria
@@ -198,45 +205,12 @@ namespace Plato
             mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
 
         }
-        /******************************************************************************//**
-         * @brief Return number of degrees of freedom in solution.
-         * @return Number of degrees of freedom
-        **********************************************************************************/
-        Plato::OrdinalType getNumSolutionDofs()
-        {
-            return SimplexPhysics::mNumDofsPerNode;
-        }
-        /******************************************************************************/
-        Plato::Solution getGlobalSolution()
-        /******************************************************************************/
-        {
-            return Plato::Solution(mDisplacement, mVelocity, mAcceleration);
-        }
 
-        /******************************************************************************/
-        Plato::Adjoint getAdjoint()
-        /******************************************************************************/
+        void output(const std::string& aFilepath)
         {
-            return Plato::Adjoint(mAdjoints_U, mAdjoints_V, mAdjoints_A);
-        }
-        /******************************************************************************/
-        void setGlobalSolution(const Plato::Solution & aSolution)
-        /******************************************************************************/
-        {
-            auto tState = aSolution.State;
-            assert(tState.extent(0) == mDisplacement.extent(0));
-            assert(tState.extent(1) == mDisplacement.extent(1));
-            Kokkos::deep_copy(mDisplacement, tState);
-
-            auto tStateDot = aSolution.StateDot;
-            assert(tStateDot.extent(0) == mVelocity.extent(0));
-            assert(tStateDot.extent(1) == mVelocity.extent(1));
-            Kokkos::deep_copy(mVelocity, tStateDot);
-
-            auto tStateDotDot = aSolution.StateDotDot;
-            assert(tStateDotDot.extent(0) == mAcceleration.extent(0));
-            assert(tStateDotDot.extent(1) == mAcceleration.extent(1));
-            Kokkos::deep_copy(mAcceleration, tStateDotDot);
+            auto tDataMap = getDataMap();
+            auto tSolution = getSolution();
+            Plato::output<SpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
         }
 
         /******************************************************************************/
@@ -255,16 +229,16 @@ namespace Plato
                 Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues);
             }
         }
-        void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
+
         /******************************************************************************//**
-         * @brief Update physics-based parameters within optimization iterations
-         * @param [in] aState 2D container of state variables
-         * @param [in] aControl 1D container of control variables
+         * \brief Update physics-based parameters within optimization iterations
+         * \param [in] aState 2D container of state variables
+         * \param [in] aControl 1D container of control variables
         **********************************************************************************/
-        void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
+        void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solutions & aSolution)
         { return; }
         /******************************************************************************/
-        Plato::Solution
+        Plato::Solutions
         solution(const Plato::ScalarVector & aControl)
         /******************************************************************************/
         {
@@ -363,20 +337,22 @@ namespace Plato
                 mDataMap.saveState();
               }
             }
-            return Plato::Solution(mDisplacement, mVelocity, mAcceleration);
+
+            auto tSolution = this->getSolution();
+            return tSolution;
         }
 
         /******************************************************************************//**
          * \brief Evaluate criterion function
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution composed of state variables
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return criterion function value
         **********************************************************************************/
         Plato::Scalar
         criterionValue(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
             const std::string         & aName
         ) override
         {
@@ -394,7 +370,7 @@ namespace Plato
         /******************************************************************************//**
          * \brief Evaluate criterion function
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution composed of state variables
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return criterion function value
         **********************************************************************************/
@@ -406,7 +382,7 @@ namespace Plato
         {
             if( mCriteria.count(aName) )
             {
-                auto tSolution = getGlobalSolution();
+                auto tSolution = this->getSolution();
                 Criterion tCriterion = mCriteria[aName];
                 return tCriterion->value(tSolution, aControl, mTimeStep);
             }
@@ -419,7 +395,7 @@ namespace Plato
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt control variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution containing state
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
@@ -431,8 +407,9 @@ namespace Plato
         {
             if( mCriteria.count(aName) )
             {
+                auto tSolution = this->getSolution();
                 Criterion tCriterion = mCriteria[aName];
-                return criterionGradient(aControl, getGlobalSolution(), tCriterion);
+                return criterionGradient(aControl, tSolution, tCriterion);
             }
             else
             {
@@ -443,14 +420,14 @@ namespace Plato
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt control variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution containing state
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradient(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
             const std::string         & aName
         ) override
         {
@@ -468,14 +445,14 @@ namespace Plato
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt control variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution composed of state variables
+         * \param [in] aSolution solution database
          * \param [in] aCriterion criterion to be evaluated
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradient(
           const Plato::ScalarVector & aControl,
-          const Plato::Solution     & aSolution,
+          const Plato::Solutions    & aSolution,
                 Criterion             aCriterion
         )
         {
@@ -484,7 +461,10 @@ namespace Plato
                 THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
             }
 
-            auto tSolution = Plato::Solution(mDisplacement, mVelocity, mAcceleration);
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mDisplacement);
+            tSolution.set("StateDot", mVelocity);
+            tSolution.set("StateDotDot", mAcceleration);
 
             // F_{,z}
             auto t_dFdz = aCriterion->gradient_z(tSolution, aControl, mTimeStep);
@@ -627,7 +607,7 @@ namespace Plato
             if( mCriteria.count(aName) )
             {
                 auto tCriterion = mCriteria[aName];
-                auto tSolution = getGlobalSolution();
+                auto tSolution = this->getSolution();
                 return criterionGradientX(aControl, tSolution, tCriterion);
             }
             else
@@ -639,14 +619,14 @@ namespace Plato
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt configuration variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution containing state
+         * \param [in] aSolution solution database
          * \param [in] aName Name of criterion.
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradientX(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
             const std::string         & aName
         ) override
         {
@@ -664,14 +644,14 @@ namespace Plato
         /******************************************************************************//**
          * \brief Evaluate criterion gradient wrt configuration variables
          * \param [in] aControl 1D view of control variables
-         * \param [in] aSolution Plato::Solution containing state
+         * \param [in] aSolution solution database
          * \param [in] aCriterion criterion to be evaluated
          * \return 1D view - criterion gradient wrt control variables
         **********************************************************************************/
         Plato::ScalarVector
         criterionGradientX(
             const Plato::ScalarVector & aControl,
-            const Plato::Solution     & aSolution,
+            const Plato::Solutions    & aSolution,
                   Criterion             aCriterion
         )
         {
@@ -680,7 +660,10 @@ namespace Plato
                 THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
             }
 
-            auto tSolution = Plato::Solution(mDisplacement, mVelocity, mAcceleration);
+            Plato::Solutions tSolution(mPhysics);
+            tSolution.set("State", mDisplacement);
+            tSolution.set("StateDot", mVelocity);
+            tSolution.set("StateDotDot", mAcceleration);
 
             // F_{,x}
             auto t_dFdx = aCriterion->gradient_x(tSolution, aControl, mTimeStep);
@@ -806,6 +789,20 @@ namespace Plato
             }
 
             return t_dFdx;
+        }
+
+        private:
+        /******************************************************************************//**
+         * \brief Return solution database.
+         * \return solution database
+        **********************************************************************************/
+        Plato::Solutions getSolution() const
+        {
+            Plato::Solutions tSolution(mPhysics, mPDE);
+            tSolution.set("State", mDisplacement);
+            tSolution.set("StateDot", mVelocity);
+            tSolution.set("StateDotDot", mAcceleration);
+            return tSolution;
         }
     };
 }

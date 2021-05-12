@@ -73,7 +73,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Cylinder geometry model class
+ * \brief Cylinder geometry model class
 **********************************************************************************/
 class LevelSetOnExternalMesh : public Plato::GeometryModel
 {
@@ -81,10 +81,10 @@ public:
     static constexpr int mSpatialDim = 3;
 
     /******************************************************************************//**
-     * @brief Default constructor
-     * @param [in] aCoordsInputFile path to input file with coordinates information
-     * @param [in] aConnInputFile path to input file with connectivity information
-     * @param [in] aComm MPI communicator
+     * \brief Default constructor
+     * \param [in] aCoordsInputFile path to input file with coordinates information
+     * \param [in] aConnInputFile path to input file with connectivity information
+     * \param [in] aComm MPI communicator
      **********************************************************************************/
     explicit LevelSetOnExternalMesh(const std::string & aCoordsInputFile,
                                     const std::string & aConnInputFile,
@@ -110,14 +110,14 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     virtual ~LevelSetOnExternalMesh()
     {
     }
 
     /******************************************************************************//**
-     * @brief compute the area of the side of a cylinder.
+     * \brief compute the area of the side of a cylinder.
      **********************************************************************************/
     Plato::Scalar area() override
     {
@@ -126,8 +126,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Compute the reference rate that gas mass is begin produced
-     * @return mass production rate
+     * \brief Compute the reference rate that gas mass is begin produced
+     * \return mass production rate
      **********************************************************************************/
     Plato::Scalar referenceMassProductionRate() override
     {
@@ -137,15 +137,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief compute the gradient of a cylinder with respect to parameters that define geometry.
-     * @param aOutput gradient with respect to the parameters that defined a geometry
+     * \brief compute the gradient of a cylinder with respect to parameters that define geometry.
+     * \param aOutput gradient with respect to the parameters that defined a geometry
      **********************************************************************************/
     void gradient(std::vector<Plato::Scalar>& aOutput) override { return; }
 
     /******************************************************************************//**
-     * @brief Evolve geometry in time
-     * @param [in] aDeltaTime time step
-     * @param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
+     * \brief Evolve geometry in time
+     * \param [in] aDeltaTime time step
+     * \param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
      **********************************************************************************/
     void evolveGeometry(const Plato::Scalar aDeltaTime, const Plato::Scalar aBurnRateMultiplier) override
     {
@@ -153,14 +153,14 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update initial immersed geometry
-     * @param [in] aParam optimization parameters
+     * \brief Update initial immersed geometry
+     * \param [in] aParam optimization parameters
      **********************************************************************************/
     void updateGeometry(const Plato::ProblemParams & aParam) override { return; }
 
     /******************************************************************************//**
-     * @brief Set initial level set based geometry configuration
-     * @param [in] aParam parameters associated with the geometry and fields
+     * \brief Set initial level set based geometry configuration
+     * \param [in] aParam parameters associated with the geometry and fields
      **********************************************************************************/
     void initialize(const Plato::ProblemParams & aParam) override
     {
@@ -171,8 +171,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Output geometry and field data
-     * @param [in] aOutput output flag (true = output, false = do not output)
+     * \brief Output geometry and field data
+     * \param [in] aOutput output flag (true = output, false = do not output)
     **********************************************************************************/
     void output(bool aOutput = false) override
     {
@@ -183,8 +183,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Read node-based level set field from text file
-     * @param [in] aInputFile path to input file
+     * \brief Read node-based level set field from text file
+     * \param [in] aInputFile path to input file
     **********************************************************************************/
     void readNodalLevelSet(const std::string & aInputFile)
     {
@@ -203,8 +203,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Read element-based level set field from text file
-     * @param [in] aInputFile path to input file
+     * \brief Read element-based level set field from text file
+     * \param [in] aInputFile path to input file
     **********************************************************************************/
     void readElementBurnRate(const std::string & aInputFile)
     {
@@ -223,7 +223,7 @@ public:
 
 private:
     /******************************************************************************//**
-     * @brief Build computational geometry (i.e. mesh) from text files
+     * \brief Build computational geometry (i.e. mesh) from text files
     **********************************************************************************/
     void build()
     {
@@ -236,7 +236,7 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Cache level set field at this time snapshot
+     * \brief Cache level set field at this time snapshot
     **********************************************************************************/
     void cacheData()
     {
@@ -246,7 +246,7 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Output level set time history to visualization file
+     * \brief Output level set time history to visualization file
     **********************************************************************************/
     void outputLevelSetField()
     {
@@ -264,8 +264,8 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Update immersed cylinder
-     * @param [in] aParam optimization parameters
+     * \brief Update immersed cylinder
+     * \param [in] aParam optimization parameters
      **********************************************************************************/
     void evolveImmersedGeometry(const Plato::Scalar aDeltaTime, const Plato::Scalar aBurnRateMultiplier)
     {

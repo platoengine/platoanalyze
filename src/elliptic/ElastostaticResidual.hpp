@@ -131,6 +131,20 @@ public:
 
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override
+    {
+      Plato::ScalarMultiVector tDisplacements = aSolutions.get("State");
+      Plato::Solutions tSolutionsOutput(aSolutions.physics(), aSolutions.pde());
+      tSolutionsOutput.set("Displacement", tDisplacements);
+      tSolutionsOutput.setNumDofs("Displacement", 3);
+      return tSolutionsOutput;
+    }
+
     /******************************************************************************//**
      * \brief Evaluate vector function
      *

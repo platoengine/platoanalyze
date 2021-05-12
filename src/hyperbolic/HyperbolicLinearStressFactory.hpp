@@ -34,7 +34,7 @@ public:
     * \return Teuchos reference counter pointer to the linear stress functor
     **********************************************************************************/
     template<typename MaterialInfoType >
-    Teuchos::RCP<Plato::Hyperbolic::HyperbolicAbstractLinearStress<EvaluationType,
+    Teuchos::RCP<Plato::Hyperbolic::AbstractHyperbolicLinearStress<EvaluationType,
 								   SimplexPhysics> > create(
         const MaterialInfoType aMaterialInfo,
         const Teuchos::ParameterList& aParamList)

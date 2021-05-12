@@ -79,11 +79,11 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aSpatialModel struct that contains the mesh, meshsets, domains, etc.
-    * @param [in] aDataMap problem-specific data map
-    * @param [in] aParamList Teuchos parameter list with input data
-    * @param [in] aProblemType problem type
+    * \brief Constructor
+    * \param [in] aSpatialModel struct that contains the mesh, meshsets, domains, etc.
+    * \param [in] aDataMap problem-specific data map 
+    * \param [in] aParamList Teuchos parameter list with input data
+    * \param [in] aProblemType problem type 
     *
     ******************************************************************************/
     VectorFunction(
@@ -129,9 +129,9 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aDataMap problem-specific data map
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aDataMap problem-specific data map 
     *
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
@@ -142,7 +142,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Return local number of degrees of freedom
+    * \brief Return local number of degrees of freedom
     *
     ******************************************************************************/
     Plato::OrdinalType size() const
@@ -152,7 +152,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Return state names
+    * \brief Return state names
     *
     ******************************************************************************/
     std::vector<std::string> getDofNames() const
@@ -163,13 +163,26 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Return state dot names
+    * \brief Return state dot names
     *
     ******************************************************************************/
     std::vector<std::string> getDofDotNames() const
     {
         auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
         return mResidualFunctions.at(tFirstBlockName)->getDofDotNames();
+    }
+
+    /**************************************************************************//**
+    *
+    * \brief Call the output state function in the residual
+    * 
+    * \param [in] aSolutions State solutions database
+    * \return output solutions database
+    * 
+    ******************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const
+    {
+        return mBoundaryLoadsResidualFunction->getSolutionStateOutputData(aSolutions);
     }
 
     /**************************************************************************/

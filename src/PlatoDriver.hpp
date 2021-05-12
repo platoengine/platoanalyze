@@ -47,11 +47,11 @@ void run(Teuchos::ParameterList& aInputData,
     // Solve Plato problem
     Plato::ProblemFactory<SpatialDim> tProblemFactory;
     std::shared_ptr<::Plato::AbstractProblem> tPlatoProblem = tProblemFactory.create(aMesh, aMeshSets, aInputData, aMachine);
-    auto tSolution     = tPlatoProblem->solution(tControl);
-    auto tStateDataMap = tPlatoProblem->getDataMap();
+    auto tSolution = tPlatoProblem->solution(tControl);
+    if(false){ tSolution.print(); }
 
-    auto tOutputViz = aInputData.get<std::string>("Output Viz");
-    Plato::output<SpatialDim>(aInputData, tOutputViz, tSolution, tStateDataMap, aMesh);
+    auto tFilepath = aInputData.get<std::string>("Output Viz");
+    tPlatoProblem->output(tFilepath);
 }
 // function run
 

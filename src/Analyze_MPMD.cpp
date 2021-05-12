@@ -1,8 +1,24 @@
 #include "Analyze_App.hpp"
+#include <Teuchos_Comm.hpp>
+#include <Teuchos_TimeMonitor.hpp>
 
 #ifndef NDEBUG
 #include <fenv.h>
 #endif
+
+void printTimingResultsMPMD(MPI_Comm &aComm)
+{
+  const std::string tTimerFilter = ""; //"Analyze:"; // Only timers beginning with this string get summarized.
+  const bool tAlwaysWriteLocal = false;
+  const bool tWriteGlobalStats = true;
+  const bool tWriteZeroTimers  = false;
+  Teuchos::RCP<const Teuchos::Comm<int> > tComm = Teuchos::rcp (new Teuchos::MpiComm<int> (aComm));
+  std::ofstream tTimingOutputFileStream ("plato_analyze_timing_summary.txt", std::ofstream::out);
+  Teuchos::TimeMonitor::summarize(tComm.ptr(), tTimingOutputFileStream, tAlwaysWriteLocal, 
+                                  tWriteGlobalStats, tWriteZeroTimers, 
+                                  Teuchos::ECounterSetOp::Intersection, tTimerFilter);
+  tTimingOutputFileStream.close();
+}
 
 void safeExit(int aExitCode=0){
   Kokkos::finalize_all();
@@ -59,6 +75,7 @@ int main(int aArgc, char **aArgv)
     try
     {
       tPlatoInterface->perform();
+      printTimingResultsMPMD(tLocalComm);
     }
     catch(...)
     {

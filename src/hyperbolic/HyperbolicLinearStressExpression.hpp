@@ -6,7 +6,7 @@
 #include "ExpressionEvaluator.hpp"
 #include "ParseTools.hpp"
 
-#include "hyperbolic/HyperbolicAbstractLinearStress.hpp"
+#include "AbstractHyperbolicLinearStress.hpp"
 
 /******************************************************************************/
 /*
@@ -58,28 +58,28 @@ namespace Hyperbolic
  having LinearStressExpression as a parent the
  HyperbolicLinearStressExpression can call the original
  LinearStressExpression operator (sans VelGrad) or the operator with
- VelGrad as defined in HyperbolicAbstractLinearStress. That is the
+ VelGrad as defined in AbstractHyperbolicLinearStress. That is the
  HyperbolicLinearStressExpression contains both operator interfaces.
 
  */
 /******************************************************************************/
 template< typename EvaluationType, typename SimplexPhysics >
 class HyperbolicLinearStressExpression :
-    public Plato::Hyperbolic::HyperbolicAbstractLinearStress<EvaluationType, SimplexPhysics>,
+    public Plato::Hyperbolic::AbstractHyperbolicLinearStress<EvaluationType, SimplexPhysics>,
     public Plato::LinearStressExpression<EvaluationType, SimplexPhysics>
 {
 protected:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
-    using StateT    = typename EvaluationType::StateScalarType;     /*!< state variables automatic differentiation type */
-    using StateDotT = typename EvaluationType::StateDotScalarType;
-    using ConfigT   = typename EvaluationType::ConfigScalarType;    /*!< configuration variables automatic differentiation type */
-    using ResultT   = typename EvaluationType::ResultScalarType;    /*!< result variables automatic differentiation type */
+    using StateT    = typename EvaluationType::StateScalarType;    /*!< state variables automatic differentiation type */
+    using StateDotT = typename EvaluationType::StateDotScalarType; /*!< state dot variables automatic differentiation type */
+    using ConfigT   = typename EvaluationType::ConfigScalarType;   /*!< configuration variables automatic differentiation type */
+    using ResultT   = typename EvaluationType::ResultScalarType;   /*!< result variables automatic differentiation type */
 
     using StrainT  = typename Plato::fad_type_t<SimplexPhysics, StateT,    ConfigT>; /*!<   strain variables automatic differentiation type */
     using VelGradT = typename Plato::fad_type_t<SimplexPhysics, StateDotT, ConfigT>; /*!< vel grad variables automatic differentiation type */
 
-    using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms;               /*!< number of stress/strain terms */
+    using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of stress/strain terms */
 
     Teuchos::ParameterList mInputParams;
 
@@ -104,7 +104,7 @@ public:
     HyperbolicLinearStressExpression(const Omega_h::Matrix<mNumVoigtTerms,
                                      mNumVoigtTerms> aCellStiffness,
                                      const Teuchos::ParameterList& aInputParams) :
-      HyperbolicAbstractLinearStress< EvaluationType, SimplexPhysics >(aCellStiffness),
+      AbstractHyperbolicLinearStress< EvaluationType, SimplexPhysics >(aCellStiffness),
       LinearStressExpression< EvaluationType, SimplexPhysics >(aCellStiffness, aInputParams),
       mInputParams(aInputParams)
     {
@@ -117,7 +117,7 @@ public:
     **********************************************************************************/
     HyperbolicLinearStressExpression(const Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> aMaterialModel,
                                      const Teuchos::ParameterList& aInputParams) :
-      HyperbolicAbstractLinearStress< EvaluationType, SimplexPhysics >(aMaterialModel),
+      AbstractHyperbolicLinearStress< EvaluationType, SimplexPhysics >(aMaterialModel),
       LinearStressExpression< EvaluationType, SimplexPhysics >(aMaterialModel, aInputParams),
       mInputParams(aInputParams)
     {

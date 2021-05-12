@@ -10,10 +10,10 @@
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_vector.hpp>
 
-#include "OmegaHUtilities.hpp"
+#include "UtilsOmegaH.hpp"
 #include "SpatialModel.hpp"
-#include "NaturalBCUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
+#include "SurfaceIntegralUtilities.hpp"
 
 namespace Plato
 {
@@ -32,9 +32,14 @@ template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, P
 class SurfaceLoadIntegral
 {
 private:
-    const std::string mSideSetName;                              /*!< side set name */
-    const Omega_h::Vector<NumDofs> mFlux;                        /*!< force vector values */
-    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;  /*!< integration rule */
+    /*!< number of spatial dimensions */
+    static constexpr auto mNumSpatialDims = SpatialDim;
+    /*!< number of spatial dimensions on face */
+    static constexpr auto mNumSpatialDimsOnFace = mNumSpatialDims - static_cast<Plato::OrdinalType>(1);
+
+    const std::string mSideSetName; /*!< side set name */
+    const Omega_h::Vector<NumDofs> mFlux; /*!< force vector values */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mCubatureRule; /*!< integration rule */
 
 public:
     /******************************************************************************//**
@@ -103,30 +108,31 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()(
 ) const
 {
     // get sideset faces
-    auto tFaceLids = Plato::get_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
+    auto tFaceLids = Plato::omega_h::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
     auto tNumFaces = tFaceLids.size();
 
     // get mesh vertices
-    auto tFace2Verts = aSpatialModel.Mesh.ask_verts_of(SpatialDim-1);
+    auto tFace2Verts = aSpatialModel.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
     auto tCell2Verts = aSpatialModel.Mesh.ask_elem_verts();
 
-    auto tFace2eElems = aSpatialModel.Mesh.ask_up(SpatialDim - 1, SpatialDim);
+    auto tFace2eElems = aSpatialModel.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
     auto tFace2Elems_map   = tFace2eElems.a2ab;
     auto tFace2Elems_elems = tFace2eElems.ab2b;
 
-    Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
-    Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
-    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
+    Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
+    Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
+    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
     auto tFlux = mFlux;
-    auto tNodesPerFace = SpatialDim;
+    auto tNodesPerFace = mNumSpatialDims;
     auto tCubatureWeight = mCubatureRule.getCubWeight();
+    auto tBasisFunctions = mCubatureRule.getBasisFunctions();
     if(std::isfinite(tCubatureWeight) == false)
     {
         THROWERR("Natural Boundary Condition: A non-finite cubature weight was detected.")
     }
-    auto tMultiplier = aScale * tCubatureWeight;
+    auto tCubWeightTimesScale = aScale * tCubatureWeight;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {
@@ -137,13 +143,13 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()(
       for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
       {
           // create a map from face local node index to elem local node index
-          Plato::OrdinalType tLocalNodeOrd[SpatialDim];
+          Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
           auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
           tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
-          ConfigScalarType tWeight(0.0);
-          tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
-          tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
+          ConfigScalarType tSurfaceAreaTimesCubWeight(0.0);
+          tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
+          tCalculateSurfaceArea(aFaceI, tCubWeightTimesScale, tJacobian, tSurfaceAreaTimesCubWeight);
 
           // project into aResult workset
           for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
@@ -151,7 +157,8 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()(
               for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
               {
                   auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
-                  aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
+                  aResult(tCellOrdinal,tCellDofOrdinal) +=
+                      tBasisFunctions(tNode) * tFlux[tDof] * tSurfaceAreaTimesCubWeight;
               }
           }
       }

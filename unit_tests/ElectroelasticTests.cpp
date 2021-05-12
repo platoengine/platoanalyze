@@ -26,6 +26,7 @@
 #include <alg/CrsLinearProblem.hpp>
 #include <alg/ParallelComm.hpp>
 #include "Simp.hpp"
+#include "Solutions.hpp"
 #include "ScalarProduct.hpp"
 #include "SimplexFadTypes.hpp"
 #include "WorksetBase.hpp"
@@ -265,14 +266,16 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
 
   // compute and test criterion value
   //
-  auto value = scalarFunction.value(Plato::Solution(states), z);
+  Plato::Solutions tSolution;
+  tSolution.set("State", states);
+  auto value = scalarFunction.value(tSolution, z);
 
   Plato::Scalar value_gold = 21.1519092307692240;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
   // compute and test criterion gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(Plato::Solution(states), z, /*stepIndex=*/0);
+  auto grad_u = scalarFunction.gradient_u(tSolution, z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -299,7 +302,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
 
   // compute and test criterion gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(Plato::Solution(states), z);
+  auto grad_z = scalarFunction.gradient_z(tSolution, z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -322,7 +325,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
 
   // compute and test criterion gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(Plato::Solution(states), z);
+  auto grad_x = scalarFunction.gradient_x(tSolution, z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);

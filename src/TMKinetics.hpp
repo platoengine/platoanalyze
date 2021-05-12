@@ -65,12 +65,12 @@ class TMKinetics : public Plato::SimplexThermomechanics<SpaceDim>
     }
 
     /***********************************************************************************
-     * @brief Compute stress and thermal flux from strain, temperature, and temperature gradient
-     * @param [in] aStrain infinitesimal strain tensor
-     * @param [in] aTGrad temperature gradient
-     * @param [in] aTemperature temperature
-     * @param [out] aStress Cauchy stress tensor
-     * @param [out] aFlux thermal flux vector
+     * \brief Compute stress and thermal flux from strain, temperature, and temperature gradient
+     * \param [in] aStrain infinitesimal strain tensor
+     * \param [in] aTGrad temperature gradient
+     * \param [in] aTemperature temperature
+     * \param [out] aStress Cauchy stress tensor
+     * \param [out] aFlux thermal flux vector
      **********************************************************************************/
     template<typename KineticsScalarType, typename KinematicsScalarType, typename StateScalarType>
     DEVICE_TYPE inline void
@@ -206,12 +206,12 @@ class StabilizedTMKinetics : public Plato::SimplexStabilizedThermomechanics<Spac
 
 
     /***********************************************************************************
-     * @brief Compute deviatoric stress, volume flux, cell stabilization, and thermal flux
-     * @param [in] aStrain infinitesimal strain tensor
-     * @param [in] aTGrad temperature gradient
-     * @param [in] aTemperature temperature
-     * @param [out] aStress Cauchy stress tensor
-     * @param [out] aFlux thermal flux vector
+     * \brief Compute deviatoric stress, volume flux, cell stabilization, and thermal flux
+     * \param [in] aStrain infinitesimal strain tensor
+     * \param [in] aTGrad temperature gradient
+     * \param [in] aTemperature temperature
+     * \param [out] aStress Cauchy stress tensor
+     * \param [out] aFlux thermal flux vector
      **********************************************************************************/
     template<
       typename KineticsScalarType,
