@@ -66,6 +66,9 @@ namespace Hyperbolic
 template< typename EvaluationType, typename SimplexPhysics >
 class HyperbolicLinearStressExpression :
     public Plato::Hyperbolic::AbstractHyperbolicLinearStress<EvaluationType, SimplexPhysics>,
+    // Use the LinearStressExpression class so to pick up the two
+    // variable version of the operator(). This usage works because
+    // hyperbolic FAD type is a superset of the base FAD types.
     public Plato::LinearStressExpression<EvaluationType, SimplexPhysics>
 {
 protected:
@@ -123,7 +126,7 @@ public:
     {
     }
 
-    // Make sure the original operator from LinearStressExpression
+    // Make sure the original operator() from LinearStressExpression
     // (sans aVelGrad) is still visible. That is the operator() is
     // overloaded rather being overridden by the new method defined
     // below that includes the velosity gradient (aVelGrad).
