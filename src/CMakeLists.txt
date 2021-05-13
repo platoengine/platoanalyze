@@ -128,6 +128,8 @@ if(ELLIPTIC)
     elliptic/updated_lagrangian/InternalElasticEnergy.cpp
     elliptic/updated_lagrangian/AbstractEllipticUpLagLinearStress.cpp
     elliptic/updated_lagrangian/EllipticUpLagLinearStress.cpp
+    elliptic/updated_lagrangian/EllipticUpLagLinearStressExpression.cpp
+    elliptic/updated_lagrangian/EllipticUpLagLinearStressFactory.cpp
   )
 endif()
 
