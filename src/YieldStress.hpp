@@ -17,9 +17,9 @@ class YieldStress :
     public Plato::AbstractYieldStress<EvaluationType >
 {
 protected:
-    using LocalStateT = typename EvaluationType::LocalStateScalarType;      /*!< local state variables automatic differentiation type */
-    using ControlT    = typename EvaluationType::ControlScalarType;         /*!< control variables automatic differentiation type */
-    using ResultT     = typename EvaluationType::ResultScalarType;          /*!< result variables automatic differentiation type */
+    using LocalStateT = typename EvaluationType::LocalStateScalarType; /*!< local state variables automatic differentiation type */
+    using ControlT    = typename EvaluationType::ControlScalarType;    /*!< control variables automatic differentiation type */
+    using ResultT     = typename EvaluationType::ResultScalarType;     /*!< result variables automatic differentiation type */
 
 public:
     /******************************************************************************//**
