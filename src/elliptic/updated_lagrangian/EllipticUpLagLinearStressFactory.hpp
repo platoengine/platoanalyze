@@ -1,8 +1,8 @@
 #ifndef PLATO_ELLIPTIC_UPDATED_LAGRANGIAN_LINEAR_STRESS_FACTORY_HPP
 #define PLATO_ELLIPTIC_UPDATED_LAGRANGIAN_LINEAR_STRESS_FACTORY_HPP
 
-#include <EllipticUpLagLinearStress.hpp>
-#include <EllipticUpLagLinearStressExpression.hpp>
+#include "EllipticUpLagLinearStress.hpp"
+#include "EllipticUpLagLinearStressExpression.hpp"
 
 namespace Plato
 {
