@@ -1,7 +1,7 @@
 #ifndef PLATO_ELLIPTIC_UPDATED_LAGRANGIAN_LINEAR_STRESS_EXPRESSION_HPP
 #define PLATO_ELLIPTIC_UPDATED_LAGRANGIAN_LINEAR_STRESS_EXPRESSION_HPP
 
-#include "LinearStressExpression.hpp"
+//#include "LinearStressExpression.hpp"
 
 #include "ExpressionEvaluator.hpp"
 #include "ParseTools.hpp"
@@ -60,8 +60,9 @@ namespace UpdatedLagrangian
 /******************************************************************************/
 template< typename EvaluationType, typename SimplexPhysics >
 class EllipticUpLagLinearStressExpression :
-    public Plato::AbstractEllipticUpLagLinearStress<EvaluationType, SimplexPhysics>,
-    public Plato::LinearStressExpression<EvaluationType, SimplexPhysics>
+    public Plato::Elliptic::UpdatedLagrangian::AbstractEllipticUpLagLinearStress<EvaluationType, SimplexPhysics> //,
+    // The LinearStressExpression can not be used because of the FAD types are different.
+    // public Plato::LinearStressExpression<EvaluationType, SimplexPhysics>
 {
 protected:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
@@ -96,8 +97,8 @@ public:
      * \param [in] aParamList input parameter list
     **********************************************************************************/
     EllipticUpLagLinearStressExpression(const Omega_h::Matrix<mNumVoigtTerms,
-					mNumVoigtTerms> aCellStiffness,
-					const Teuchos::ParameterList& aInputParams) :
+                                        mNumVoigtTerms> aCellStiffness,
+                                        const Teuchos::ParameterList& aInputParams) :
       AbstractEllipticUpLagLinearStress< EvaluationType, SimplexPhysics >(aCellStiffness),
       mInputParams(aInputParams)
     {
@@ -118,6 +119,33 @@ public:
     /******************************************************************************//**
      * \brief Compute the Cauchy stress tensor
      * \param [out] aCauchyStress Cauchy stress tensor
+     * \param [in]  aSmallStrain Infinitesimal strain tensor
+    **********************************************************************************/
+    void
+    operator()(Plato::ScalarMultiVectorT<ResultT> const& aCauchyStress,
+               Plato::ScalarMultiVectorT<StrainT> const& aSmallStrain) const override
+    {
+      // Method used with the factory and has it own Kokkos parallel_for
+      const Plato::OrdinalType tNumCells = aCauchyStress.extent(0);
+
+      // Create a dummy ScalarMultiVectorT so to use the three variable version.
+      Plato::ScalarMultiVectorT<LocalStateT>
+        tPrevStrain("dummy", tNumCells, mNumVoigtTerms);
+
+      Kokkos::parallel_for("Initialize the dummy tPrevStrain",
+                           Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {tNumCells,mNumVoigtTerms}),
+                           LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal,
+                                             const Plato::OrdinalType & tVoigtIndex)
+      {
+          tPrevStrain(aCellOrdinal, tVoigtIndex) = 0;
+      } );
+
+      this->operator()(aCauchyStress, aSmallStrain, tPrevStrain);
+    }
+
+    /******************************************************************************//**
+     * \brief Compute the Cauchy stress tensor
+     * \param [out] aCauchyStress Cauchy stress tensor
      * \param [in]  aStrainInc Incremental strain tensor
      * \param [in]  aPrevStrain Reference strain tensor
     **********************************************************************************/
@@ -125,7 +153,7 @@ public:
     operator()(Plato::ScalarMultiVectorT<ResultT>     const& aCauchyStress,
                Plato::ScalarMultiVectorT<StrainT>     const& aStrainInc,
                Plato::ScalarMultiVectorT<LocalStateT> const& aPrevStrain) const override
-  {
+    {
       // Method used with the factory and has it own Kokkos parallel_for
       const Plato::OrdinalType tNumCells = aCauchyStress.extent(0);
 
@@ -340,13 +368,13 @@ public:
       // index is over the cell index. The second index is over tVoigtIndex_J.
       if( tVarMaps(cPrevStrain).key )
       {
-        tExpEval.set_variable( tVarMaps(cPrevStrain).value, aPrevStrain );
+        tExpEval.set_variable( tVarMaps(cPrevStrain).value, tPrevStrain );
       }
 
       // Additional input values also a two-dimensional arry.
       if( tVarMaps(cStrainInc).key )
       {
-          tExpEval.set_variable( tVarMaps(cStrainInc).value, tVelGrad );
+          tExpEval.set_variable( tVarMaps(cStrainInc).value, tStrainInc);
       }
 
       // The reference strain does not change.
@@ -391,11 +419,11 @@ public:
               aCauchyStress(aCellOrdinal, tVoigtIndex_I) += tStress(aCellOrdinal, tVoigtIndex_J);
 
               // The original stress equation.
-	      // aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
-	      //   (aStrainInc(aCellOrdinal, tVoigtIndex_J) -
-	      //    tReferenceStrain(tVoigtIndex_J) +
-	      //    aPrevStrain(aCellOrdinal, tVoigtIndex_J)) *
-	      //   tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+              // aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+              //   (aStrainInc(aCellOrdinal, tVoigtIndex_J) -
+              //    tReferenceStrain(tVoigtIndex_J) +
+              //    aPrevStrain(aCellOrdinal, tVoigtIndex_J)) *
+              //   tCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
             }
         }
       } );
