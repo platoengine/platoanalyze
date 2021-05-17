@@ -1341,7 +1341,8 @@ MPMD_App::OutputToHDF5::operator()()
 MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
         LocalOp(aMyApp, aNode, aOpDef)
 {
-    mOutputFile = Plato::Get::String(aNode, "OutputFile");
+    std::string tDefault("plato_analyze_output");
+    mOutputFile = Plato::Get::String(aNode, "OutputFile", tDefault);
 }
 /******************************************************************************/
 
