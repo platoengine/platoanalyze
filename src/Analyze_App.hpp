@@ -824,21 +824,28 @@ private:
     };
     friend class OutputToHDF5;
 
-    /******************************************************************************/
-
-    // Visualization
-    //
-    /******************************************************************************/
+    /******************************************************************************//**
+     * \class Visualization
+     * \brief Plato Analyze operation used to visualize output field data at each 
+     *        optimization iteration. This operation avoids having to send large 
+     *        field data sets through Plato Engine. 
+     * 
+     *        The output history is saved inside the 'plato_analyze_output' 
+     *        directory. One can have access to the output information for each 
+     *        optimization iteration (e.g. 'plato_analyze_output/iteration#', 
+     *        where # denotes the optimization itertion) or for the full 
+     *        optimization run (e.g. 'plato_analyze_output/history.pvd')
+    **********************************************************************************/
     class Visualization : public LocalOp
     {
     public:
         Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        // file output
-        std::string mOutputFile;
-        // output gradients
-        bool mOutputGradients;
+        size_t mNumSimulationTimeSteps = 0;
+        size_t mOptimizationIterationCounter = 0;
+
+        std::string mTopOutputDirectory = "plato_analyze_output";
     };
     friend class Visualization;
 #ifdef PLATO_GEOMETRY

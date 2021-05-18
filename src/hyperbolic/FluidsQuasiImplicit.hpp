@@ -11,12 +11,14 @@
 
 #include <Teuchos_ParameterList.hpp>
 
+#include "ToMap.hpp"
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "UtilsIO.hpp"
 #include "Solutions.hpp"
 #include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
+#include "OmegaHUtilities.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "ApplyConstraints.hpp"
 #include "UtilsEssentialBCs.hpp"
@@ -187,6 +189,8 @@ public:
             Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
             tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
         }
+        
+        Plato::omega_h::add_state_tags(tMesh, mDataMap, 0 /* step index */);
 
         auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mNumSpatialDims);
         auto tTime = static_cast<Plato::Scalar>(tCurrentTimeStep);
@@ -223,7 +227,8 @@ public:
         auto tWriter = Omega_h::vtk::Writer("solution_history", &mSpatialModel.Mesh, mNumSpatialDims);
         this->setInitialConditions(tPrimal, tWriter);
         this->calculateCharacteristicElemSize(tPrimal);
-
+        
+        mDataMap.scalarNodeFields["Topology"] = aControl;
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
             mNumForwardSolveTimeSteps = tIteration + 1;
@@ -892,6 +897,8 @@ private:
      **********************************************************************************/
     void clear()
     {
+        mDataMap.clearAll();
+
         mNumForwardSolveTimeSteps = 0;
         mCriticalTimeStepHistory.clear();
         Plato::blas2::fill(0.0, mPressure);

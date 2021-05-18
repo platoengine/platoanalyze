@@ -289,6 +289,8 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: INPUT CONTROL VECTOR IS EMPTY.")
         }
+        
+        mDataMap.scalarNodeFields["Topology"] = aControls;
 
         bool tStop = false;
         while (tStop == false)

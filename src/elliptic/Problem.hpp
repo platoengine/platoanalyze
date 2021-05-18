@@ -239,6 +239,7 @@ public:
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
 
         mDataMap.clearStates();
+        mDataMap.scalarNodeFields["Topology"] = aControl;
 
         // inner loop for non-linear models
         for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
