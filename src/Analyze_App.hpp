@@ -258,14 +258,20 @@ public:
         tValues.resize(aSharedData.size());
         aSharedData.getData(tValues);
         std::stringstream ss;
-        ss << "Importing Scalar Value: " << aName << std::endl;
+        ss << "Importing Scalar Value: " << aName << " with SharedData name '" << aSharedData.myName() << "'." << std::endl;
         ss << "[ ";
+        ss.precision(6);
+        ss << std::scientific;
         const int tMaxDisplay = 5;
         int tNumValues = tValues.size();
         int tNumDisplay = tNumValues < tMaxDisplay ? tNumValues : tMaxDisplay;
         for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
         if(tNumValues > tMaxDisplay) ss << " ... ";
+        auto tMaxValue = *std::max_element(tValues.begin(), tValues.end());
+        auto tMinValue = *std::min_element(tValues.begin(), tValues.end());
         ss << "]" << std::endl;
+        ss << "Max SharedData Value = '" << tMaxValue << "'.\n";
+        ss << "Min SharedData Value = '" << tMinValue << "'.\n";
 
         Plato::Console::Status(ss.str());
     }
@@ -354,8 +360,10 @@ public:
             tValues.resize(aSharedField.size());
             aSharedField.setData(tValues);
             std::stringstream ss;
-            ss << "Exporting Scalar Value: " << aName << std::endl;
+            ss << "Exporting Scalar Value: " << aName << " with SharedData name '" << aSharedField.myName() << "'." << std::endl;
             ss << "[ ";
+            ss.precision(6);
+            ss << std::scientific;
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
 
@@ -816,21 +824,28 @@ private:
     };
     friend class OutputToHDF5;
 
-    /******************************************************************************/
-
-    // Visualization
-    //
-    /******************************************************************************/
+    /******************************************************************************//**
+     * \class Visualization
+     * \brief Plato Analyze operation used to visualize output field data at each 
+     *        optimization iteration. This operation avoids having to send large 
+     *        field data sets through Plato Engine. 
+     * 
+     *        The output history is saved inside the 'plato_analyze_output' 
+     *        directory. One can have access to the output information for each 
+     *        optimization iteration (e.g. 'plato_analyze_output/iteration#', 
+     *        where # denotes the optimization itertion) or for the full 
+     *        optimization run (e.g. 'plato_analyze_output/history.pvd')
+    **********************************************************************************/
     class Visualization : public LocalOp
     {
     public:
         Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        // file output
-        std::string mOutputFile;
-        // output gradients
-        bool mOutputGradients;
+        size_t mNumSimulationTimeSteps = 0;
+        size_t mOptimizationIterationCounter = 0;
+
+        std::string mTopOutputDirectory = "plato_analyze_output";
     };
     friend class Visualization;
 #ifdef PLATO_GEOMETRY

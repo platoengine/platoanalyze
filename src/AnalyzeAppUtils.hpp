@@ -117,5 +117,18 @@ extract_solution
  const Plato::OrdinalType & aDof,
  const Plato::OrdinalType & aStride);
 
+/******************************************************************************//**
+ * \fn read_num_time_steps_from_pvd_file
+ * \brief Read number of time steps from .pvd file
+ *
+ * \param [in] aOutputDirectory output directory name
+ * \param [in] aFindKeyword     keyword to find in line
+ * 
+ * \return number of time steps
+**********************************************************************************/
+size_t read_num_time_steps_from_pvd_file
+(const std::string & aOutputDirectory,
+ const std::string & aFindKeyword);
+ 
 }
 // namespace Plato

@@ -681,6 +681,7 @@ void MPMD_App::ComputeCriterion::operator()()
     }
 
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
     tGradZ = mMyApp->mProblem->criterionGradient(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
@@ -740,6 +741,7 @@ void MPMD_App::ComputeCriterionX::operator()()
         mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
     }
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
     tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
@@ -804,6 +806,7 @@ void MPMD_App::ComputeCriterionP::operator()()
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
     tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
@@ -860,6 +863,7 @@ void MPMD_App::ComputeCriterionValue::operator()()
         mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
     }
     tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
 
     if(mMyApp->mDebugAnalyzeApp == true)
@@ -1336,16 +1340,49 @@ MPMD_App::OutputToHDF5::operator()()
 /******************************************************************************/
 MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
         LocalOp(aMyApp, aNode, aOpDef)
-{
-    mOutputFile = Plato::Get::String(aNode, "OutputFile");
+{ 
+    std::string tCommand = "mkdir " + mTopOutputDirectory;
+    auto tOutput = std::system(tCommand.c_str());
+    if(false) {std::cout << tOutput << std::flush; }
 }
 /******************************************************************************/
 
 /******************************************************************************/
 void MPMD_App::Visualization::operator()()
 {
-    mMyApp->mProblem->output(mOutputFile);
+    auto tOutputDirectory = mTopOutputDirectory + std::string("/iteration") + std::to_string(mOptimizationIterationCounter);
+    mMyApp->mProblem->output(tOutputDirectory);
+
+    if(mOptimizationIterationCounter == 0u)
+    {
+        mNumSimulationTimeSteps = Plato::read_num_time_steps_from_pvd_file(tOutputDirectory, "timestep="); 
+    }
+
+    std::ofstream tOuptutFile(mTopOutputDirectory + "/steps.pvd"); 
+    auto tLastTimeStep = mNumSimulationTimeSteps - 1u;
+    
+    if(tOuptutFile.is_open() == false)
+    {
+        THROWERR(std::string("Visualization operation failed to open file with path '") + mTopOutputDirectory + "/steps.pvd" + "'.")
+    }
+
+    tOuptutFile << "<VTKFile type=\"Collection\" version=\"0.1\">\n";
+    tOuptutFile << "<Collection>\n";
+    for(decltype(mOptimizationIterationCounter) tItr = 0; tItr <= mOptimizationIterationCounter; tItr++)
+    {
+        auto tSubDirectory = std::string("iteration") + std::to_string(tItr);
+        auto tSolutionAtThisTimeStepDirectory = std::string("step_") + std::to_string(tLastTimeStep);
+        tOuptutFile << "<DataSet timestep=" << "\"" << std::to_string(tItr) << "\"  part=\"0\" file=\"" 
+            << tSubDirectory << "/steps/" << tSolutionAtThisTimeStepDirectory << "/pieces.pvtu\"/>\n";
+    }
+    tOuptutFile << "</Collection>\n";
+    tOuptutFile << "</VTKFile>";
+    tOuptutFile.close();
+
+    mOptimizationIterationCounter++;
 }
+
+
 /******************************************************************************/
 void MPMD_App::finalize() { }
 /******************************************************************************/

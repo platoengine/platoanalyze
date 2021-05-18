@@ -239,6 +239,7 @@ public:
     (const Plato::ScalarVector & aControl)
     {
         mDataMap.clearAll();
+        mDataMap.scalarNodeFields["Topology"] = aControl;
 
         auto& tSequenceSteps = mSequence.getSteps();
         auto tNumSequenceSteps = tSequenceSteps.size(); 

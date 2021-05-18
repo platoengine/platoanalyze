@@ -243,6 +243,8 @@ namespace Plato
         /******************************************************************************/
         {
             mDataMap.clearStates();
+            mDataMap.scalarNodeFields["Topology"] = aControl;
+
             Kokkos::deep_copy(mDisplacement, 0.0);
             Kokkos::deep_copy(mVelocity,     0.0);
             Kokkos::deep_copy(mAcceleration, 0.0);
