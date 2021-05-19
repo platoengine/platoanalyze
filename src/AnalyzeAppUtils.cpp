@@ -4,6 +4,8 @@
  *  Created on: Apr 11, 2021
  */
 
+#include <fstream>
+
 #include "PlatoUtilities.hpp"
 #include "AnalyzeAppUtils.hpp"
 
@@ -136,6 +138,30 @@ extract_solution
     return tDeviceData;
 }
 // function extract_solution
+
+size_t read_num_time_steps_from_pvd_file
+(const std::string & aOutputDirectory,
+ const std::string & aFindKeyword)
+{
+    size_t tNumTimeStep = 0;
+    std::string tFileName = aOutputDirectory + "/steps.pvd";
+    std::ifstream tFile(tFileName);
+    if (tFile.is_open())
+    {
+        std::string tLine;
+        while (std::getline(tFile, tLine))
+        {
+            auto tFound = tLine.find(aFindKeyword);
+            if (tFound != std::string::npos)
+            {
+                tNumTimeStep++;
+            }
+        }
+        tFile.close();
+    }
+    return tNumTimeStep;
+}
+// function read_num_time_steps_from_pvd_file
 
 }
 // namespace Plato

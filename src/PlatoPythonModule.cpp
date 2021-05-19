@@ -30,6 +30,10 @@ class SharedData {
     {
       return mData.size();
     }
+    std::string myName() const
+    {
+        return "Plato Python SharedData myName";    
+    }
 
     std::string myContext() const {return mContext;}
     void setContext(std::string context) {mContext = context;}
