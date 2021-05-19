@@ -26,7 +26,6 @@
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
 #include "AnalyzeMacros.hpp"
-#include "J2PlasticityLocalResidual.hpp"
 #include "Plato_AugLagStressCriterionQuadratic.hpp"
 #include "ThermalVonMisesLocalMeasure.hpp"
 
