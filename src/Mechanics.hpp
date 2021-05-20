@@ -11,6 +11,7 @@
 #include "elliptic/EffectiveEnergy.hpp"
 #include "elliptic/StressPNorm.hpp"
 #include "elliptic/SurfaceArea.hpp"
+#include "elliptic/Volume.hpp"
 
 #include "Plato_AugLagStressCriterionQuadratic.hpp"
 #include "Plato_AugLagStressCriterionGeneral.hpp"
@@ -279,6 +280,53 @@ stress_p_norm(
 // function stress_p_norm
 
 /******************************************************************************//**
+ * \brief Create volume criterion
+ * \param [in] aSpatialDomain Plato Analyze spatial domain
+ * \param [in] aDataMap Plato Analyze physics-based database
+ * \param [in] aProblemParams input parameters
+ * \param [in] aFuncName scalar function name
+**********************************************************************************/
+template<typename EvaluationType>
+inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
+volume_criterion(
+    const Plato::SpatialDomain   & aSpatialDomain,
+          Plato::DataMap         & aDataMap,
+          Teuchos::ParameterList & aProblemParams,
+          std::string            & aFuncName
+)
+{
+    std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>> tOutput;
+    auto tPenaltyParams = aProblemParams.sublist("Criteria").sublist(aFuncName).sublist("Penalty Function");
+    std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
+    auto tLowerPenaltyT = Plato::tolower(tPenaltyType);
+    if(tLowerPenaltyT == "simp")
+    {
+        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::MSIMP>>
+                    (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams, aFuncName);
+    }
+    else
+    if(tLowerPenaltyT == "ramp")
+    {
+        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::RAMP>>
+                    (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams, aFuncName);
+    }
+    else
+    if(tLowerPenaltyT == "heaviside")
+    {
+        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::Heaviside>>
+                    (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams, aFuncName);
+    }
+    else
+    if(tLowerPenaltyT == "nopenalty")
+    {
+        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::NoPenalty>>
+                    (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams, aFuncName);
+    }
+    return (tOutput);
+}
+// function stress_p_norm
+
+/******************************************************************************//**
  * \brief Create effective energy criterion
  * \param [in] aSpatialDomain Plato Analyze spatial domain
  * \param [in] aDataMap Plato Analyze physics-based database
@@ -444,11 +492,17 @@ struct FunctionFactory
         else if(tLowerFuncType == "density penalty")
         {
             return std::make_shared<Plato::IntermediateDensityPenalty<EvaluationType>>
+                       (aSpatialDomain, aDataMap, aProblemParams.sublist("Criteria"), aFuncName);
+        }
+        else if(tLowerFuncType == "volume")
+        {
+            return Plato::MechanicsFactory::volume_criterion<EvaluationType>
                        (aSpatialDomain, aDataMap, aProblemParams, aFuncName);
         }
         else
         {
-            return nullptr;
+            const std::string tErrorString = std::string("Function '") + tLowerFuncType + "' not implemented yet in steady state mechanics.";
+            THROWERR(tErrorString)
         }
     }
 
