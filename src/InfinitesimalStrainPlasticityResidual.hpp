@@ -99,7 +99,7 @@ private:
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType, SimplexPhysicsType>> mBodyLoads;   /*!< body loads interface */
     std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumGlobalDofsPerNode, mMechDofOffset>> mNeumannLoads; /*!< Neumann loads interface */
 
 // Private access functions
 private:
@@ -180,7 +180,7 @@ private:
             if(tNaturalBCsParams.isSublist("Mechanical Natural Boundary Conditions"))
             {
                 mNeumannLoads =
-                std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> (tNaturalBCsParams.sublist("Mechanical Natural Boundary Conditions"));
+                std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumGlobalDofsPerNode, mMechDofOffset>> (tNaturalBCsParams.sublist("Mechanical Natural Boundary Conditions"));
             }
 
         }
@@ -252,6 +252,7 @@ private:
      * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in]     aControls    design variables
      * \param [in]     aConfig      configuration variables
+     * \param [in]     aTimeData    time data object
      * \param [in/out] aResult      residual evaluation
     ****************************************************************************/
     void addExternalForces(
@@ -259,18 +260,14 @@ private:
         const Plato::ScalarMultiVectorT <GlobalStateT> & aGlobalState,
         const Plato::ScalarMultiVectorT <ControlT>     & aControl,
         const Plato::ScalarArray3DT     <ConfigT>      & aConfig,
+        const Plato::TimeData                          & aTimeData,
         const Plato::ScalarMultiVectorT <ResultT>      & aResult)
     {
-        auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
-        if(tSearch == mDataMap.mScalarValues.end())
-        {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Load Control Constant' is NOT defined in data map.")
-        }
-
-        auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
+        const Plato::Scalar tCurrentTime = aTimeData.mCurrentTime;
+        const Plato::Scalar tMinusOne    = -1.0;
         if( mNeumannLoads != nullptr )
         {
-            mNeumannLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+            mNeumannLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMinusOne, tCurrentTime );
         }
     }
 
@@ -390,7 +387,7 @@ public:
      * \param [in]     aControls               design variables workset
      * \param [in]     aConfig                configuration workset
      * \param [in/out] aResult                residual workset
-     * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     * \param [in]     aTimeData              current time data object
      *
     ****************************************************************************/
     void
@@ -403,7 +400,7 @@ public:
         const Plato::ScalarMultiVectorT <ControlT>         & aControls,
         const Plato::ScalarArray3DT     <ConfigT>          & aConfig,
         const Plato::ScalarMultiVectorT <ResultT>          & aResult,
-              Plato::Scalar aTimeStep = 0.0
+        const Plato::TimeData                              & aTimeData
     ) override
     {
         auto tNumCells = mSpatialDomain.numCells();
@@ -495,7 +492,7 @@ public:
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
-            Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
+            //Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
 
             // compute residual
             tStressDivergence (aCellOrdinal, aResult, tDeviatoricStress, tConfigurationGradient, tCellVolume);
@@ -533,7 +530,7 @@ public:
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
                        const Plato::ScalarVector & aControl,
-                       Plato::Scalar aTimeStep = 0.0) override
+                       const Plato::TimeData     & aTimeData) override
     {
         // update SIMP penalty parameter
         auto tPreviousPenaltySIMP = mPenaltySIMP;
@@ -569,10 +566,10 @@ public:
         const Plato::ScalarMultiVectorT <ControlT>         & aControls,
         const Plato::ScalarArray3DT     <ConfigT>          & aConfig,
         const Plato::ScalarMultiVectorT <ResultT>          & aResult,
-              Plato::Scalar aTimeStep = 0.0
+        const Plato::TimeData                              & aTimeData
     ) override
     {
-        this->addExternalForces(aSpatialModel, aCurrentGlobalState, aControls, aConfig, aResult);
+        this->addExternalForces(aSpatialModel, aCurrentGlobalState, aControls, aConfig, aTimeData, aResult);
     }
 };
 // class InfinitesimalStrainPlasticityResidual

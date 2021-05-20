@@ -9,6 +9,10 @@
 #include "UtilsOmegaH.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoTestHelpers.hpp"
+#include "Solutions.hpp"
+#include "BLAS2.hpp"
+#include "BLAS1.hpp"
+#include "parabolic/Problem.hpp"
 
 
 namespace OmegaHUtilitiesTests
@@ -425,6 +429,129 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
             }
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_SolutionOutput)
+{
+
+    constexpr Plato::OrdinalType tNumDofsPerNode = 4;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, 2);
+    auto tNumVertices = tMesh->nverts();
+    Plato::Solutions tSolutions("thermomechanics", "parabolic");
+    Plato::ScalarMultiVector tSolutionMultiVector("State", 2, tNumVertices*tNumDofsPerNode);
+    Plato::ScalarMultiVector tSolutionDotMultiVector("StateDot", 2, tNumVertices*tNumDofsPerNode);
+    Plato::blas2::fill(2.0,  tSolutionMultiVector);
+    Plato::blas2::fill(80.0, tSolutionDotMultiVector);
+
+    tSolutions.set("State",    tSolutionMultiVector);
+    tSolutions.set("StateDot", tSolutionDotMultiVector);
+
+    Teuchos::RCP<Teuchos::ParameterList> params =
+    Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                          \n"
+        "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>          \n"
+        "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
+        "  <ParameterList name='Parabolic'>                                            \n"
+        "    <ParameterList name='Penalty Function'>                                   \n"
+        "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
+        "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
+        "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+        "    </ParameterList>                                                          \n"
+        "  </ParameterList>                                                            \n"
+        "  <ParameterList name='Spatial Model'>                                        \n"
+        "    <ParameterList name='Domains'>                                            \n"
+        "      <ParameterList name='Design Volume'>                                    \n"
+        "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+        "        <Parameter name='Material Model' type='string' value='Frozen Peas'/>  \n"
+        "      </ParameterList>                                                        \n"
+        "    </ParameterList>                                                          \n"
+        "  </ParameterList>                                                            \n"
+        "  <ParameterList name='Material Models'>                                      \n"
+        "    <ParameterList name='Frozen Peas'>                                        \n"
+        "      <ParameterList name='Thermal Mass'>                                     \n"
+        "        <Parameter name='Mass Density' type='double' value='0.3'/>            \n"
+        "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>         \n"
+        "      </ParameterList>                                                        \n"
+        "      <ParameterList name='Thermoelastic'>                                    \n"
+        "        <ParameterList name='Elastic Stiffness'>                              \n"
+        "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>       \n"
+        "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>    \n"
+        "        </ParameterList>                                                      \n"
+        "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/> \n"
+        "        <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/>\n"
+        "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>  \n"
+        "      </ParameterList>                                                        \n"
+        "    </ParameterList>                                                          \n"
+        "  </ParameterList>                                                            \n"
+        "  <ParameterList name='Time Integration'>                                     \n"
+        "    <Parameter name='Number Time Steps' type='int' value='3'/>                \n"
+        "    <Parameter name='Time Step' type='double' value='0.5'/>                   \n"
+        "    <Parameter name='Trapezoid Alpha' type='double' value='0.5'/>             \n"
+        "  </ParameterList>                                                            \n"
+        "</ParameterList>                                                              \n"
+    );
+
+    // create constraint evaluator
+    //
+    Plato::DataMap tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
+    Plato::Parabolic::VectorFunction<::Plato::Thermomechanics<tSpaceDim>>
+        vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+
+    auto tSolutionsOutput = vectorFunction.getSolutionStateOutputData(tSolutions);
+
+    const std::string tFilepath = "SolutionStateOutput";
+    Plato::universal_solution_output<tSpaceDim>(tFilepath, tSolutionsOutput, tDataMap, *tMesh);
+
+    Plato::FieldTags tCurrentFieldTags;
+    tCurrentFieldTags.set("displacement",    "displacement");
+    tCurrentFieldTags.set("temperature",     "temperature");
+    tCurrentFieldTags.set("velocity",        "velocity");
+    tCurrentFieldTags.set("temperature_dot", "temperature_dot");
+
+    Plato::Variables tVariables;
+    Plato::Scalar tTolerance = 1.0e-6;
+    auto tPaths = Plato::omega_h::read_pvtu_file_paths(tFilepath);
+    for(auto tItr = tPaths.rbegin(); tItr != tPaths.rend() - 1; tItr++)
+    {
+        auto tCurrentIndex = (tPaths.size() - 1u) - std::distance(tPaths.rbegin(), tItr);
+        Plato::omega_h::read_fields<Omega_h::VERT>(*tMesh, tPaths[tCurrentIndex], tCurrentFieldTags, tVariables);
+
+        Plato::ScalarVector tDisplacementIn = tVariables.vector("displacement");
+        auto tDisplacementInHost = Kokkos::create_mirror(tDisplacementIn);
+        Kokkos::deep_copy(tDisplacementInHost, tDisplacementIn);
+
+        Plato::ScalarVector tVelocityIn = tVariables.vector("velocity");
+        auto tVelocityInHost = Kokkos::create_mirror(tVelocityIn);
+        Kokkos::deep_copy(tVelocityInHost, tVelocityIn);
+
+        for (Plato::OrdinalType tIndex = 0; tIndex < tDisplacementInHost.size(); tIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tDisplacementInHost(tIndex),  2.0, tTolerance);
+            TEST_FLOATING_EQUALITY(tVelocityInHost    (tIndex), 80.0, tTolerance);
+        }
+        
+        Plato::ScalarVector tTemperatureIn = tVariables.vector("temperature");
+        auto tTemperatureInHost = Kokkos::create_mirror(tTemperatureIn);
+        Kokkos::deep_copy(tTemperatureInHost, tTemperatureIn);
+
+        Plato::ScalarVector tTemperatureDotIn = tVariables.vector("temperature_dot");
+        auto tTemperatureDotInHost = Kokkos::create_mirror(tTemperatureDotIn);
+        Kokkos::deep_copy(tTemperatureDotInHost, tTemperatureDotIn);
+
+        for (Plato::OrdinalType tIndex = 0; tIndex < tTemperatureInHost.size(); tIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tTemperatureInHost   (tIndex),  2.0, tTolerance);
+            TEST_FLOATING_EQUALITY(tTemperatureDotInHost(tIndex), 80.0, tTolerance);
+        }
+        auto tTrash = std::system("rm -rf SolutionStateOutput");
+        PlatoUtestHelpers::ignore_unused_variable_warning(tTrash);
+    }
+
+
 }
 
 

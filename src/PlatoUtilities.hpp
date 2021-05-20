@@ -316,13 +316,13 @@ inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
 
 /******************************************************************************//**
  * \brief Copy 1D view into Omega_h 1D array
- * \param [in] aStride stride
+ * \param [in] aOffset offset
  * \param [in] aNumVertices number of mesh vertices
  * \param [in] aInput 1D view
  * \param [out] aOutput 1D Omega_h array
 **********************************************************************************/
 template<const Plato::OrdinalType NumDofsPerNodeInInputArray, const Plato::OrdinalType NumDofsPerNodeInOutputArray>
-inline void copy(const Plato::OrdinalType & aStride,
+inline void copy(const Plato::OrdinalType & aOffset,
                  const Plato::OrdinalType & aNumVertices,
                  const Plato::ScalarVector & aInput,
                  Omega_h::Write<Omega_h::Real> & aOutput)
@@ -332,7 +332,7 @@ inline void copy(const Plato::OrdinalType & aStride,
         for(Plato::OrdinalType tIndex = 0; tIndex < NumDofsPerNodeInOutputArray; tIndex++)
         {
             Plato::OrdinalType tOutputDofIndex = (aIndex * NumDofsPerNodeInOutputArray) + tIndex;
-            Plato::OrdinalType tInputDofIndex = (aIndex * NumDofsPerNodeInInputArray) + (aStride + tIndex);
+            Plato::OrdinalType tInputDofIndex = (aIndex * NumDofsPerNodeInInputArray) + (aOffset + tIndex);
             aOutput[tOutputDofIndex] = aInput(tInputDofIndex);
         }
     },"PlatoDriver::copy");

@@ -117,62 +117,6 @@ namespace Plato
     }
     // function stabilized_thermomechanical_output
 
-/******************************************************************************//**
- * \brief Output data associated with a stabilized thermoplasticity simulation.
- * \param [in] aOutputFilePath  output viz file path
- * \param [in] aSolution        global solution data
- * \param [in] aStateDataMap    Plato Analyze data map
- * \param [in] aMesh            mesh database
- **********************************************************************************/
-template<const Plato::OrdinalType SpatialDim>
-inline void
-stabilized_thermoplasticity_output(
-    const std::string     & aOutputFilePath,
-    const Plato::Solutions & aSolution,
-    const Plato::DataMap  & aStateDataMap,
-          Omega_h::Mesh   & aMesh
-)
-{
-    auto tState = aSolution.get("State");
-
-    const Plato::Scalar tRestartTime = 0.;
-    Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, tRestartTime);
-
-    auto tTags = aSolution.tags();
-    for (auto &tTag : tTags)
-    {
-        auto tState = aSolution.get(tTag);
-        auto tNumSteps = tState.extent(0);
-        for (decltype(tNumSteps) tStepIndex = 0; tStepIndex < tNumSteps; tStepIndex++)
-        {
-            auto tSubView = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
-
-            auto tNumVertices = aMesh.nverts();
-            Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
-            constexpr auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
-            constexpr auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(2);
-            Plato::copy<tNumDofsPerNode, tNumTempPerNode>(/*tStride=*/SpatialDim, tNumVertices, tSubView, tTemp);
-
-            Omega_h::Write<Omega_h::Real> tPress(tNumVertices, "Pressure");
-            constexpr auto tNumPressPerNode = static_cast<Plato::OrdinalType>(1);
-            Plato::copy<tNumDofsPerNode, tNumPressPerNode>(/*tStride=*/SpatialDim + 1, tNumVertices, tSubView, tPress);
-
-            auto tNumDisp = tNumVertices * SpatialDim;
-            constexpr auto tNumDispPerNode = SpatialDim;
-            Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
-            Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*tStride=*/0, tNumVertices, tSubView, tDisp);
-
-            aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode, Omega_h::Reals(tDisp));
-            aMesh.add_tag(Omega_h::VERT, "Pressure", tNumPressPerNode, Omega_h::Reals(tPress));
-            aMesh.add_tag(Omega_h::VERT, "Temperature", tNumTempPerNode, Omega_h::Reals(tTemp));
-
-            Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
-            tWriter.write(/*time_index*/ tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
-        }
-    }
-}
-// function stabilized_thermomechanical_output
-
 
 /******************************************************************************//**
  * \brief Output data associated with a thermo-mechanical simulation.
@@ -374,6 +318,43 @@ stabilized_thermoplasticity_output(
     // function thermal_output
 
     /******************************************************************************/ /**
+    * \brief Output data for all your output needs
+    * \param [in] aOutputFilePath  output viz file path
+    * \param [in] aSolutionsOutput global solution data for output
+    * \param [in] aStateDataMap    Plato Analyze data map
+    * \param [in] aMesh            mesh database
+    **********************************************************************************/
+    template <const Plato::OrdinalType SpatialDim>
+    inline void
+    universal_solution_output(
+        const std::string      & aOutputFilePath,
+        const Plato::Solutions & aSolutionsOutput,
+        const Plato::DataMap   & aStateDataMap,
+              Omega_h::Mesh    & aMesh)
+    {
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, 0.0);
+        auto tNumTimeSteps = aSolutionsOutput.getNumTimeSteps();
+        for (Plato::OrdinalType tStepIndex = 0; tStepIndex < tNumTimeSteps; ++tStepIndex)
+        {
+            for (auto &tSolutionOutputTag : aSolutionsOutput.tags())
+            {
+                auto tSolutions = aSolutionsOutput.get(tSolutionOutputTag);
+                auto tNumDofs = aSolutionsOutput.getNumDofs(tSolutionOutputTag);
+                Plato::ScalarVector tSolution = Kokkos::subview(tSolutions, tStepIndex, Kokkos::ALL());
+                Omega_h::Write<Omega_h::Real> tSolutionOmegaH(tSolution.size(), "OmegaH Solution");
+                Plato::copy_1Dview_to_write(tSolution, tSolutionOmegaH);
+                if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+                {
+                    Plato::omega_h::add_state_tags(aMesh, aStateDataMap, tStepIndex);
+                }
+                aMesh.add_tag(Omega_h::VERT, tSolutionOutputTag, tNumDofs, Omega_h::Reals(tSolutionOmegaH));
+            }
+            Omega_h::TagSet tTagsOmegaH = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
+            tWriter.write(/*time_index*/ tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTagsOmegaH);
+        }
+    }
+
+    /******************************************************************************/ /**
     * \brief Output data associated with a Plato Analyze simulation.
     * \param [in] aOutputFilePath  output viz file path
     * \param [in] aState           global state data
@@ -418,11 +399,6 @@ stabilized_thermoplasticity_output(
         if (tLowerPhysics == "plasticity")
         {
             Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
-        }
-        else 
-        if(tPhysics == "thermoplasticity")
-        {
-            Plato::stabilized_thermoplasticity_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
         }
         else 
         if (tLowerPhysics == "stabilized mechanical")

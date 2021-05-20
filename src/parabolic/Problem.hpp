@@ -243,7 +243,8 @@ namespace Parabolic
         {
             auto tDataMap = this->getDataMap();
             auto tSolution = this->getSolution();
-            Plato::output<mSpatialDim>(aFilepath, tSolution, tDataMap, mSpatialModel.Mesh);
+            auto tSolutionOutput = mPDEConstraint.getSolutionStateOutputData(tSolution);
+            Plato::universal_solution_output<mSpatialDim>(aFilepath, tSolutionOutput, tDataMap, mSpatialModel.Mesh);
         }
 
         /******************************************************************************//**

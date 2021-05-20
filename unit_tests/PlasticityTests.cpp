@@ -13,6 +13,7 @@
 
 #include "BLAS1.hpp"
 #include "Strain.hpp"
+#include "TimeData.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "J2PlasticityLocalResidual.hpp"
 
@@ -36,8 +37,8 @@ namespace PlasticityTests
     "      <ParameterList name='Isotropic Linear Thermoelastic'>                                 \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                     \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>      \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/>   \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e2'/>      \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>   \n"
     "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>                \n"
     "      </ParameterList>                                                                      \n"
     "      <ParameterList name='Plasticity Model'>                                               \n"
@@ -72,8 +73,8 @@ namespace PlasticityTests
     "      <ParameterList name='Isotropic Linear Thermoelastic'>                                 \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                     \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>      \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/>   \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e2'/>      \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>   \n"
     "        <Parameter  name='Reference Temperature' type='double' value='100.0'/>              \n"
     "      </ParameterList>                                                                      \n"
     "      <ParameterList name='Plasticity Model'>                                               \n"
@@ -1846,9 +1847,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
-                                                                   tControl, 0.0); 
+                                                                   tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-5;
     auto tHostLocalResidual = Kokkos::create_mirror(tLocalResidual);
@@ -1943,9 +1950,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
-                                                                   tControl, 0.0); 
+                                                                   tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-4;
     auto tHostLocalResidual = Kokkos::create_mirror(tLocalResidual);
@@ -2043,9 +2056,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
-                                         tControl, 0.0); 
+                                         tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-5;
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
@@ -2130,9 +2149,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
-                                         tControl, 0.0); 
+                                         tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-4;
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);

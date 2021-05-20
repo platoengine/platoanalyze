@@ -1,4 +1,5 @@
 #include "EpetraLinearSolver.hpp"
+#include "PlatoUtilities.hpp"
 
 namespace Plato {
 
@@ -12,7 +13,9 @@ EpetraSystem::EpetraSystem(
     Omega_h::Mesh& aMesh,
     Comm::Machine  aMachine,
     int            aDofsPerNode
-) {
+):  mMatrixConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Matrix Conversion")),
+    mVectorConversionTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Vector Conversion"))
+{
     mComm = aMachine.epetraComm;
 
     int tNumNodes = aMesh.nverts();
@@ -25,7 +28,9 @@ EpetraSystem::EpetraSystem(
 **********************************************************************************/
 rcp<Epetra_VbrMatrix>
 EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
-{
+{ 
+    Teuchos::TimeMonitor LocalTimer(*mMatrixConversionTimer);
+
     auto tRowMap_host = Kokkos::create_mirror_view(tInMatrix.rowMap());
     auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
     auto tNumBlocks = tRowMap_host.extent(0)-1;
@@ -87,6 +92,8 @@ EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
 rcp<Epetra_Vector>
 EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
 {
+    Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
+
     auto tRetVal = std::make_shared<Epetra_Vector>(*mBlockRowMap);
     if(tInVector.extent(0) != tRetVal->MyLength())
       throw std::domain_error("ScalarVector size does not match EpetraSystem map\n");
@@ -107,6 +114,8 @@ EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
 void 
 EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const
 {
+    Teuchos::TimeMonitor LocalTimer(*mVectorConversionTimer);
+
     auto tLength = tInVector->MyLength();
     auto tTemp = std::make_shared<Epetra_Vector>(*mBlockRowMap);
     if(tLength != tTemp->MyLength())
@@ -132,25 +141,20 @@ EpetraLinearSolver::EpetraLinearSolver(
     int                     aDofsPerNode
 ) :
     mSolverParams(aSolverParams),
-    mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode))
+    mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode)),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Epetra Linear Solve"))
 {
+    mIterations = 1000;
     if(mSolverParams.isType<int>("Iterations"))
-    {
         mIterations = mSolverParams.get<int>("Iterations");
-    }
-    else
-    {
-        mIterations = 300;
-    }
 
+    mTolerance = 1e-14;
     if(mSolverParams.isType<double>("Tolerance"))
-    {
         mTolerance = mSolverParams.get<double>("Tolerance");
-    }
-    else
-    {
-        mTolerance = 1e-14;
-    }
+    
+    mDisplayIterations = 0;
+    if(mSolverParams.isType<int>("Display Iterations"))
+        mDisplayIterations = mSolverParams.get<int>("Display Iterations");
 }
 
 /******************************************************************************//**
@@ -172,7 +176,42 @@ EpetraLinearSolver::solve(
 
     setupSolver(tSolver);
 
+    mLinearSolverTimer->start();
     tSolver.Iterate( mIterations, mTolerance );
+    mLinearSolverTimer->stop(); mLinearSolverTimer->incrementNumCalls();
+    
+    const double* tSolverStatus = tSolver.GetAztecStatus();
+    if (tSolverStatus[AZ_why] == AZ_normal)
+    {
+        // Do nothing
+    }
+    else if (tSolverStatus[AZ_why] == AZ_loss)
+    {
+        printf("Epetra Warning: Loss of numerical precision occured during linear solve.\n");
+    }
+    else if (tSolverStatus[AZ_why] == AZ_ill_cond)
+    {
+        printf("Epetra Warning: Hessenberg matrix in GMRES is ill-conditioned.\n");
+    }
+    else if (tSolverStatus[AZ_why] == AZ_maxits)
+    {
+        const std::string tWarningMessage = std::string("Epetra Warning: Specified maximum iterations (")
+              + std::to_string(mIterations) + ") reached without convergence to requested tolerance ("
+              + std::to_string(mTolerance) + ").";
+        std::cout << tWarningMessage << std::endl;
+    }
+    else if (tSolverStatus[AZ_why] == AZ_param)
+    {
+        THROWERR("Epetra Error: User requested option not available.")
+    }
+    else if (tSolverStatus[AZ_why] == AZ_breakdown)
+    {
+        THROWERR("Epetra Error: Numerical breakdown occured during linear solve.")
+    }
+
+    if (mDisplayIterations > 0)
+        printf("Epetra Lin. Solve %5.1f second(s), %4.0f iteration(s), %7.1e achieved relative tolerance (%7.1e requested)\n",
+                tSolverStatus[AZ_solve_time], tSolverStatus[AZ_its], tSolverStatus[AZ_scaled_r], mTolerance);
 
     mSystem->toVector(aX, tSolution);
 }
@@ -183,20 +222,36 @@ EpetraLinearSolver::solve(
 void
 EpetraLinearSolver::setupSolver(AztecOO& aSolver)
 {
-    int tDisplayIterations = 0;
-    if(mSolverParams.isType<int>("Display Iterations"))
-    {
-        tDisplayIterations = mSolverParams.get<int>("Display Iterations");
-    }
+    std::string tSolverType = "gmres";
+    if(mSolverParams.isType<std::string>("Solver"))
+        tSolverType = mSolverParams.get<std::string>("Solver");
+    std::string tLowerSolverType = Plato::tolower(tSolverType);
 
-    aSolver.SetAztecOption(AZ_output, tDisplayIterations);
-
-    // defaults (TODO: add options)
-    aSolver.SetAztecOption(AZ_precond, AZ_ilu);
+    aSolver.SetAztecOption(AZ_output, 0); // Previously used tDisplayIterations here but now perform our own output.
     aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
     aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
-    aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
-    aSolver.SetAztecOption(AZ_solver, AZ_gmres);
+    if (tLowerSolverType == "gmres")
+    {
+        aSolver.SetAztecOption(AZ_kspace,  mIterations);
+        aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
+        aSolver.SetAztecOption(AZ_solver,  AZ_gmres);
+    }
+    else if (tLowerSolverType == "cg")
+    {
+        aSolver.SetAztecOption(AZ_type_overlap, AZ_symmetric);
+        aSolver.SetAztecOption(AZ_overlap, 0);
+        aSolver.SetAztecOption(AZ_solver, AZ_cg);
+    }
+    else if (tLowerSolverType == "bicgstab")
+    {
+        aSolver.SetAztecOption(AZ_solver, AZ_bicgstab);
+    }
+    else
+    {
+        const std::string tErrorMessage = std::string("Epetra Error: Specified solver '")
+              + tSolverType + "' not implemented. Current options are 'gmres', 'cg', and 'bicgstab'";
+        THROWERR(tErrorMessage)
+    }
 }
 
 } // end namespace Plato

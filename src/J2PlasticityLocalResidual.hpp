@@ -51,7 +51,7 @@ private:
 
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
 
-    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< Thermal Expansivity */
     Plato::Scalar mReferenceTemperature;           /*!< reference temperature */
     Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
@@ -155,7 +155,7 @@ private:
         {
           auto tThermoelasticSubList = aMaterialParams.sublist("Isotropic Linear Thermoelastic");
 
-          mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+          mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansivity");
           mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
 
           auto tElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
@@ -296,7 +296,7 @@ public:
         const Plato::ScalarMultiVectorT< ControlT >         & aControl,
         const Plato::ScalarArray3DT    < ConfigT >          & aConfig,
         const Plato::ScalarMultiVectorT< ResultT >          & aResult,
-              Plato::Scalar aTimeStep = 0.0
+        const Plato::TimeData                               & aTimeData
     ) const
     {
       auto tNumCells = mSpatialDomain.numCells();
@@ -425,7 +425,7 @@ public:
         const Plato::ScalarMultiVector & aPrevLocalState,
         const Plato::ScalarMultiVector & aControl,
         const Plato::ScalarArray3D     & aConfig,
-              Plato::Scalar              aTimeStep = 0.0
+        const Plato::TimeData          & aTimeData
     ) const
     {
       auto tNumCells = mSpatialDomain.numCells();
@@ -532,7 +532,7 @@ public:
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
                        const Plato::ScalarVector & aControl,
-                       Plato::Scalar aTimeStep = 0.0) override
+                       const Plato::TimeData     & aTimeData) override
     {
         this->updateElasticPropertiesPenaltyModel();
         this->updatePlasticPropertiesPenaltyModel();
