@@ -19,7 +19,6 @@
 #include "EssentialBCs.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "ApplyConstraints.hpp"
-#include "UtilsEssentialBCs.hpp"
 #include "PlatoAbstractProblem.hpp"
 
 #include "alg/PlatoSolverFactory.hpp"
@@ -686,7 +685,6 @@ private:
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
         mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
-        //Plato::post_process_dirichlet_dofs(tVelBcDofs, tVelBcValues);
         auto tPreviouVel = Kokkos::subview(mVelocity, tTimeStep, Kokkos::ALL());
         Plato::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
         aPrimal.vector("previous velocity", tPreviouVel);
@@ -1248,7 +1246,7 @@ private:
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        //Plato::post_process_dirichlet_dofs(tBcDofs, tBcValues);
+
         auto tPreviousVelocity = aPrimal.vector("previous velocity");
         Plato::ScalarVector tInitialVelocity("initial velocity", tPreviousVelocity.size());
         Plato::blas1::update(1.0, tPreviousVelocity, 0.0, tInitialVelocity);
@@ -1480,7 +1478,6 @@ private:
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        //Plato::post_process_dirichlet_dofs(tBcDofs, tBcValues);
 
         // create linear solver
         if( mInputs.isSublist("Linear Solver") == false )
