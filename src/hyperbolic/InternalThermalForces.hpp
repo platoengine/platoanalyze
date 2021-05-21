@@ -97,7 +97,9 @@ public:
     {
         this->setSourceTerm(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
-        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(aInputs);
+
+        auto tMyMaterialName = mSpatialDomain.getMaterialName();
+        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(tMyMaterialName, aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
@@ -239,10 +241,7 @@ private:
         if(aInputs.isSublist("Heat Source"))
         {
             auto tMaterialName = mSpatialDomain.getMaterialName();
-            Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-            auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-            auto tThermalPropBlock = std::string("Thermal Properties");
-            mThermalConductivity = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
+            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
             Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
         }
     }
@@ -254,7 +253,9 @@ private:
     void setCharacteristicLength
     (Teuchos::ParameterList & aInputs)
     {
-        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", aInputs);
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
     }
 
     /***************************************************************************//**
@@ -362,7 +363,9 @@ public:
         this->setPenaltyModelParameters(aInputs);
         this->setThermalDiffusivityRatio(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
-        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(aInputs);
+
+        auto tMyMaterialName = mSpatialDomain.getMaterialName();
+        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(tMyMaterialName, aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
@@ -512,11 +515,12 @@ private:
      ******************************************************************************/
     void setThermalConductivity(Teuchos::ParameterList &aInputs)
     {
-        auto tMaterialName = mSpatialDomain.getMaterialName();
-        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        mThermalConductivity = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
-        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+        if (aInputs.isSublist("Heat Source"))
+        {
+            auto tMaterialName = mSpatialDomain.getMaterialName();
+            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
+            Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+        }
     }
 
     /***************************************************************************//**
@@ -526,9 +530,7 @@ private:
     void setThermalDiffusivityRatio(Teuchos::ParameterList &aInputs)
     {
         auto tMaterialName = mSpatialDomain.getMaterialName();
-        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        mThermalDiffusivityRatio = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
+        mThermalDiffusivityRatio = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Diffusivity Ratio", tMaterialName, aInputs);
         Plato::is_positive_finite_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
     }
 
@@ -539,7 +541,9 @@ private:
     void setCharacteristicLength
     (Teuchos::ParameterList & aInputs)
     {
-        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", aInputs);
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
     }
 
     /***************************************************************************//**

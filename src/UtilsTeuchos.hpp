@@ -143,7 +143,6 @@ inline Type parse_parameter
  *   properties defined in other material blocks.
  *
  * \param [in] aInput    input file metadata
- * \param [in] aBlock    material block
  * \param [in] aProperty material property
  * \param [in] aDomains  spatial domain metadata
  *
@@ -152,7 +151,6 @@ inline Type parse_parameter
 template<typename Type>
 inline Type parse_max_material_property
 (Teuchos::ParameterList& aInputs,
- const std::string& aBlock,
  const std::string& aProperty,
  const std::vector<Plato::SpatialDomain>& aDomains)
 {
@@ -161,21 +159,21 @@ inline Type parse_max_material_property
     {
         auto tMaterialName = tDomain.getMaterialName();
         Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        if( tMaterial.isSublist(aBlock) )
+        auto tMaterialParamList = aInputs.sublist("Material Models").sublist(tMaterialName);
+        if( tMaterialParamList.isParameter(aProperty) )
         {
-            auto tValue = Plato::teuchos::parse_parameter<Plato::Scalar>(aProperty, aBlock, tMaterial);
+            auto tValue = tMaterialParamList.get<Plato::Scalar>(aProperty);
             Plato::is_positive_finite_number(tValue, aProperty);
             tProperties.push_back(tValue);
         }
     }
 
-    Plato::Scalar tMax = std::numeric_limits<Plato::Scalar>::infinity();
+    Plato::Scalar tMaxValue = std::numeric_limits<Plato::Scalar>::infinity();
     if(!tProperties.empty())
     {
-        tMax = *std::max_element(tProperties.begin(), tProperties.end());
+        tMaxValue = *std::max_element(tProperties.begin(), tProperties.end());
     }
-    return tMax;
+    return tMaxValue;
 }
 // function parse_max_material_property
 

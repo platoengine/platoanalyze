@@ -794,11 +794,9 @@ private:
      **********************************************************************************/
     void setCriticalFluidProperties(Teuchos::ParameterList &aInputs)
     {
-        mCriticalThermalDiffusivity = Plato::teuchos::parse_max_material_property<Plato::Scalar>
-            (aInputs, "Thermal Properties", "Thermal Diffusivity", mSpatialModel.Domains);
+        mCriticalThermalDiffusivity = Plato::teuchos::parse_max_material_property<Plato::Scalar>(aInputs, "Thermal Diffusivity", mSpatialModel.Domains);
         Plato::is_positive_finite_number(mCriticalThermalDiffusivity, "Thermal Diffusivity");
-        mCriticalKinematicViscocity = Plato::teuchos::parse_max_material_property<Plato::Scalar>
-            (aInputs, "Viscous Properties", "Kinematic Viscocity", mSpatialModel.Domains);
+        mCriticalKinematicViscocity = Plato::teuchos::parse_max_material_property<Plato::Scalar>(aInputs, "Kinematic Viscocity", mSpatialModel.Domains);
         Plato::is_positive_finite_number(mCriticalKinematicViscocity, "Kinematic Viscocity");
     }
 

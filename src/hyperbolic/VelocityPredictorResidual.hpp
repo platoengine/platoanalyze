@@ -311,7 +311,8 @@ private:
    {
        this->setAritificalDamping(aInputs);
        this->setNaturalBoundaryConditions(aInputs);
-       mViscocity = Plato::Fluids::calculate_viscosity_constant(aInputs);
+       auto tMyMaterialName = mSpatialDomain.getMaterialName();
+       mViscocity = Plato::Fluids::calculate_viscosity_constant(tMyMaterialName, aInputs);
        mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
 
        this->setBrinkmanForces(aDomain, aDataMap, aInputs);
