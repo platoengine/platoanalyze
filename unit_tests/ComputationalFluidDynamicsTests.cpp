@@ -509,10 +509,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
         Plato::blas1::min(tPrimal.vector("previous pressure"), tMinPress);
         TEST_FLOATING_EQUALITY(tGoldMinPress[tPreviousIndex], tMinPress, tTol);
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
@@ -657,10 +653,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
         Plato::blas1::min(tCurrentState.vector("current pressure"), tMinPress);
         TEST_FLOATING_EQUALITY(tGoldMinPress[tIndex], tMinPress, tTol);
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
@@ -805,10 +797,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
         Plato::blas1::min(tPressure, tMinPress);
         TEST_FLOATING_EQUALITY(tGoldMinPress[tIndex], tMinPress, tTol);
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
@@ -924,10 +912,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
 	auto tIndex = &tPath - &tPaths[0];
 	TEST_EQUALITY(tGold[tIndex], tPath.string());
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCriterionAvgSurfPress_Gradient)
@@ -1035,10 +1019,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCrit
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
     auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 1, 6);
     TEST_ASSERT(tError < 1e-4);
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCriterionFlowRate_Gradient)
@@ -1146,10 +1126,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCrite
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
     auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Flow Rate", 1, 6);
     TEST_ASSERT(tError < 1e-4);
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_CheckCriterionGradient)
@@ -1276,10 +1252,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
     auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 2, 5);
     TEST_ASSERT(tError < 1e-4);
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_AverageSurfacePressure_Criterion_Value)
@@ -1400,10 +1372,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_AverageSu
     // call inlet criterion
     tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Pressure");
     TEST_FLOATING_EQUALITY(0.0896025, tCriterionValue, tTol);
-
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    tSysMsg = std::system("rm -rf solution_history");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrinkmanTerm)
@@ -1538,9 +1506,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0519869, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
@@ -1675,9 +1640,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
@@ -1830,9 +1792,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.33372, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1909,11 +1868,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "      <Parameter  name='Sides'    type='string' value='pressure'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor'      type='double' value='0.7'/>"
             "  </ParameterList>"
@@ -1976,9 +1930,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.633259, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_AverageSurfaceTemperature_Criterion_Value)
@@ -2006,7 +1957,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "        <Parameter name='Material Model' type='string' value='air'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -2074,15 +2025,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "      <Parameter  name='Sides'    type='string' value='x+'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
-            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Damping' type='double' value='0.1'/>"
             "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
+            "    <Parameter name='Time Step Damping' type='double' value='0.1'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -2121,10 +2066,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     // call inlet criterion
     tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Temperature");
     TEST_FLOATING_EQUALITY(1.0, tCriterionValue, tTol);
-
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    tSysMsg = std::system("rm -rf solution_history");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
@@ -2208,15 +2149,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "      <Parameter  name='Sides'    type='string' value='x+'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
-            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Damping' type='double' value='0.1'/>"
-            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.9'/>"
+            "    <Parameter name='Critical Time Step Damping' type='double' value='5e-3'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -2285,9 +2220,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
     TEST_FLOATING_EQUALITY(15.077, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
@@ -2379,13 +2311,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Damping' type='double' value='0.3'/>"
-            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.9'/>"
+            "    <Parameter name='Critical Time Step Damping' type='double' value='1e-3'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "</ParameterList>"
@@ -2437,30 +2370,27 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(4155.81, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(4421.79, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-9.88111, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-18.9756, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(19.4625, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(17.1769, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-16.1093, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-16.075, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(14.1776, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(14.6952, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
@@ -4978,6 +4908,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     {
         TEST_FLOATING_EQUALITY(tHostGoldPress(tDof), tHostPress(tDof), tTolerance);
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CleanTrash)
+{
+    auto tSysMsg = std::system("rm -rf cfd_solver_diagnostics.txt solution_history");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 }

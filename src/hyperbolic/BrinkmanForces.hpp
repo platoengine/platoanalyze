@@ -170,11 +170,16 @@ private:
         {
             mImpermeability = Plato::Fluids::get_material_property<Plato::Scalar>("Impermeability Number", tMyMaterialName, aInputs);
         }
-        else
+        else if( Plato::Fluids::is_material_property_defined("Darcy Number", tMyMaterialName, aInputs) && 
+            Plato::Fluids::is_material_property_defined("Prandtl Number", tMyMaterialName, aInputs) )
         {
             auto tDaNum = Plato::Fluids::get_material_property<Plato::Scalar>("Darcy Number", tMyMaterialName, aInputs);
             auto tPrNum = Plato::Fluids::get_material_property<Plato::Scalar>("Prandtl Number", tMyMaterialName, aInputs);
             mImpermeability = tPrNum / tDaNum;
+        }
+        else
+        {
+            mImpermeability = 1e2;
         }
     }
 };

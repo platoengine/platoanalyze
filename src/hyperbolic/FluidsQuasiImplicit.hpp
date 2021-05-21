@@ -69,6 +69,7 @@ private:
     Plato::Scalar mTemperatureTolerance = 1e-2; /*!< temperature solver stopping tolerance */
     Plato::Scalar mSteadyStateTolerance = 1e-5; /*!< steady-state stopping tolerance */
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
+    Plato::Scalar mCriticalTimeStepDamping = 1.0; /*!< critical time step damping, positive number between epsilon and 1.0, where epsilon is usually taken to be 1e-3 or 1e-4 if needed */
     Plato::Scalar mCriticalThermalDiffusivity = 1.0; /*!< fluid thermal diffusivity - used to calculate stable time step */
     Plato::Scalar mCriticalKinematicViscocity = 1.0; /*!< fluid kinematic viscocity - used to calculate stable time step */
     Plato::Scalar mCriticalVelocityLowerBound = 0.5; /*!< dimensionless critical convective velocity upper bound */
@@ -857,8 +858,9 @@ private:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Damping", 1.0);
+            mTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Time Step Damping", 1.0);
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
+            mCriticalTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Critical Time Step Damping", 1.0);
         }
     }
 
@@ -1193,7 +1195,7 @@ private:
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tVelLowerBound = aPrimal.scalar("critical velocity lower bound");
-        auto tOutput = Plato::Fluids::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
+        auto tOutput = mCriticalTimeStepDamping * Plato::Fluids::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
         return tOutput;
     }
 
