@@ -1517,7 +1517,8 @@ private:
             aPrimal.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aPrimal);
-            if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
+            //if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
+            if(tNormResidual <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
             {
                 break;
             }
@@ -1649,7 +1650,8 @@ private:
             aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
+            //if(tNormStep <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
+            if(tNormResidual <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
             {
                 break;
             }
@@ -1745,8 +1747,8 @@ private:
             aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
-            //if(tNormResidual <= mPressureTolerance || tIteration >= mMaxPressureIterations)
+            //if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
+            if(tNormResidual <= mPressureTolerance || tIteration >= mMaxPressureIterations)
             {
                 break;
             }

@@ -457,7 +457,7 @@ public:
             return ( Plato::create_thermomechanical_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
         }
         else
-        if(tLowerPhysics == "incompressible fluid")
+        if(tLowerPhysics == "incompressible fluids")
         {
             return ( Plato::create_incompressible_fluid_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
         }
