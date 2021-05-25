@@ -204,6 +204,17 @@ public:
             tMultiplier = tStabilization * tHeatSourceConstant * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tMultiplier);
+            
+            // 6. add previous inertial force contribution to residual, i.e. R -= M T^n
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
+
+            // 7. add current inertial force contribution to residual, i.e. R += M T^{n+1}
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS, 1.0);
+
         }, "energy conservation residual");
     }
 
@@ -482,6 +493,17 @@ public:
                 static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tScalar);
+
+            // 7. add previous inertial force contribution to residual, i.e. R -= M T^n
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
+
+            // 8. add current inertial force contribution to residual, i.e. R += M T^{n+1}
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS, 1.0);
+
         }, "energy conservation residual");
     }
 

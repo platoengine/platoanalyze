@@ -1067,7 +1067,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,40, 40);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20, 20);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -1906,6 +1906,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"  
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Buoyancy Damping' type='double' value='0.35'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
@@ -1980,8 +1983,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='0.9'/>"
-            "    <Parameter name='Critical Time Step Damping' type='double' value='5e-3'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -2010,7 +2012,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    //tProblem.output("cfd_test_problem");
+    tProblem.output("cfd_test_problem");
 
     // test solution
     auto tTags = tSolution.tags();
