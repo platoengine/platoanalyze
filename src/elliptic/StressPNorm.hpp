@@ -15,6 +15,14 @@
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
 
+#include "alg/Basis.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "PlatoMeshExpr.hpp"
+#include "UtilsOmegaH.hpp"
+#include "alg/Cubature.hpp"
+#include <Omega_h_expr.hpp>
+#include <Omega_h_mesh.hpp>
+
 namespace Plato
 {
 
@@ -52,6 +60,46 @@ class StressPNorm :
 
     Teuchos::RCP<TensorNormBase<mNumVoigtTerms,EvaluationType>> mNorm;
 
+    std::string mFuncString = "1.0";
+
+    Omega_h::Reals mFxnValues;
+
+    void computeSpatialWeightingValues(const Plato::SpatialDomain & aSpatialDomain)
+    {
+      // get refCellQuadraturePoints, quadratureWeights
+      //
+      Plato::OrdinalType tQuadratureDegree = 1;
+
+      Plato::OrdinalType tNumPoints = Plato::Cubature::getNumCubaturePoints(SpaceDim, tQuadratureDegree);
+
+      Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace>
+          tRefCellQuadraturePoints("ref quadrature points", tNumPoints, SpaceDim);
+      Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace> tQuadratureWeights("quadrature weights", tNumPoints);
+
+      Plato::Cubature::getCubature(SpaceDim, tQuadratureDegree, tRefCellQuadraturePoints, tQuadratureWeights);
+
+      // get basis values
+      //
+      Plato::Basis tBasis(SpaceDim);
+      Plato::OrdinalType tNumFields = tBasis.basisCardinality();
+      Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace>
+          tRefCellBasisValues("ref basis values", tNumFields, tNumPoints);
+      tBasis.getValues(tRefCellQuadraturePoints, tRefCellBasisValues);
+
+      // map points to physical space
+      //
+      Plato::OrdinalType tNumCells = aSpatialDomain.numCells();
+      Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemSpace>
+          tQuadraturePoints("quadrature points", tNumCells, tNumPoints, SpaceDim);
+
+      Plato::mapPoints<SpaceDim>(aSpatialDomain, tRefCellQuadraturePoints, tQuadraturePoints);
+
+      // get integrand values at quadrature points
+      //
+      Plato::getFunctionValues<SpaceDim>(tQuadraturePoints, mFuncString, mFxnValues);
+      std::cout << "DERP: " << tNumCells << " , " << tNumPoints << " , " << mFxnValues.size() << ", " << mFuncString << std::endl;
+    }
+
   public:
     /**************************************************************************/
     StressPNorm(
@@ -72,7 +120,7 @@ class StressPNorm :
 
 //TODO quadrature
       mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (Plato::OrdinalType d=2; d<=SpaceDim; d++)
+      for (Plato::OrdinalType d = 2; d <= SpaceDim; d++)
       { 
         mQuadratureWeight /= Plato::Scalar(d);
       }
@@ -81,6 +129,11 @@ class StressPNorm :
 
       TensorNormFactory<mNumVoigtTerms, EvaluationType> normFactory;
       mNorm = normFactory.create(params);
+
+      if (params.isType<std::string>("Function"))
+        mFuncString = params.get<std::string>("Function");
+      
+      this->computeSpatialWeightingValues(aSpatialDomain);
     }
 
     /**************************************************************************/
@@ -97,8 +150,8 @@ class StressPNorm :
       auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::Strain<SpaceDim>                        voigtStrain;
-      Plato::LinearStress<SpaceDim>                  voigtStress(mCellStiffness);
+      Plato::Strain<SpaceDim>                 voigtStrain;
+      Plato::LinearStress<SpaceDim>           voigtStress(mCellStiffness);
 
       using StrainScalarType = 
         typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>,
@@ -117,11 +170,12 @@ class StressPNorm :
         stress("stress", tNumCells, mNumVoigtTerms);
 
       auto quadratureWeight = mQuadratureWeight;
-      auto applyWeighting  = mApplyWeighting;
+      auto applyWeighting   = mApplyWeighting;
+      auto tFxnValues       = mFxnValues;
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType cellOrdinal)
       {
         computeGradient(cellOrdinal, gradient, aConfig, cellVolume);
-        cellVolume(cellOrdinal) *= quadratureWeight;
+        cellVolume(cellOrdinal) *= quadratureWeight * tFxnValues[cellOrdinal];
 
         // compute strain
         //
