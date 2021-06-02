@@ -210,8 +210,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     {
         tPlasticityProblem.output("SimplySupportedBeamTractionThermoPlasticity2D_Elastic");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -416,8 +414,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     {
         tPlasticityProblem.output("CantileverBeamTractionForce2D_Plastic");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -648,8 +644,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     {
         tPlasticityProblem.output("CantileverBeamTractionForce3D_Plastic");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -815,8 +809,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_2D)
     {
         tPlasticityProblem.output("Thermoplasticity_PlasticWork_2D");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -993,7 +985,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
     {
         tPlasticityProblem.output("Thermoplasticity_PlasticWork_3D");
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -1128,8 +1119,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1279,7 +1268,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_3
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_2D)
@@ -1446,8 +1434,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_2D)
     {
         tPlasticityProblem.output("Thermoplasticity_ElasticWork_2D");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1626,7 +1612,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWork_3D)
     {
         tPlasticityProblem.output("Thermoplasticity_ElasticWork_3D");
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_2D)
@@ -1760,8 +1745,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_2
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_3D)
@@ -1910,8 +1893,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticWorkGradientZ_3
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2032,7 +2013,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CriterionTest_2D_Gradi
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -2193,8 +2173,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
     {
         tPlasticityProblem.output("Thermoplasticity_RodElasticSolution2D");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2369,8 +2347,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
     {
         tPlasticityProblem.output("Thermoplasticity_RodElasticSolution3D");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2536,8 +2512,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     {
         tPlasticityProblem.output("Thermoplasticity_ElasticSolution3D");
     }
-    auto tSysMsg = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -2704,7 +2678,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D)
     {
         tPlasticityProblem.output("Thermoplasticity_TotalWork_2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D)
@@ -2882,7 +2855,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D)
     {
         tPlasticityProblem.output("Thermoplasticity_TotalWork_3D");
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D_GradientZ)
@@ -3016,7 +2988,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_2D_GradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D_GradientZ)
@@ -3160,7 +3131,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TotalWork_3D_GradientZ
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D)
@@ -3326,7 +3296,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D)
     {
         tPlasticityProblem.output("Thermoplasticity_ThermalEnergy_2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D)
@@ -3504,7 +3473,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D)
     {
         tPlasticityProblem.output("Thermoplasticity_ThermalEnergy_3D");
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D_GradientZ)
@@ -3638,7 +3606,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_2D_Gradi
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D_GradientZ)
@@ -3782,7 +3749,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ThermalEnergy_3D_Gradi
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TimeData_Test1)
@@ -3871,6 +3837,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_TimeData_Test2)
     TEST_EQUALITY(tTimeData.mNumTimeSteps, 8);
     TEST_FLOATING_EQUALITY(tTimeData.mCurrentTime, 0.0, tTolerance);
     TEST_FLOATING_EQUALITY(tTimeData.mCurrentTimeStepSize, 2.5/8.0, tTolerance);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CleanUpFiles)
+{
+    auto tTrash = std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    PlatoUtestHelpers::ignore_unused_variable_warning(tTrash);
 }
 
 }

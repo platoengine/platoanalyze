@@ -264,6 +264,8 @@ namespace Parabolic
         {
 
             mDataMap.clearStates();
+
+            mDataMap.scalarNodeFields["Topology"] = aControl;
             Plato::ScalarVector tStateInit    = Kokkos::subview(mState,    /*StepIndex=*/0, Kokkos::ALL());
             Plato::ScalarVector tStateDotInit = Kokkos::subview(mStateDot, /*StepIndex=*/0, Kokkos::ALL());
             mResidual  = mPDEConstraint.value(tStateInit, tStateDotInit, aControl, mTimeStep);

@@ -239,6 +239,7 @@ public:
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
 
         mDataMap.clearStates();
+        mDataMap.scalarNodeFields["Topology"] = aControl;
 
         // inner loop for non-linear models
         for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
@@ -314,7 +315,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -345,7 +346,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -376,7 +377,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -472,7 +473,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.")
         }
     }
 
@@ -564,7 +565,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.");
         }
     }
 
@@ -595,7 +596,7 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            THROWERR(std::string("CRITERION WITH NAME '") + aName + "' IS NOT DEFINED IN THE CRITERION MAP.");
         }
     }
 
