@@ -97,7 +97,6 @@ class StressPNorm :
       // get integrand values at quadrature points
       //
       Plato::getFunctionValues<SpaceDim>(tQuadraturePoints, mFuncString, mFxnValues);
-      std::cout << "DERP: " << tNumCells << " , " << tNumPoints << " , " << mFxnValues.size() << ", " << mFuncString << std::endl;
     }
 
   public:

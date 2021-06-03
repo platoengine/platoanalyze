@@ -58,7 +58,7 @@ if (tPlatoProblemList.isSublist("Criteria"))
     {
         std::string tName = tCriteriaList.name(tIndex);
         Plato::Scalar tCriterionValue = tPlatoProblem->criterionValue(tControl, tSolution, tName);
-        std::cout << tName << " " << tCriterionValue << std::endl;
+        printf("Criterion '%s' , Value %0.10e\n", tName.c_str(), tCriterionValue);
     }
 }
 
