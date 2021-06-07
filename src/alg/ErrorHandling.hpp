@@ -83,7 +83,12 @@ inline void Plato::enable_floating_point_exceptions() {
 }
 #endif
 #else  // don't check FPE
-inline void Plato::enable_floating_point_exceptions() {}
+#include <fenv.h>
+// HACK. DON"T COMMIT!
+inline void Plato::enable_floating_point_exceptions() {
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_ALL_EXCEPT - FE_INEXACT - FE_UNDERFLOW);
+}
 #endif
 
 #endif  // PLATO_ERROR_HANDLING_HPP

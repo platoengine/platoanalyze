@@ -169,16 +169,29 @@ inline void inverse(const Plato::OrdinalType& aNumCells, AViewType& aA, BViewTyp
 
     Plato::blas3::identity<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aInverse);
 
+    auto tMatrixSize = aA.extent(1);
     using namespace KokkosBatched;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
         auto tAinv = Kokkos::subview(aInverse, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
 
-        const Plato::Scalar tAlpha = 1.0;
-        SerialLU<Algo::LU::Blocked>::invoke(tA);
-        SerialTrsm<Side::Left,Uplo::Lower,Trans::NoTranspose,Diag::Unit   ,Algo::Trsm::Blocked>::invoke(tAlpha, tA, tAinv);
-        SerialTrsm<Side::Left,Uplo::Upper,Trans::NoTranspose,Diag::NonUnit,Algo::Trsm::Blocked>::invoke(tAlpha, tA, tAinv);
+        Plato::Scalar tNorm = 0.0;
+        for(int i=0; i<tMatrixSize; i++)
+        {
+            for(int j=0; j<tMatrixSize; j++)
+            {
+                tNorm += tA(i,j)*tA(i,j);
+            }
+        }
+
+        if (tNorm != 0.0)
+        {
+            const Plato::Scalar tAlpha = 1.0;
+            SerialLU<Algo::LU::Blocked>::invoke(tA);
+            SerialTrsm<Side::Left,Uplo::Lower,Trans::NoTranspose,Diag::Unit   ,Algo::Trsm::Blocked>::invoke(tAlpha, tA, tAinv);
+            SerialTrsm<Side::Left,Uplo::Upper,Trans::NoTranspose,Diag::NonUnit,Algo::Trsm::Blocked>::invoke(tAlpha, tA, tAinv);
+        }
     }, "compute matrix inverse 3DView");
 }
 // function inverse

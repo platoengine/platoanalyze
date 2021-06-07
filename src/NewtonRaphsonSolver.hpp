@@ -11,6 +11,7 @@
 #include "BLAS3.hpp"
 #include "ParseTools.hpp"
 #include "Plato_Solve.hpp"
+#include "PlatoSequence.hpp"
 #include "AnalyzeMacros.hpp"
 #include "PlatoUtilities.hpp"
 #include "ApplyConstraints.hpp"
@@ -167,6 +168,7 @@ private:
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
         if (mLinearSolver == nullptr)
             THROWERR("Linear solver object not initialized.")
+
         mLinearSolver->solve(*aMatrix, aStates.mDeltaGlobalState, aResidual);
 
         if(mDebugFlag == true)
@@ -553,7 +555,12 @@ public:
      * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
      * \return Indicates if the Newton-Raphson solver converged (flag)
     *******************************************************************************/
-    bool solve(const Plato::ScalarVector & aControls, Plato::CurrentStates & aStates)
+    bool
+    solve(
+        const Plato::ScalarVector                  & aControls,
+              Plato::CurrentStates                 & aStates,
+        const Plato::SequenceStep<mNumSpatialDims> & aSequenceStep
+    )
     {
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
@@ -599,6 +606,9 @@ public:
             }
             if (mDebugFlag) printf("Update global states.\n");
             // update global states
+
+            aSequenceStep.template constrainInactiveNodes<PhysicsT::mNumDofsPerNode>(tGlobalJacobian, tGlobalResidual);
+
             this->updateGlobalStates(tGlobalJacobian, tGlobalResidual, aStates);
             if (mDebugFlag) printf("Update local states.\n");
             // update local states

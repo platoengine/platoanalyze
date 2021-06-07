@@ -3,6 +3,7 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "PlatoMask.hpp"
+#include "SpatialModel.hpp"
 #include "ApplyConstraints.hpp"
 #include "PlatoStaticsTypes.hpp"
 

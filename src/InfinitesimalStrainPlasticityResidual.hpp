@@ -12,6 +12,7 @@
 #include "BodyLoads.hpp"
 #include "NaturalBCs.hpp"
 #include "ScalarGrad.hpp"
+#include "MaterialModel.hpp"
 #include "ProjectToNode.hpp"
 #include "FluxDivergence.hpp"
 #include "StressDivergence.hpp"
@@ -89,6 +90,8 @@ private:
     Plato::Scalar mPressureScaling;                /*!< Pressure scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
+
+    Plato::MaterialModel<mSpaceDim> mMaterialParameters;
 
     Plato::Scalar mPenaltySIMP;               /*!< SIMP penalty for elastic properties */
     Plato::Scalar mMinErsatzSIMP;             /*!< SIMP min ersatz stiffness for elastic properties */
@@ -223,6 +226,11 @@ private:
             mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
+
+            if (tElasticSubList.isSublist("Reference Strain"))
+            {
+                mMaterialParameters.parseTensor("Reference Strain", tElasticSubList);
+            }
         }
         else
         {
@@ -413,10 +421,10 @@ public:
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
-        Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
+        Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence(mMaterialParameters);
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mMaterialParameters);
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /* dof offset */, mSpaceDim> tInterpolatePressGradFromNodal;
@@ -434,7 +442,8 @@ public:
         Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<GradScalarT> tStrainIncr("total strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVector tPrevStrain("previous strain", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
@@ -454,6 +463,8 @@ public:
         auto tElasticBulkModulus = mElasticBulkModulus;
         auto tElasticShearModulus = mElasticShearModulus;
 
+        Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
+
         auto tQuadratureWeight = mCubatureRule->getCubWeight();
         auto tBasisFunctions = mCubatureRule->getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
@@ -463,9 +474,9 @@ public:
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic
-            tComputeTotalStrain(aCellOrdinal, tTotalStrain, aCurrentGlobalState, tConfigurationGradient);
+            tComputeTotalStrain(aCellOrdinal, tStrainIncr, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                        tBasisFunctions, tTotalStrain, tElasticStrain);
+                                                        tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain);
 
             // compute pressure gradient
             tComputeScalarGrad(aCellOrdinal, tNumDofsPerNode, tPressureDofOffset,
@@ -482,7 +493,7 @@ public:
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
             tComputeDeviatoricStress(aCellOrdinal, tPenalizedShearModulus, tElasticStrain, tDeviatoricStress);
-            tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence);
+            tComputeStrainDivergence(aCellOrdinal, tStrainIncr, tPrevStrain, tStrainDivergence);
 
             // compute volume difference
             ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
@@ -507,6 +518,8 @@ public:
             tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, aCurrentLocalState, tPlasticStrain);
             tJ2PlasticityUtils.getBackstressTensor(aCellOrdinal, aCurrentLocalState, tBackStress);
         }, "stabilized infinitesimal strain plasticity residual");
+
+        Plato::toMap(mDataMap, tStrainIncr, "Strain Increment", mSpatialDomain);
 
         this->addBodyForces(aCurrentGlobalState, aControls, aConfig, aResult);
 

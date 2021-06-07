@@ -24,10 +24,12 @@ struct Solutions
 private:
     std::string mPDE; /*!< partial differential equation constraint */
     std::string mPhysics; /*!< physics to be analyzed/simulated */
-    std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution; /*!< map from state solution name to 2D POD array */
-    std::unordered_map<std::string, Plato::OrdinalType> mSolutionNameToNumDofsMap; /*!< map from state solution name to number of dofs */
+    std::vector<std::unordered_map<std::string, Plato::ScalarMultiVector>> mSolution; /*!< map from state solution name to 2D POD array */
+    std::vector<std::unordered_map<std::string, Plato::OrdinalType>> mSolutionNameToNumDofsMap; /*!< map from state solution name to number of dofs */
 
 public:
+    Plato::DataMap DataMap;
+
     /***************************************************************************//**
      * \fn Solutions
      *
@@ -35,7 +37,7 @@ public:
      * \param [in] aPhysics physics to be analyzed/simulated
      * \param [in] aPDE     partial differential equation constraint type
      ******************************************************************************/
-    explicit Solutions(std::string aPhysics = "undefined", std::string aPDE = "undefined");
+    explicit Solutions(std::string aPhysics = "undefined", std::string aPDE = "undefined", Plato::OrdinalType aNumSolutions=1);
 
     /***************************************************************************//**
      * \fn std::string pde
@@ -59,7 +61,7 @@ public:
      * \brief Return number of elements in solution map.
      * \return number of elements in solution map (integer)
      ******************************************************************************/
-    Plato::OrdinalType size() const;
+    Plato::OrdinalType size(Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn std::vector<std::string> tags
@@ -67,24 +69,26 @@ public:
      * \brief Return list with state solution tags.
      * \return list with state solution tags
      ******************************************************************************/
-    std::vector<std::string> tags() const;
+    std::vector<std::string> tags(Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn void set
      *
      * \brief Set value of an element in the solution map.
+     * \param aInd  data index
      * \param aTag  data tag
      * \param aData 2D POD array
      ******************************************************************************/
-    void set(const std::string& aTag, const Plato::ScalarMultiVector& aData);
+    void set(const std::string& aTag, const Plato::ScalarMultiVector& aData, Plato::OrdinalType aInd=0);
 
     /***************************************************************************//**
      * \fn Plato::ScalarMultiVector get
      *
      * \brief Return 2D POD array.
+     * \param aInd  data index
      * \param aTag data tag
      ******************************************************************************/
-    Plato::ScalarMultiVector get(const std::string& aTag) const;
+    Plato::ScalarMultiVector get(const std::string& aTag, Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn void set number of degrees of freedom (dofs) per node in map
@@ -93,7 +97,7 @@ public:
      * \param aTag  data tag
      * \param aNumDofs number of dofs
      ******************************************************************************/
-    void setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs);
+    void setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs, Plato::OrdinalType aInd=0);
 
     /***************************************************************************//**
      * \fn Plato::OrdinalType get the number of degrees of freedom (dofs)
@@ -101,7 +105,7 @@ public:
      * \brief Return the number of dofs
      * \param aTag data tag
      ******************************************************************************/
-    Plato::OrdinalType getNumDofs(const std::string& aTag) const;
+    Plato::OrdinalType getNumDofs(const std::string& aTag, Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn Plato::OrdinalType get the number of time steps
@@ -109,14 +113,14 @@ public:
      * \brief Return the number of time steps
      * \param aTag data tag
      ******************************************************************************/
-    Plato::OrdinalType getNumTimeSteps() const;
+    Plato::OrdinalType getNumTimeSteps(Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn void print
      *
      * \brief Print solutions metadata.
      ******************************************************************************/
-    void print() const;
+    void print(Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn bool defined
@@ -125,7 +129,7 @@ public:
      * \param [in] aTag solution tag/identifier
      * \return boolean (true = is defined; false = not defined) 
      ******************************************************************************/
-    bool defined(const std::string & aTag) const;
+    bool defined(const std::string & aTag, Plato::OrdinalType aInd=0) const;
 
     /***************************************************************************//**
      * \fn bool empty

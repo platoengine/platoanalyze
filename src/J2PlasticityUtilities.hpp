@@ -391,20 +391,24 @@ class J2PlasticityUtilities
     aYieldSurfaceNormal(aCellOrdinal, 5) = aDeviatoricStress(aCellOrdinal, 5) - aLocalState(aCellOrdinal,13);
 
     // Compute the norm || stress_deviator - backstress ||
-    aDevStressMinusBackstressNorm(aCellOrdinal) = sqrt(pow(aYieldSurfaceNormal(aCellOrdinal, 0), 2) +
+    aDevStressMinusBackstressNorm(aCellOrdinal) =      pow(aYieldSurfaceNormal(aCellOrdinal, 0), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 1), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 2), 2) +
                                                 mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 3), 2) +
                                                 mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 4), 2) +
-                                                mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 5), 2));
+                                                mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 5), 2);
 
     // Normalize the yield surface normal
-    aYieldSurfaceNormal(aCellOrdinal, 0) /= aDevStressMinusBackstressNorm(aCellOrdinal);
-    aYieldSurfaceNormal(aCellOrdinal, 1) /= aDevStressMinusBackstressNorm(aCellOrdinal);
-    aYieldSurfaceNormal(aCellOrdinal, 2) /= aDevStressMinusBackstressNorm(aCellOrdinal);
-    aYieldSurfaceNormal(aCellOrdinal, 3) /= aDevStressMinusBackstressNorm(aCellOrdinal);
-    aYieldSurfaceNormal(aCellOrdinal, 4) /= aDevStressMinusBackstressNorm(aCellOrdinal);
-    aYieldSurfaceNormal(aCellOrdinal, 5) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+    if(aDevStressMinusBackstressNorm(aCellOrdinal) > 0)
+    {
+      aDevStressMinusBackstressNorm(aCellOrdinal) = sqrt(aDevStressMinusBackstressNorm(aCellOrdinal));
+      aYieldSurfaceNormal(aCellOrdinal, 0) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+      aYieldSurfaceNormal(aCellOrdinal, 1) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+      aYieldSurfaceNormal(aCellOrdinal, 2) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+      aYieldSurfaceNormal(aCellOrdinal, 3) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+      aYieldSurfaceNormal(aCellOrdinal, 4) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+      aYieldSurfaceNormal(aCellOrdinal, 5) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+    }
   }
 
 

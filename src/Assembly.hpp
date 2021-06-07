@@ -95,28 +95,27 @@ flatten_vector_workset(
     auto tNumCells = aDomain.numCells();
     auto tCellOrdinals = aDomain.cellOrdinals();
 
-    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    if(tNumCells > static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
-    }
-    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
-    }
-    if(tNumCells <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nNumber of cells, i.e. elements, argument is <= zero.\n");
-    }
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
-        const auto tDofOffset = tCellOrdinal * NumDofsPerCell;
-        for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerCell; tDofIndex++)
+        if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
         {
-          aOutput(tDofOffset + tDofIndex) = aInput(aCellOrdinal, tDofIndex);
+            THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
         }
-    }, "flatten residual vector");
+        if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
+        }
+
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+            const auto tDofOffset = tCellOrdinal * NumDofsPerCell;
+            for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerCell; tDofIndex++)
+            {
+              aOutput(tDofOffset + tDofIndex) = aInput(aCellOrdinal, tDofIndex);
+            }
+        }, "flatten residual vector");
+    }
 }
 // function flatten_vector_workset
 
@@ -140,29 +139,28 @@ assemble_vector_workset(
 )
 {
     auto tNumCells = aDomain.numCells();
-    auto tCellOrdinals = aDomain.cellOrdinals();
 
-    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    if(tNumCells > static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
-    }
-    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
-    }
-    if(tNumCells <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nNumber of cells, i.e. elements, argument is <= zero.\n");
-    }
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
-        for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerCell; tDofIndex++)
+        if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            aOutput(tCellOrdinal, tDofIndex) = aInput(aCellOrdinal, tDofIndex);
+            THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
         }
-    }, "combine residual vector");
+        if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
+        }
+
+        auto tCellOrdinals = aDomain.cellOrdinals();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+            for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerCell; tDofIndex++)
+            {
+                aOutput(tCellOrdinal, tDofIndex) = aInput(aCellOrdinal, tDofIndex);
+            }
+        }, "combine residual vector");
+    }
 }
 // function assemble_vector_workset
 
@@ -296,32 +294,37 @@ transform_ad_type_to_pod_3Dview(
           Plato::ScalarArray3D              & aOutput
 )
 {
-    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nInput 2D array size is zero.\n");
-    }
-    if(aDomain.numCells() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
-    }
-    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nOutput 3D array size is zero.\n");
-    }
-
     auto tNumCells = aDomain.numCells();
-    auto tCellOrdinals = aDomain.cellOrdinals();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+
+    if(tNumCells > static_cast<Plato::OrdinalType>(0))
     {
-        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
-        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
+
+        if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
-            {
-                aOutput(tCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
-            }
+            THROWERR("\nInput 2D array size is zero.\n");
         }
-    }, "convert AD type to Scalar type");
+        if(aDomain.numCells() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
+        }
+        if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nOutput 3D array size is zero.\n");
+        }
+
+        auto tCellOrdinals = aDomain.cellOrdinals();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+            for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
+            {
+                for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
+                {
+                    aOutput(tCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
+                }
+            }
+        }, "convert AD type to Scalar type");
+    }
 }
 // function transform_ad_type_to_pod_3Dview
 /************************************************************************//**

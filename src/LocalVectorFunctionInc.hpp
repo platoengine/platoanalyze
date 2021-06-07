@@ -375,7 +375,7 @@ public:
                                                    tLocalStateWS,  tPrevLocalStateWS,
                                                    tControlWS, tConfigWS, tResidualWS, aTimeData);
 
-            Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tResidualWS, tResidualVector);
+            Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tDomain, tResidualWS, tResidualVector);
         }
         return tResidualVector;
     }
@@ -938,7 +938,7 @@ public:
                                                     tLocalStateWS,  tPrevLocalStateWS, 
                                                     tControlWS, tConfigWS, tJacobianWS, aTimeData);
 
-            Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+            Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumNodesPerCell>(tDomain, tJacobianWS, tOutputJacobian);
         }
         return tOutputJacobian;
     }

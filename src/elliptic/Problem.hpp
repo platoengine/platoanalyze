@@ -70,8 +70,6 @@ private:
     Plato::OrdinalType mNumNewtonSteps;
     Plato::Scalar      mNewtonResTol, mNewtonIncTol;
 
-    bool mSaveState;
-
     Plato::ScalarMultiVector mAdjoint;
     Plato::ScalarVector mResidual;
 
@@ -107,7 +105,6 @@ public:
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aProblemParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Increment Tolerance", 0.0)),
       mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Residual Tolerance",  0.0)),
-      mSaveState     (aProblemParams.sublist("Elliptic").isType<Teuchos::Array<std::string>>("Plottable")),
       mResidual      ("MyResidual", mPDE->size()),
       mStates        ("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
       mJacobian      (Teuchos::null),
@@ -276,12 +273,10 @@ public:
             }
         }
 
-        if ( mSaveState )
-        {
-            // evaluate at new state
-            mResidual  = mPDE->value(tStatesSubView, aControl);
-            mDataMap.saveState();
-        }
+        // evaluate at new state
+        mResidual  = mPDE->value(tStatesSubView, aControl);
+        mDataMap.scalarNodeFields["topology"] = aControl;
+        mDataMap.saveState();
 
         auto tSolution = this->getSolution();
         return tSolution;

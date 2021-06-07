@@ -12,9 +12,13 @@ namespace Plato
 
 Solutions::Solutions
 (std::string aPhysics,
- std::string aPDE) :
+ std::string aPDE,
+ Plato::OrdinalType aNumSolutions
+ ) :
     mPDE(aPDE),
-    mPhysics(aPhysics)
+    mPhysics(aPhysics),
+    mSolution{(long unsigned int)aNumSolutions},
+    mSolutionNameToNumDofsMap{(long unsigned int)aNumSolutions}
 {return;}
 
 std::string Solutions::pde() const
@@ -27,56 +31,56 @@ std::string Solutions::physics() const
     return (mPhysics);
 }
 
-Plato::OrdinalType Solutions::size() const
+Plato::OrdinalType Solutions::size(Plato::OrdinalType aInd) const
 {
-    return (mSolution.size());
+    return (mSolution[aInd].size());
 }
 
-std::vector<std::string> Solutions::tags() const
+std::vector<std::string> Solutions::tags(Plato::OrdinalType aInd) const
 {
     std::vector<std::string> tTags;
-    for(auto& tPair : mSolution)
+    for(auto& tPair : mSolution[aInd])
     {
         tTags.push_back(tPair.first);
     }
     return tTags;
 }
 
-void Solutions::set(const std::string& aTag, const Plato::ScalarMultiVector& aData)
+void Solutions::set(const std::string& aTag, const Plato::ScalarMultiVector& aData, Plato::OrdinalType aInd)
 {
     auto tLowerTag = Plato::tolower(aTag);
-    mSolution[tLowerTag] = aData;
+    mSolution[aInd][tLowerTag] = aData;
 }
 
-Plato::ScalarMultiVector Solutions::get(const std::string& aTag) const
+Plato::ScalarMultiVector Solutions::get(const std::string& aTag, Plato::OrdinalType aInd) const
 {
     auto tLowerTag = Plato::tolower(aTag);
-    auto tItr = mSolution.find(tLowerTag);
-    if(tItr == mSolution.end())
+    auto tItr = mSolution[aInd].find(tLowerTag);
+    if(tItr == mSolution[aInd].end())
     {
         THROWERR(std::string("Solution with tag '") + aTag + "' is not defined.")
     }
     return tItr->second;
 }
 
-void Solutions::setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs)
+void Solutions::setNumDofs(const std::string& aTag, const Plato::OrdinalType& aNumDofs, Plato::OrdinalType aInd)
 {
     auto tLowerTag = Plato::tolower(aTag);
-    mSolutionNameToNumDofsMap[tLowerTag] = aNumDofs;
+    mSolutionNameToNumDofsMap[aInd][tLowerTag] = aNumDofs;
 }
 
-Plato::OrdinalType Solutions::getNumDofs(const std::string& aTag) const
+Plato::OrdinalType Solutions::getNumDofs(const std::string& aTag, Plato::OrdinalType aInd) const
 {
     auto tLowerTag = Plato::tolower(aTag);
-    auto tItr = mSolutionNameToNumDofsMap.find(tLowerTag);
-    if(tItr == mSolutionNameToNumDofsMap.end())
+    auto tItr = mSolutionNameToNumDofsMap[aInd].find(tLowerTag);
+    if(tItr == mSolutionNameToNumDofsMap[aInd].end())
     {
         THROWERR(std::string("Solution NumDofs with tag '") + aTag + "' is not defined.")
     }
     return tItr->second;
 }
 
-Plato::OrdinalType Solutions::getNumTimeSteps() const
+Plato::OrdinalType Solutions::getNumTimeSteps(Plato::OrdinalType aInd) const
 {
     if(this->empty())
     {
@@ -84,24 +88,24 @@ Plato::OrdinalType Solutions::getNumTimeSteps() const
     }
     auto tTags = this->tags();
     const std::string tTag = tTags[0];
-    auto tItr = mSolution.find(tTag);
+    auto tItr = mSolution[aInd].find(tTag);
     auto tSolution = tItr->second;
     return tSolution.extent(0);
 }
 
-void Solutions::print() const
+void Solutions::print(Plato::OrdinalType aInd) const
 {
-    if(mSolution.empty())
+    if(mSolution[aInd].empty())
     { return; }
-    for(auto& tPair : mSolution)
+    for(auto& tPair : mSolution[aInd])
     { Plato::print_array_2D(tPair.second, tPair.first); }
 }
 
-bool Solutions::defined(const std::string & aTag) const
+bool Solutions::defined(const std::string & aTag, Plato::OrdinalType aInd) const
 {
     auto tLowerTag = Plato::tolower(aTag);
-    auto tItr = mSolution.find(tLowerTag);
-    if(tItr == mSolution.end())
+    auto tItr = mSolution[aInd].find(tLowerTag);
+    if(tItr == mSolution[aInd].end())
     {
         return false;
     }
@@ -110,7 +114,11 @@ bool Solutions::defined(const std::string & aTag) const
 
 bool Solutions::empty() const
 {
-    return mSolution.empty();
+    bool tIsEmpty(true);
+    for (auto& tSolution : mSolution)
+    {
+        tIsEmpty &= tSolution.empty();
+    }
 }
 
 }

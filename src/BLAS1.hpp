@@ -257,6 +257,35 @@ inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT &
 // function axpy
 
 /******************************************************************************//**
+ * \brief Update elements of B with scaled values of A, /f$ B = B + alpha*A /f$
+ * \param [in] aAlpha   multiplier of 2D container A
+ * \param [in] aInput   input 2D Kokkos container
+ * \param [out] aOutput output 2D Kokkos container
+**********************************************************************************/
+template<typename VecT>
+inline void axpy2d(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT & aOutput)
+{
+    if(aInput.extent(0) != aOutput.extent(0) || aInput.extent(1) != aOutput.extent(1))
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT MULTIVECTOR HAS SIZE = " << aInput.extent(0) << " X " << aInput.extent(1)
+                << " AND OUTPUT MULTIVECTOR HAS SIZE = " << aOutput.extent(0) << " X " << aOutput.extent(1) << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
+    Plato::OrdinalType tSize = aInput.extent(1);
+    Plato::OrdinalType tNumLocalVals = aInput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        for(Plato::OrdinalType iSize=0; iSize<tSize; iSize++)
+        {
+            aOutput(aOrdinal, iSize) += aAlpha * aInput(aOrdinal, iSize);
+        }
+    }, "Plato::axpy");
+}
+// function axpy
+
+/******************************************************************************//**
  * \brief Update elements of B with scaled values of A, /f$ B = beta*B + alpha*A /f$
  * \param [in] aAlpha multiplier of 1D container A
  * \param [in] aInput   input 1D Kokkos container

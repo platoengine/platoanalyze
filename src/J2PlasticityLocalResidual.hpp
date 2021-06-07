@@ -1,7 +1,9 @@
 #pragma once
 
+#include "ToMap.hpp"
 #include "Strain.hpp"
 #include "ScalarGrad.hpp"
+#include "MaterialModel.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "Plato_TopOptFunctors.hpp"
@@ -50,6 +52,8 @@ private:
     using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
 
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
+
+    Plato::MaterialModel<mSpaceDim> mMaterialParameters;
 
     Plato::Scalar mThermalExpansionCoefficient;    /*!< Thermal Expansivity */
     Plato::Scalar mReferenceTemperature;           /*!< reference temperature */
@@ -150,6 +154,11 @@ private:
           auto tPoissonsRatio  = tElasticSubList.get<Plato::Scalar>("Poissons Ratio");
           mElasticShearModulus = tElasticModulus /
                   (static_cast<Plato::Scalar>(2.0) * (static_cast<Plato::Scalar>(1.0) + tPoissonsRatio));
+
+          if (tElasticSubList.isSublist("Reference Strain"))
+          {
+              mMaterialParameters.parseTensor("Reference Strain", tElasticSubList);
+          }         
         }
         else if( aMaterialParams.isSublist("Isotropic Linear Thermoelastic") )
         {
@@ -315,7 +324,7 @@ public:
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
       Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
-            tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, mTemperatureScaling);
+            tThermoPlasticityUtils(mMaterialParameters);
 
       // Many views
       Plato::ScalarVectorT<ConfigT>             tCellVolume("cell volume unused", tNumCells);
@@ -323,8 +332,11 @@ public:
       Plato::ScalarArray3DT<ConfigT>            tGradient("gradient", tNumCells,mNumNodesPerCell,mSpaceDim);
       Plato::ScalarMultiVectorT<StressT>        tDeviatoricStress("deviatoric stress", tNumCells,mNumStressTerms);
       Plato::ScalarMultiVectorT<StressT>        tYieldSurfaceNormal("yield surface normal",tNumCells,mNumStressTerms);
-      Plato::ScalarMultiVectorT<TotalStrainT>   tTotalStrain("total strain",tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVectorT<TotalStrainT>   tStrainIncr("total strain",tNumCells,mNumStressTerms);
       Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVector                  tPrevStrain("previous strain", tNumCells, mNumStressTerms);
+
+      Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;
@@ -346,9 +358,9 @@ public:
         tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
 
         // compute elastic strain
-        tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tGradient);
+        tComputeTotalStrain(aCellOrdinal, tStrainIncr, aGlobalState, tGradient);
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
-                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
+                                                    tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain);
 
         // apply penalization to elastic shear modulus
         ControlT tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
@@ -406,6 +418,9 @@ public:
         }
 
       }, "Compute cell local residuals");
+
+      Plato::toMap(mDataMap, tStrainIncr, "Strain Increment", mSpatialDomain);
+
     }
 
     /**************************************************************************//**
@@ -444,12 +459,15 @@ public:
 
       // Many views
       Plato::ScalarVector      tCellVolume("cell volume unused",tNumCells);
-      Plato::ScalarMultiVector tTotalStrain("total strain",tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVector tStrainIncr("total strain",tNumCells,mNumStressTerms);
       Plato::ScalarMultiVector tElasticStrain("elastic strain",tNumCells,mNumStressTerms);
       Plato::ScalarArray3D     tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
       Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress",tNumCells,mNumStressTerms);
       Plato::ScalarMultiVector tYieldSurfaceNormal("yield surface normal",tNumCells,mNumStressTerms);
       Plato::ScalarVector      tDevStressMinusBackstressNorm("||(deviatoric stress - backstress)||",tNumCells);
+      Plato::ScalarMultiVector tPrevStrain("previous strain", tNumCells, mNumStressTerms);
+
+      Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;
@@ -479,9 +497,9 @@ public:
         tJ2PlasticityUtils.updatePlasticStrainAndBackstressElasticStep(aCellOrdinal, aPrevLocalState, aLocalState);
 
         // compute elastic strain
-        tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tGradient);
+        tComputeTotalStrain(aCellOrdinal, tStrainIncr, aGlobalState, tGradient);
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
-                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
+                                                    tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain);
 
         // apply penalization to elastic shear modulus
         Plato::Scalar tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
@@ -521,6 +539,9 @@ public:
                                                                          tPenalizedHardeningModulusKinematic, aLocalState);
         }
       }, "Update local state dofs");
+
+      Plato::toMap(mDataMap, tStrainIncr, "Strain Increment", mSpatialDomain);
+
     }
 
     /******************************************************************************//**
