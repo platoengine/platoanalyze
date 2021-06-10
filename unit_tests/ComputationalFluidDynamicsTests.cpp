@@ -257,6 +257,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -412,6 +413,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -556,6 +558,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -700,6 +703,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -824,6 +828,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCrit
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -931,6 +936,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCrite
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -990,7 +996,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "    <ParameterList name='air'>"
             "      <Parameter  name='Impermeability Number'  type='double'  value='100'/>"
             "      <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
-            "      <Parameter  name='Thermal Diffusivity Ratio' type='double' value='1.0' />"
+            "      <Parameter  name='Thermal Diffusivity Ratio' type='double' value='0.75' />"
             "      <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
             "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
@@ -1057,17 +1063,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
-                "  <ParameterList  name='Convergence'>"
-                "    <Parameter name='Output Frequency' type='int' value='1'/>"
-                "    <Parameter name='Maximum Iterations' type='int' value='5'/>"
-                "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
-                "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='2'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
+            "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20, 20);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,60,60);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -1080,7 +1087,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 2, 5);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 1, 4);
     TEST_ASSERT(tError < 1e-4);
 }
 
@@ -1167,6 +1174,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_AverageSu
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -1276,6 +1284,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1409,6 +1418,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1555,6 +1565,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1703,6 +1714,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1861,6 +1873,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -1987,6 +2000,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -2012,7 +2026,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
 
     // test solution
     auto tTags = tSolution.tags();
@@ -2031,26 +2045,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(252.224, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(81.6416, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-229.947, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-70.5306, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(3.70439, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(3.66646, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-3.34883, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-2.04227, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(15.077, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(14.8003, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
 }
 
@@ -2143,11 +2157,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='0.9'/>"
-            "    <Parameter name='Critical Time Step Damping' type='double' value='1e-3'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -2202,26 +2216,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(4421.79, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(3414.71, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-18.9756, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-4.16082, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(17.1769, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(25.4783, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-16.075, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-14.1765, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(14.6952, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(12.2212, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
 }
 
