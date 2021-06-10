@@ -455,7 +455,7 @@ public:
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
       Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
-            tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, mTemperatureScaling);
+            tThermoPlasticityUtils(mMaterialParameters);
 
       // Many views
       Plato::ScalarVector      tCellVolume("cell volume unused",tNumCells);

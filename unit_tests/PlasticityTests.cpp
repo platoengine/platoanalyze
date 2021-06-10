@@ -93,6 +93,44 @@ namespace PlasticityTests
     "</ParameterList>                                                                            \n"
   );
 
+    Teuchos::RCP<Teuchos::ParameterList> tGenericParamList_RefStrain =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                        \n"
+    "  <ParameterList name='Spatial Model'>                                                      \n"
+    "    <ParameterList name='Domains'>                                                          \n"
+    "      <ParameterList name='Design Volume'>                                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>                \n"
+    "      </ParameterList>                                                                      \n"
+    "    </ParameterList>                                                                        \n"
+    "  </ParameterList>                                                                          \n"
+    "  <ParameterList name='Material Models'>                                                    \n"
+    "    <ParameterList name='Unobtainium'>                                                      \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                                       \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                     \n"
+    "        <ParameterList name='Reference Strain'>                                             \n"
+    "          <Parameter  name='c11' type='double' value='0.01'/>                             \n"
+    "          <Parameter  name='c22' type='double' value='0.01'/>                             \n"
+    "          <Parameter  name='c33' type='double' value='-0.02'/>                            \n"
+    "        </ParameterList>                                                                    \n"
+    "      </ParameterList>                                                                      \n"
+    "      <ParameterList name='Plasticity Model'>                                               \n"
+    "        <ParameterList name='J2 Plasticity'>                                                \n"
+    "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
+    "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
+    "          <Parameter  name='Initial Yield Stress' type='double' value='3.0'/>               \n"
+    "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "        </ParameterList>                                                                    \n"
+    "      </ParameterList>                                                                      \n"
+    "    </ParameterList>                                                                        \n"
+    "  </ParameterList>                                                                          \n"
+    "</ParameterList>                                                                            \n"
+  );
+
 
 using namespace PlatoUtestHelpers;
 
@@ -1537,6 +1575,149 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
                                                 tGold[tCellIndex][tStressIndex], tTolerance);
 }
 
+//
+// begin Reference Strain unit tests:
+// 
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradGlobalState3D_RefStrain)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::Plasticity<tSpaceDim>;
+
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Jacobian;
+
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_RefStrain);
+
+    tDataMap.scalarMultiVectors["Previous Strain"] = Plato::ScalarMultiVector("previous strain", tMesh->nelems(), PhysicsT::mNumVoigtTerms);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_RefStrain);
+
+    // update the local state before calling gradient checker
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>\n"
+        "</ParameterList>                    \n"
+      );
+    const Plato::OrdinalType tNumCells = tMesh->nelems();
+    const Plato::OrdinalType tNumVerts = tMesh->nverts();
+    constexpr Plato::OrdinalType tDofsPerNode = PhysicsT::mNumDofsPerNode;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
+    const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
+    Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
+    Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
+    Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
+    Plato::ScalarVector tPrevLocalState("local state", tNumLocalDofs);
+    Plato::ScalarVector tControl("Controls", tNumVerts);
+
+    Plato::TimeData tTimeData(*tInputs);
+    tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
+                                         tLocalState, tPrevLocalState,
+                                         tControl, tTimeData); 
+
+    Plato::test_partial_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevGlobalState3D_RefStrain)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::Plasticity<tSpaceDim>;
+
+    using EvalType = typename Plato::Evaluation<PhysicsT>::JacobianP;
+
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_RefStrain);
+
+    tDataMap.scalarMultiVectors["Previous Strain"] = Plato::ScalarMultiVector("previous strain", tMesh->nelems(), PhysicsT::mNumVoigtTerms);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_RefStrain);
+    Plato::test_partial_prev_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradLocalState3D_RefStrain)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::Plasticity<tSpaceDim>;
+
+    using EvalType = typename Plato::Evaluation<PhysicsT>::LocalJacobian;
+
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_RefStrain);
+
+    tDataMap.scalarMultiVectors["Previous Strain"] = Plato::ScalarMultiVector("previous strain", tMesh->nelems(), PhysicsT::mNumVoigtTerms);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_RefStrain);
+
+    // update the local state before calling gradient checker
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>\n"
+        "</ParameterList>                    \n"
+      );
+    const Plato::OrdinalType tNumCells = tMesh->nelems();
+    const Plato::OrdinalType tNumVerts = tMesh->nverts();
+    constexpr Plato::OrdinalType tDofsPerNode = PhysicsT::mNumDofsPerNode;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
+    const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
+    Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
+    Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
+    Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
+    Plato::ScalarVector tPrevLocalState("local state", tNumLocalDofs);
+    Plato::ScalarVector tControl("Controls", tNumVerts);
+
+    Plato::TimeData tTimeData(*tInputs);
+    tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
+                                         tLocalState, tPrevLocalState,
+                                         tControl, tTimeData); 
+
+    Plato::test_partial_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevLocalState3D_RefStrain)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::Plasticity<tSpaceDim>;
+
+    using EvalType = typename Plato::Evaluation<PhysicsT>::LocalJacobianP;
+
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_RefStrain);
+
+    tDataMap.scalarMultiVectors["Previous Strain"] = Plato::ScalarMultiVector("previous strain", tMesh->nelems(), PhysicsT::mNumVoigtTerms);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_RefStrain);
+    Plato::test_partial_prev_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
+}
+
+//
+// end Reference Strain unit tests:
+// 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradGlobalState3D)
 {
