@@ -14,333 +14,8 @@
 
 #include "PlatoTestHelpers.hpp"
 
-namespace Plato
-{
-
-namespace Fluids
-{
-
-/***************************************************************************//**
- * \tparam PhysicsT    Plato physics type
- * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
- *
- * \class InternalDissipationEnergy
- *
- * \brief Includes functionalities to evaluate the internal dissipation energy.
- *
- * \f[ \int_{\Omega_e}\left[ \tau_{ij}(\theta):\tau_{ij}(\theta) + \alpha(\theta)u_i^2 \right] d\Omega_e \f],
- *
- * where \f$\theta\f$ denotes the controls, \f$\alpha\f$ denotes the Brinkman
- * penalization parameter.
- ******************************************************************************/
-/*
-template<typename PhysicsT, typename EvaluationT>
-class InternalDissipationEnergy : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
-{
-private:
-    static constexpr auto mNumSpatialDims    = PhysicsT::SimplexT::mNumSpatialDims;         
-    static constexpr auto mNumNodesPerCell   = PhysicsT::SimplexT::mNumNodesPerCell;        
-    static constexpr auto mNumVelDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerCell; 
-
-    // local forward automatic differentiation typenames
-    using ResultT  = typename EvaluationT::ResultScalarType;          
-    using CurVelT  = typename EvaluationT::CurrentMomentumScalarType;  
-    using ConfigT  = typename EvaluationT::ConfigScalarType;           
-    using ControlT = typename EvaluationT::ControlScalarType;          
-    using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>; 
-
-    // set local typenames
-    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>; 
-
-    // member parameters
-    std::string mFuncName;
-    Plato::Scalar mImpermeability = 1.0; 
-    Plato::Scalar mBrinkmanConvexityParam = 0.5; 
-
-    // member metadata
-    Plato::DataMap& mDataMap;
-    CubatureRule mCubatureRule; 
-    const Plato::SpatialDomain& mSpatialDomain; 
-
-public:
-    InternalDissipationEnergy
-    (const std::string          & aName,
-     const Plato::SpatialDomain & aDomain,
-     Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs) :
-         mFuncName(aName),
-         mDataMap(aDataMap),
-         mCubatureRule(CubatureRule()),
-         mSpatialDomain(aDomain)
-    {
-        this->setImpermeability(aInputs);
-        this->setBrinkmannModel(aInputs);
-    }
-
-    virtual ~InternalDissipationEnergy(){}
-
-    std::string name() const override { return mFuncName; }
-
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
-    {
-        // set local functors
-        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0, mNumSpatialDims> tIntrplVectorField;
-
-        // set local worksets
-        auto tNumCells = mSpatialDomain.numCells();
-        Plato::ScalarVectorT<ConfigT> tVolumeTimesWeight("volume times gauss weight", tNumCells);
-        Plato::ScalarVectorT<CurVelT> tCurVelDotCurVel("current velocity dot current velocity", tNumCells);
-        Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarArray3DT<StrainT> tStrainRate("strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
-        Plato::ScalarArray3DT<ResultT> tDevStress("deviatoric stress", tNumCells, mNumSpatialDims, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<CurVelT> tCurVelGP("current velocity at Gauss point", tNumCells, mNumSpatialDims);
-
-        // set input worksets
-        auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
-        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tCurVelWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurVelT>>(aWorkSets.get("current velocity"));
-
-        // transfer member data to device
-        auto tImpermeability = mImpermeability;
-        auto tBrinkConvexParam = mBrinkmanConvexityParam;
-
-        auto tCubWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tVolumeTimesWeight);
-            tVolumeTimesWeight(aCellOrdinal) *= tCubWeight;
-
-            // calculate deviatoric stress contribution to internal energy
-            Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tCurVelWS, tGradient, tStrainRate);
-            auto tTwoTimesPrNum = static_cast<Plato::Scalar>(2.0) * tPrNum;
-            Plato::blas3::scale<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tTwoTimesPrNum, tStrainRate, tDevStress);
-            Plato::blas3::dot<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
-
-            // calculate fictitious material model (i.e. brinkman model) contribution to internal energy
-            ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tImpermeability, tBrinkConvexParam, tControlWS);
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            Plato::blas2::dot<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
-            aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelDotCurVel(aCellOrdinal);
-
-            // apply gauss weight times volume multiplier
-            aResult(aCellOrdinal) *= tVolumeTimesWeight(aCellOrdinal);
-
-        }, "internal energy");
-    }
-
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
-    { return; }
-
-private:
-    void setBrinkmannModel(Teuchos::ParameterList & aInputs)
-    {
-        auto tMyCriterionInputs = aInputs.sublist("Criteria").sublist(mFuncName);
-        if(tMyCriterionInputs.isSublist("Penalty Function"))
-        {
-            auto tPenaltyFuncInputs = tMyCriterionInputs.sublist("Penalty Function");
-            mBrinkmanConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
-        }
-    }
-
-    void setImpermeability
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(Plato::Fluids::is_impermeability_defined(aInputs))
-        {
-            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Flow Properties", aInputs);
-        }
-        else
-        {
-            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Flow Properties", aInputs);
-            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
-            mImpermeability = tPrNum / tDaNum;
-        }
-    }
-};
-*/
-// class InternalDissipationEnergy
-
-}
-// namespace Fluids
-
-}
-//namespace Plato
-
 namespace ComputationalFluidDynamicsTests
 {
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SetDofVals)
-{
-    Plato::OrdinalType tNumDofs = 10;
-    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
-    auto tHostDofs = Kokkos::create_mirror(tDofs);
-    tHostDofs(0) = 10; tHostDofs(1) = 20; tHostDofs(2) = 20; tHostDofs(3) = 30; tHostDofs(4) = 30;
-    tHostDofs(5) = 40; tHostDofs(6) = 50; tHostDofs(7) = 70; tHostDofs(8) = 70; tHostDofs(9) = 90;
-    Kokkos::deep_copy(tDofs, tHostDofs);
-
-    Plato::ScalarVector tDofVals("values", tNumDofs);
-    auto tHostDofVals = Kokkos::create_mirror(tDofVals);
-    tHostDofVals(0) = 0; tHostDofVals(1) = 1; tHostDofVals(2) = 2; tHostDofVals(3) = 3; tHostDofVals(4) = 4;
-    tHostDofVals(5) = 5; tHostDofVals(6) = 6; tHostDofVals(7) = 7; tHostDofVals(8) = 8; tHostDofVals(9) = 9;
-    Kokkos::deep_copy(tDofVals, tHostDofVals);
-
-    auto tDuplicates = Plato::find_duplicate_dofs(tDofs);
-    Plato::post_process_duplicate_dofs(tDuplicates);
-
-    // TEST 1
-    TEST_EQUALITY(3, tDuplicates.mNumDuplicates);
-    tHostDofs = Kokkos::create_mirror(tDuplicates.mDofs);
-    Kokkos::deep_copy(tHostDofs, tDuplicates.mDofs);
-    std::vector<decltype(tDuplicates.mNumDuplicates)> tGoldDofs = {20, 30, 70};
-    auto tHostPositions = Kokkos::create_mirror(tDuplicates.mPositions);
-    Kokkos::deep_copy(tHostPositions, tDuplicates.mPositions);
-    std::vector<decltype(tDuplicates.mNumDuplicates)> tGoldPositions = {1, 3, 7};
-    for(auto& tGoldDof : tGoldDofs)
-    {
-        auto tIndex = &tGoldDof - &tGoldDofs[0];
-        TEST_EQUALITY(tGoldDof, tHostDofs(tIndex));
-        TEST_EQUALITY(tGoldPositions[tIndex], tHostPositions(tIndex));
-    }
-
-    Plato::set_unique_dof_vals(tDuplicates, tDofs, tDofVals);
-
-    // TEST 2
-    auto tTol = 1e-6;
-    tHostDofVals = Kokkos::create_mirror(tDofVals);
-    Kokkos::deep_copy(tHostDofVals, tDofVals);
-    std::vector<Plato::Scalar> tGoldVals = {0, 1, 1, 3, 3, 5, 6, 7, 7, 9};
-    for(auto& tGoldVal : tGoldVals)
-    {
-        auto tIndex = &tGoldVal - &tGoldVals[0];
-        TEST_FLOATING_EQUALITY(tGoldVal, tHostDofVals(tIndex), tTol);
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PostProcessDirichletDofs)
-{
-    Plato::OrdinalType tNumDofs = 10;
-    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
-    auto tHostDofs = Kokkos::create_mirror(tDofs);
-    tHostDofs(0) = 10; tHostDofs(1) = 20; tHostDofs(2) = 20; tHostDofs(3) = 30; tHostDofs(4) = 30;
-    tHostDofs(5) = 40; tHostDofs(6) = 50; tHostDofs(7) = 70; tHostDofs(8) = 70; tHostDofs(9) = 90;
-    Kokkos::deep_copy(tDofs, tHostDofs);
-
-    Plato::ScalarVector tDofVals("values", tNumDofs);
-    auto tHostDofVals = Kokkos::create_mirror(tDofVals);
-    tHostDofVals(0) = 0; tHostDofVals(1) = 1; tHostDofVals(2) = 2; tHostDofVals(3) = 3; tHostDofVals(4) = 4;
-    tHostDofVals(5) = 5; tHostDofVals(6) = 6; tHostDofVals(7) = 7; tHostDofVals(8) = 8; tHostDofVals(9) = 9;
-    Kokkos::deep_copy(tDofVals, tHostDofVals);
-
-    Plato::post_process_dirichlet_dofs(tDofs, tDofVals);
-
-    // TEST
-    auto tTol = 1e-6;
-    tHostDofVals = Kokkos::create_mirror(tDofVals);
-    Kokkos::deep_copy(tHostDofVals, tDofVals);
-    std::vector<Plato::Scalar> tGoldVals = {0, 1, 1, 3, 3, 5, 6, 7, 7, 9};
-    for(auto& tGoldVal : tGoldVals)
-    {
-        auto tIndex = &tGoldVal - &tGoldVals[0];
-        TEST_FLOATING_EQUALITY(tGoldVal, tHostDofVals(tIndex), tTol);
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindDuplicateDofs)
-{
-    Plato::OrdinalType tNumDofs = 20;
-    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
-    auto tHostDofs = Kokkos::create_mirror(tDofs);
-    tHostDofs(0) = 1; tHostDofs(1) = 23; tHostDofs(2) = 34; tHostDofs(3) = 2; tHostDofs(4) = 5;
-    tHostDofs(5) = 6; tHostDofs(6) = 23; tHostDofs(7) = 1; tHostDofs(8) = 10; tHostDofs(9) = 4;
-    tHostDofs(10) = 222; tHostDofs(11) = 223; tHostDofs(12) = 123; tHostDofs(13) = 102; tHostDofs(14) = 42;
-    tHostDofs(15) = 126; tHostDofs(16) = 23; tHostDofs(17) = 4; tHostDofs(18) = 10; tHostDofs(19) = 42;
-    Kokkos::deep_copy(tDofs, tHostDofs);
-
-    auto tDuplicates = Plato::find_duplicate_dofs(tDofs);
-    Plato::post_process_duplicate_dofs(tDuplicates);
-
-    // TEST: find_duplicate_dofs
-    TEST_EQUALITY(5, tDuplicates.mNumDuplicates);
-    tHostDofs = Kokkos::create_mirror(tDuplicates.mDofs);
-    Kokkos::deep_copy(tHostDofs, tDuplicates.mDofs);
-    std::vector<decltype(tDuplicates.mNumDuplicates)> tGoldDofs = {1, 23, 10, 4, 42};
-    auto tHostPositions = Kokkos::create_mirror(tDuplicates.mPositions);
-    Kokkos::deep_copy(tHostPositions, tDuplicates.mPositions);
-    std::vector<decltype(tDuplicates.mNumDuplicates)> tGoldPositions = {0, 1, 8, 9, 14};
-
-    for(auto& tGoldDof : tGoldDofs)
-    {
-        auto tIndex = &tGoldDof - &tGoldDofs[0];
-        TEST_EQUALITY(tGoldDof, tHostDofs(tIndex));
-        TEST_EQUALITY(tGoldPositions[tIndex], tHostPositions(tIndex));
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, RemoveDuplicates)
-{
-    Plato::OrdinalType tNumDofs = 10;
-    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
-    auto tHostDofs = Kokkos::create_mirror(tDofs);
-    tHostDofs(0) = 10; tHostDofs(1) = 20; tHostDofs(2) = 20; tHostDofs(3) = 30; tHostDofs(4) = 30;
-    tHostDofs(5) = 40; tHostDofs(6) = 50; tHostDofs(7) = 70; tHostDofs(8) = 70; tHostDofs(9) = 90;
-    Kokkos::deep_copy(tDofs, tHostDofs);
-
-    auto tNumUnique = Plato::remove_duplicates(tDofs);
-    TEST_EQUALITY(7, tNumUnique);
-
-    tHostDofs = Kokkos::create_mirror(tDofs);
-    Kokkos::deep_copy(tHostDofs, tDofs);
-    std::vector<decltype(tNumDofs)> tGoldDofs = {10, 20, 30, 40, 50, 70, 90};
-    for(auto& tGoldDof : tGoldDofs)
-    {
-        auto tIndex = &tGoldDof - &tGoldDofs[0];
-        TEST_EQUALITY(tGoldDof, tHostDofs(tIndex));
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InsertionSort_Duplicates)
-{
-    Plato::OrdinalType tNumDofs = 10;
-    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
-    auto tHostDofs = Kokkos::create_mirror(tDofs);
-    tHostDofs(0) = 10; tHostDofs(1) = 70; tHostDofs(2) = 30; tHostDofs(3) = 90; tHostDofs(4) = 20;
-    tHostDofs(5) = 20; tHostDofs(6) = 30; tHostDofs(7) = 40; tHostDofs(8) = 70; tHostDofs(9) = 50;
-    Kokkos::deep_copy(tDofs, tHostDofs);
-
-    Plato::insertion_sort(tDofs);
-
-    tHostDofs = Kokkos::create_mirror(tDofs);
-    Kokkos::deep_copy(tHostDofs, tDofs);
-    std::vector<decltype(tNumDofs)> tGoldDofs = {10, 20, 20, 30, 30, 40, 50, 70, 70, 90};
-    for(auto& tGoldDof : tGoldDofs)
-    {
-        auto tIndex = &tGoldDof - &tGoldDofs[0];
-        TEST_EQUALITY(tGoldDof, tHostDofs(tIndex));
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InsertionSort)
-{
-    Plato::OrdinalType tNumDofs = 5;
-    Plato::LocalOrdinalVector tDofs("dofs", tNumDofs);
-    auto tHostDofs = Kokkos::create_mirror(tDofs);
-    tHostDofs(0) = 12; tHostDofs(1) = 11; tHostDofs(2) = 13; tHostDofs(3) = 5; tHostDofs(4) = 6;
-    Kokkos::deep_copy(tDofs, tHostDofs);
-
-    Plato::insertion_sort(tDofs);
-
-    tHostDofs = Kokkos::create_mirror(tDofs);
-    Kokkos::deep_copy(tHostDofs, tDofs);
-    std::vector<decltype(tNumDofs)> tGoldDofs = {5, 6, 11, 12, 13};
-    for(auto& tGoldDof : tGoldDofs)
-    {
-        auto tIndex = &tGoldDof - &tGoldDofs[0];
-        TEST_EQUALITY(tGoldDof, tHostDofs(tIndex));
-    }
-}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OpenTextFile)
 {
@@ -362,21 +37,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"            
+            "  <ParameterList name='Hyperbolic'>"      
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"          
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"     
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -425,6 +102,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -507,10 +185,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, setState)
         Plato::blas1::min(tPrimal.vector("previous pressure"), tMinPress);
         TEST_FLOATING_EQUALITY(tGoldMinPress[tPreviousIndex], tMinPress, tTol);
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
@@ -520,20 +194,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"   
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -582,6 +258,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -653,10 +330,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadFields)
         Plato::blas1::min(tCurrentState.vector("current pressure"), tMinPress);
         TEST_FLOATING_EQUALITY(tGoldMinPress[tIndex], tMinPress, tTol);
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
@@ -666,20 +339,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"  
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "  </ParameterList>"            
+            "  </ParameterList>" 
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -728,6 +403,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -799,10 +475,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test_Omega_h_ReadParallel)
         Plato::blas1::min(tPressure, tMinPress);
         TEST_FLOATING_EQUALITY(tGoldMinPress[tIndex], tMinPress, tTol);
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
@@ -812,20 +484,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"  
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -874,6 +548,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -916,10 +591,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadPvtuFilePaths)
 	auto tIndex = &tPath - &tPaths[0];
 	TEST_EQUALITY(tGold[tIndex], tPath.string());
     }
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCriterionAvgSurfPress_Gradient)
@@ -936,22 +607,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCrit
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"     
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "    <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
-            "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1000,6 +673,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCrit
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -1023,12 +697,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CheckCrit
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 4, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Average Surface Pressure", 1, 6);
     TEST_ASSERT(tError < 1e-4);
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCriterionFlowRate_Gradient)
@@ -1045,22 +715,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCrite
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"      
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "    <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
-            "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1109,6 +781,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCrite
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -1132,12 +805,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_TestCrite
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Flow Rate", 4, 6);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Inlet Flow Rate", 1, 6);
     TEST_ASSERT(tError < 1e-4);
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_CheckCriterionGradient)
@@ -1154,34 +823,28 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"      
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"            
-            "    <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
-            "    <Parameter  name='Impermeability Number'  type='double'  value='1'/>"
-            "    <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
-            "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "        <Parameter name='Material Model' type='string' value='air'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Air'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
-            "        <Parameter  name='Thermal Diffusivity Ratio' type='double' value='0.5'/>"
-            "      </ParameterList>"
-            "      <ParameterList name='Viscous Properties'>"
-            "        <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
-            "      </ParameterList>"
+            "    <ParameterList name='air'>"
+            "      <Parameter  name='Impermeability Number'  type='double'  value='100'/>"
+            "      <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
+            "      <Parameter  name='Thermal Diffusivity Ratio' type='double' value='0.75' />"
+            "      <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
+            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1240,29 +903,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
             "      <Parameter  name='Sides'    type='string' value='x+'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-4'/>"
-            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor' type='double' value='0.1'/>"
-            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
-                "  <ParameterList  name='Convergence'>"
-                "    <Parameter name='Output Frequency' type='int' value='1'/>"
-                "    <Parameter name='Maximum Iterations' type='int' value='5'/>"
-                "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
-                "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='2'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
+            "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,40, 40);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,60,60);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -1275,15 +932,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_
     // create and test gradient wrt control for incompressible cfd problem
     constexpr auto tSpaceDim = 2;
     Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
-    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 3, 5);
+    auto tError = Plato::test_criterion_grad_wrt_control(tProblem, *tMesh, "Average Surface Temperature", 1, 4);
     TEST_ASSERT(tError < 1e-4);
-
-    auto tSysMsg = std::system("rm -rf solution_history");
-    tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_CriterionValue)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_AverageSurfacePressure_Criterion_Value)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
@@ -1302,20 +955,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"    
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "  </ParameterList>"            
+            "  </ParameterList>"        
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1364,6 +1019,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Output Frequency' type='int' value='1'/>"
@@ -1396,11 +1052,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_Criterion
     auto tTol = 1e-2;
     auto tCriterionValue = tProblem.criterionValue(tControls, "Outlet Average Surface Pressure");
     TEST_FLOATING_EQUALITY(0.0, tCriterionValue, tTol);
+    // call inlet criterion
     tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Pressure");
     TEST_FLOATING_EQUALITY(0.0896025, tCriterionValue, tTol);
-
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrinkmanTerm)
@@ -1411,21 +1065,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"      
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "    <Parameter  name='Impermeability Number'  type='double'  value='1e2'/>"
-            "  </ParameterList>"            
+            "  </ParameterList>"      
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1474,6 +1129,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1534,9 +1190,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100_WithBrink
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0519869, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
@@ -1546,20 +1199,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"       
             "    <ParameterList  name='Momentum Conservation'>"
             "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
-            "  </ParameterList>"            
+            "  </ParameterList>"      
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1608,6 +1263,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1669,9 +1325,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
@@ -1681,17 +1334,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
-            "  </ParameterList>"            
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"       
+            "  </ParameterList>"     
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1755,6 +1410,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1822,9 +1478,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.33372, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 
@@ -1835,17 +1488,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='4e2'/>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"    
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
             "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='4e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -1899,16 +1554,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "      <Parameter  name='Sides'    type='string' value='pressure'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor'      type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -1966,41 +1617,43 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
     Plato::blas1::min(tVelSubView, tMinVel);
     TEST_FLOATING_EQUALITY(-0.633259, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3_AverageSurfaceTemperature_Criterion_Value)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"
+            "  <ParameterList name='Criteria'>"
+            "    <ParameterList name='Outlet Average Surface Temperature'>"
+            "      <Parameter name='Type' type='string' value='Scalar Function'/> "
+            "      <Parameter  name='Sides' type='Array(string)' value='{x+}'/>"
+            "      <Parameter name='Scalar Function Type' type='string' value='Average Surface Temperature'/>"
+            "    </ParameterList>"
+            "    <ParameterList name='Inlet Average Surface Temperature'>"
+            "      <Parameter name='Type' type='string' value='Scalar Function'/> "
+            "      <Parameter  name='Sides' type='Array(string)' value='{x-}'/>"
+            "      <Parameter name='Scalar Function Type' type='string' value='Average Surface Temperature'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"            
-            "    <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
-            "    <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"   
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "        <Parameter name='Material Model' type='string' value='air'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Air'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
-            "      </ParameterList>"
-            "      <ParameterList name='Viscous Properties'>"
-            "        <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
-            "      </ParameterList>"
+            "    <ParameterList name='air'>"
+            "      <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
+            "      <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
+            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -2059,18 +1712,140 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "      <Parameter  name='Sides'    type='string' value='x+'/>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-5'/>"
-            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Damping' type='double' value='0.1'/>"
             "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
+            "    <Parameter name='Time Step Damping' type='double' value='0.1'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-3'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,25,25);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    //tProblem.output("cfd_test_problem");
+
+    // call outlet criterion
+    auto tTol = 1e-2;
+    auto tCriterionValue = tProblem.criterionValue(tControls, "Outlet Average Surface Temperature");
+    TEST_FLOATING_EQUALITY(0.0, tCriterionValue, tTol);
+    // call inlet criterion
+    tCriterionValue = tProblem.criterionValue(tControls, "Inlet Average Surface Temperature");
+    TEST_FLOATING_EQUALITY(1.0, tCriterionValue, tTol);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"  
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Buoyancy Damping' type='double' value='0.35'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='air'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='air'>"
+            "      <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
+            "      <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
+            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Temperature Essential Boundary Conditions'>"
+            "    <ParameterList  name='Cold Wall'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Hot Wall'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
@@ -2115,30 +1890,27 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(252.224, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(81.6416, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-229.947, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-70.5306, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(3.70439, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(3.66646, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-3.34883, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-2.04227, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(15.077, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(14.8003, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
@@ -2148,28 +1920,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"            
-            "    <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
-            "    <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e4}'/>"
-            "  </ParameterList>"            
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"  
+            "  </ParameterList>"   
             "  <ParameterList name='Spatial Model'>"
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Air'/>"
+            "        <Parameter name='Material Model' type='string' value='air'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Air'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
-            "      </ParameterList>"
-            "      <ParameterList name='Viscous Properties'>"
-            "        <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
-            "      </ParameterList>"
+            "    <ParameterList name='air'>"
+            "      <Parameter  name='Thermal Diffusivity' type='double' value='2.1117e-5'/>"
+            "      <Parameter  name='Kinematic Viscocity' type='double' value='1.5111e-5'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.71'/>"
+            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e4}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
@@ -2236,13 +2002,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Damping' type='double' value='0.3'/>"
-            "    <Parameter name='Safety Factor' type='double' value='0.4'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.7'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "    <Parameter name='Display Diagnostics' type='bool' value='false'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Output Frequency' type='int' value='1'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "</ParameterList>"
@@ -2294,30 +2061,27 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e4)
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
     Plato::blas1::max(tPressSubView, tMaxPress);
-    TEST_FLOATING_EQUALITY(4155.81, tMaxPress, tTol);
+    TEST_FLOATING_EQUALITY(3414.71, tMaxPress, tTol);
     Plato::Scalar tMinPress = 0;
     Plato::blas1::min(tPressSubView, tMinPress);
-    TEST_FLOATING_EQUALITY(-9.88111, tMinPress, tTol);
+    TEST_FLOATING_EQUALITY(-4.16082, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
     Plato::Scalar tMaxVel = 0;
     Plato::blas1::max(tVelSubView, tMaxVel);
-    TEST_FLOATING_EQUALITY(19.4625, tMaxVel, tTol);
+    TEST_FLOATING_EQUALITY(25.4783, tMaxVel, tTol);
     Plato::Scalar tMinVel = 0;
     Plato::blas1::min(tVelSubView, tMinVel);
-    TEST_FLOATING_EQUALITY(-16.1093, tMinVel, tTol);
+    TEST_FLOATING_EQUALITY(-14.1765, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
 
     auto tTemperature = tSolution.get("temperature");
     auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
     auto tTempNorm = Plato::blas1::norm(tTempSubView);
-    TEST_FLOATING_EQUALITY(14.1776, tTempNorm, tTol);
+    TEST_FLOATING_EQUALITY(12.2212, tTempNorm, tTol);
     //Plato::print(tTempSubView, "steady state temperature");
-    
-    auto tSysMsg = std::system("rm -f cfd_solver_diagnostics.txt");
-    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
@@ -2450,11 +2214,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='None'/>"            
-            "    <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
-            "  </ParameterList>"            
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>" 
+            "  </ParameterList>"    
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
             "    <ParameterList  name='Zero Velocity X-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
@@ -2980,18 +2741,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>" 
             "    <ParameterList name='Momentum Conservation'>"
             "      <ParameterList name='Penalty Function'>"
             "        <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
             "      </ParameterList>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"            
-            "    <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
-            "    <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
-            "    <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
-            "  </ParameterList>"            
+            "  </ParameterList>"       
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Artificial Damping Two' type='double' value='0.2'/>"
             "  </ParameterList>"
@@ -3496,6 +3252,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>" 
             "    <Parameter name='Scenario' type='string' value='Density TO'/>"
             "    <ParameterList name='Momentum Conservation'>"
             "      <ParameterList name='Penalty Function'>"
@@ -3503,12 +3260,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "  <ParameterList  name='Flow Properties'>"
-            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"            
-            "    <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
-            "    <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
-            "    <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
-            "  </ParameterList>"        
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='water'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='water'>"
+            "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
+            "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
+            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"  
             "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
             "    <ParameterList  name='Traction Vector Boundary Condition'>"
             "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
@@ -3524,6 +3290,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
+    tDomain.setMaterialName("water");
+    tDomain.setDomainName("Design Volume");
     Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
     tModel.append(tDomain);
 
@@ -4683,36 +4451,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
-{
-    Teuchos::RCP<Teuchos::ParameterList> tParams =
-    Teuchos::getParametersFromXmlString(
-        "<ParameterList  name='Plato Problem'>"
-        "  <ParameterList  name='Flow Properties'>"
-        "    <Parameter  name='Prandtl'   type='double'        value='2.1'/>"
-        "    <Parameter  name='Grashof'   type='Array(double)' value='{0.0, 1.5, 0.0}'/>"
-        "    <Parameter  name='Darcy'     type='double'        value='2.2'/>"
-        "  </ParameterList>"
-        "</ParameterList>"
-    );
-
-    // Prandtl #
-    auto tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl", "Flow Properties", tParams.operator*());
-    auto tTolerance = 1e-6;
-    TEST_FLOATING_EQUALITY(tScalarOutput, 2.1, tTolerance);
-
-    // Darcy #
-    tScalarOutput = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy", "Flow Properties", tParams.operator*());
-    TEST_FLOATING_EQUALITY(tScalarOutput, 2.2, tTolerance);
-
-    // Grashof #
-    auto tArrayOutput = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof", "Flow Properties", tParams.operator*());
-    TEST_EQUALITY(3, tArrayOutput.size());
-    TEST_FLOATING_EQUALITY(tArrayOutput[0], 0.0, tTolerance);
-    TEST_FLOATING_EQUALITY(tArrayOutput[1], 1.5, tTolerance);
-    TEST_FLOATING_EQUALITY(tArrayOutput[2], 0.0, tTolerance);
-}
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
 {
     Plato::Solutions tSolution("incompressible cfd");
@@ -4861,6 +4599,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     {
         TEST_FLOATING_EQUALITY(tHostGoldPress(tDof), tHostPress(tDof), tTolerance);
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CleanTrash)
+{
+    auto tSysMsg = std::system("rm -rf cfd_solver_diagnostics.txt solution_history");
+    if(false){ std::cout << std::to_string(tSysMsg) << "\n"; }
 }
 
 }

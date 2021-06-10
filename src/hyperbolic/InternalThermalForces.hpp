@@ -97,7 +97,9 @@ public:
     {
         this->setSourceTerm(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
-        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(aInputs);
+
+        auto tMyMaterialName = mSpatialDomain.getMaterialName();
+        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(tMyMaterialName, aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
@@ -202,6 +204,17 @@ public:
             tMultiplier = tStabilization * tHeatSourceConstant * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tMultiplier);
+            
+            // 6. add previous inertial force contribution to residual, i.e. R -= M T^n
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
+
+            // 7. add current inertial force contribution to residual, i.e. R += M T^{n+1}
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS, 1.0);
+
         }, "energy conservation residual");
     }
 
@@ -239,10 +252,7 @@ private:
         if(aInputs.isSublist("Heat Source"))
         {
             auto tMaterialName = mSpatialDomain.getMaterialName();
-            Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-            auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-            auto tThermalPropBlock = std::string("Thermal Properties");
-            mThermalConductivity = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
+            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
             Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
         }
     }
@@ -254,7 +264,9 @@ private:
     void setCharacteristicLength
     (Teuchos::ParameterList & aInputs)
     {
-        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", aInputs);
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
     }
 
     /***************************************************************************//**
@@ -362,7 +374,9 @@ public:
         this->setPenaltyModelParameters(aInputs);
         this->setThermalDiffusivityRatio(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
-        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(aInputs);
+
+        auto tMyMaterialName = mSpatialDomain.getMaterialName();
+        mEffectiveConductivity = Plato::Fluids::calculate_effective_conductivity(tMyMaterialName, aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
@@ -445,16 +459,16 @@ public:
             // 2. add current diffusive force contribution to residual, i.e. R += \theta_3 K T^{n+1},
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCurTempWS, tCurThermalFlux);
-            ControlT tMultiplierControlT = tArtificialDamping * tPenalizedEffConductivity;
+            ControlT tMultiplierControlOneT = tArtificialDamping * tPenalizedEffConductivity;
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tCurThermalFlux, aResultWS, tMultiplierControlT);
+                (aCellOrdinal, tGradient, tCellVolume, tCurThermalFlux, aResultWS, tMultiplierControlOneT);
 
             // 3. add previous diffusive force contribution to residual, i.e. R -= (\theta_3-1) K T^n
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevTempWS, tPrevThermalFlux);
-            tMultiplierControlT = (tArtificialDamping - static_cast<Plato::Scalar>(1.0)) * tPenalizedEffConductivity;
+            ControlT tMultiplierControlTwoT = (tArtificialDamping - static_cast<Plato::Scalar>(1.0)) * tPenalizedEffConductivity;
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, -tMultiplierControlT);
+                (aCellOrdinal, tGradient, tCellVolume, tPrevThermalFlux, aResultWS, -tMultiplierControlTwoT);
 
             // 4. add previous heat source contribution to residual, i.e. R -= \alpha Q^n
             auto tHeatSrcDimlessConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
@@ -479,6 +493,17 @@ public:
                 static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tScalar);
+
+            // 7. add previous inertial force contribution to residual, i.e. R -= M T^n
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
+
+            // 8. add current inertial force contribution to residual, i.e. R += M T^{n+1}
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS, 1.0);
+
         }, "energy conservation residual");
     }
 
@@ -512,11 +537,12 @@ private:
      ******************************************************************************/
     void setThermalConductivity(Teuchos::ParameterList &aInputs)
     {
-        auto tMaterialName = mSpatialDomain.getMaterialName();
-        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        mThermalConductivity = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Conductivity", "Thermal Properties", tMaterial);
-        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+        if (aInputs.isSublist("Heat Source"))
+        {
+            auto tMaterialName = mSpatialDomain.getMaterialName();
+            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
+            Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+        }
     }
 
     /***************************************************************************//**
@@ -526,9 +552,7 @@ private:
     void setThermalDiffusivityRatio(Teuchos::ParameterList &aInputs)
     {
         auto tMaterialName = mSpatialDomain.getMaterialName();
-        Plato::teuchos::is_material_defined(tMaterialName, aInputs);
-        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-        mThermalDiffusivityRatio = Plato::teuchos::parse_parameter<Plato::Scalar>("Thermal Diffusivity Ratio", "Thermal Properties", tMaterial);
+        mThermalDiffusivityRatio = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Diffusivity Ratio", tMaterialName, aInputs);
         Plato::is_positive_finite_number(mThermalDiffusivityRatio, "Thermal Diffusivity Ratio");
     }
 
@@ -539,7 +563,9 @@ private:
     void setCharacteristicLength
     (Teuchos::ParameterList & aInputs)
     {
-        mCharacteristicLength = Plato::teuchos::parse_parameter<Plato::Scalar>("Characteristic Length", "Flow Properties", aInputs);
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
     }
 
     /***************************************************************************//**

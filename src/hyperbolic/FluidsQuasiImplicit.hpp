@@ -21,7 +21,6 @@
 #include "OmegaHUtilities.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "ApplyConstraints.hpp"
-#include "UtilsEssentialBCs.hpp"
 #include "PlatoAbstractProblem.hpp"
 
 #include "alg/PlatoSolverFactory.hpp"
@@ -71,6 +70,7 @@ private:
     Plato::Scalar mTemperatureTolerance = 1e-10; /*!< temperature solver stopping tolerance */
     Plato::Scalar mSteadyStateTolerance = 1e-5; /*!< steady-state stopping tolerance */
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
+    Plato::Scalar mCriticalTimeStepDamping = 1.0; /*!< critical time step damping, positive number between epsilon and 1.0, where epsilon is usually taken to be 1e-3 or 1e-4 if needed */
     Plato::Scalar mCriticalThermalDiffusivity = 1.0; /*!< fluid thermal diffusivity - used to calculate stable time step */
     Plato::Scalar mCriticalKinematicViscocity = 1.0; /*!< fluid kinematic viscocity - used to calculate stable time step */
     Plato::Scalar mCriticalVelocityLowerBound = 0.5; /*!< dimensionless critical convective velocity upper bound */
@@ -690,7 +690,6 @@ private:
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
         mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
-        //Plato::post_process_dirichlet_dofs(tVelBcDofs, tVelBcValues);
         auto tPreviouVel = Kokkos::subview(mVelocity, tTimeStep, Kokkos::ALL());
         Plato::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
         aPrimal.vector("previous velocity", tPreviouVel);
@@ -799,11 +798,9 @@ private:
      **********************************************************************************/
     void setCriticalFluidProperties(Teuchos::ParameterList &aInputs)
     {
-        mCriticalThermalDiffusivity = Plato::teuchos::parse_max_material_property<Plato::Scalar>
-            (aInputs, "Thermal Properties", "Thermal Diffusivity", mSpatialModel.Domains);
+        mCriticalThermalDiffusivity = Plato::teuchos::parse_max_material_property<Plato::Scalar>(aInputs, "Thermal Diffusivity", mSpatialModel.Domains);
         Plato::is_positive_finite_number(mCriticalThermalDiffusivity, "Thermal Diffusivity");
-        mCriticalKinematicViscocity = Plato::teuchos::parse_max_material_property<Plato::Scalar>
-            (aInputs, "Viscous Properties", "Kinematic Viscocity", mSpatialModel.Domains);
+        mCriticalKinematicViscocity = Plato::teuchos::parse_max_material_property<Plato::Scalar>(aInputs, "Kinematic Viscocity", mSpatialModel.Domains);
         Plato::is_positive_finite_number(mCriticalKinematicViscocity, "Kinematic Viscocity");
     }
 
@@ -864,8 +861,9 @@ private:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Damping", 1.0);
+            mTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Time Step Damping", 1.0);
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
+            mCriticalTimeStepDamping = tTimeIntegration.get<Plato::Scalar>("Critical Time Step Damping", 1.0);
         }
     }
 
@@ -1202,7 +1200,7 @@ private:
     {
         auto tElemCharSize = aPrimal.vector("element characteristic size");
         auto tVelLowerBound = aPrimal.scalar("critical velocity lower bound");
-        auto tOutput = Plato::Fluids::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
+        auto tOutput = mCriticalTimeStepDamping * Plato::Fluids::calculate_critical_time_step_upper_bound(tVelLowerBound, tElemCharSize);
         return tOutput;
     }
 
@@ -1255,7 +1253,7 @@ private:
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        //Plato::post_process_dirichlet_dofs(tBcDofs, tBcValues);
+
         auto tPreviousVelocity = aPrimal.vector("previous velocity");
         Plato::ScalarVector tInitialVelocity("initial velocity", tPreviousVelocity.size());
         Plato::blas1::update(1.0, tPreviousVelocity, 0.0, tInitialVelocity);
@@ -1487,7 +1485,6 @@ private:
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        //Plato::post_process_dirichlet_dofs(tBcDofs, tBcValues);
 
         // create linear solver
         if( mInputs.isSublist("Linear Solver") == false )
@@ -1527,7 +1524,8 @@ private:
             aPrimal.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aPrimal);
-            if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
+            //if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
+            if(tNormResidual <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
             {
                 break;
             }
@@ -1659,7 +1657,8 @@ private:
             aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
+            //if(tNormStep <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
+            if(tNormResidual <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
             {
                 break;
             }
@@ -1755,8 +1754,8 @@ private:
             aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
-            //if(tNormResidual <= mPressureTolerance || tIteration >= mMaxPressureIterations)
+            //if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
+            if(tNormResidual <= mPressureTolerance || tIteration >= mMaxPressureIterations)
             {
                 break;
             }

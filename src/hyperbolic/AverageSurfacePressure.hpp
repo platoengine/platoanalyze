@@ -112,6 +112,14 @@ public:
      ******************************************************************************/
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     {
+        auto tNumCells = mSpatialDomain.Mesh.nelems();
+        if(tNumCells != aResult.extent(0)) 
+        {
+            THROWERR( std::string("Dimension mismatch. 'Result View' and 'Spatial Domain' cell/element number do not match. ") 
+                + "'Result View' has '" + std::to_string(aResult.extent(0)) + "' elements and 'Spatial Domain' has '" 
+                + std::to_string(tNumCells) + "' elements." )
+        }
+
         // set face to element graph
         auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
         auto tFace2Elems_map   = tFace2eElems.a2ab;
@@ -142,7 +150,9 @@ public:
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
             // set local worksets
-            auto tNumCells = mSpatialDomain.Mesh.nelems();
+            Plato::ScalarVectorT<ResultT> tResult("temp results", tNumCells);
+            Plato::ScalarVectorT<ConfigT> tSurfaceAreaSum("surface area sum", 1);
+            Plato::ScalarVectorT<ConfigT> tSurfaceArea("surface area", tNumFaces);
             Plato::ScalarVectorT<PressureT> tCurrentPressGP("current pressure at Gauss point", tNumCells);
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
@@ -152,14 +162,14 @@ public:
                 for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
                 {
                     // create a map from face local node index to elem local node index
-                    auto tCellOrdinal = tFace2Elems_elems[tElem];
+                    Plato::OrdinalType tCellOrdinal = tFace2Elems_elems[tElem];
                     Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrdinals);
 
                     // calculate surface Jacobian and surface integral weight
-                    ConfigT tSurfaceAreaTimesCubWeight(0.0);
                     tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigWS, tJacobians);
-                    tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+                    tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceArea);
+                    tSurfaceAreaSum(0) += tSurfaceArea(aFaceI);
 
                     // project current pressure onto surface
                     for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
@@ -171,11 +181,15 @@ public:
                     // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a p^h d\Gamma_e
                     for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
                     {
-                        aResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
+                        tResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentPressGP(tCellOrdinal) * tSurfaceArea(aFaceI);
                     }
                 }
-            }, "average surface pressure");
+            }, "integrate surface pressure");
 
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            {
+                aResult(aCellOrdinal) = ( static_cast<Plato::Scalar>(1.0) / tSurfaceAreaSum(0) ) * tResult(aCellOrdinal);
+            }, "calculate average surface pressure");
         }
     }
 };

@@ -144,17 +144,17 @@ EpetraLinearSolver::EpetraLinearSolver(
     mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode)),
     mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: Epetra Linear Solve"))
 {
-    mIterations = 1000;
     if(mSolverParams.isType<int>("Iterations"))
         mIterations = mSolverParams.get<int>("Iterations");
 
-    mTolerance = 1e-14;
     if(mSolverParams.isType<double>("Tolerance"))
         mTolerance = mSolverParams.get<double>("Tolerance");
     
-    mDisplayIterations = 0;
     if(mSolverParams.isType<int>("Display Iterations"))
         mDisplayIterations = mSolverParams.get<int>("Display Iterations");
+    
+    if(mSolverParams.isParameter("Display Diagnostics"))
+        mDisplayDiagnostics = mSolverParams.get<bool>("Display Diagnostics");
 }
 
 /******************************************************************************//**
@@ -187,18 +187,21 @@ EpetraLinearSolver::solve(
     }
     else if (tSolverStatus[AZ_why] == AZ_loss)
     {
-        printf("Epetra Warning: Loss of numerical precision occured during linear solve.\n");
+        if(mDisplayDiagnostics)
+            printf("Epetra Warning: Loss of numerical precision occured during linear solve.\n");
     }
     else if (tSolverStatus[AZ_why] == AZ_ill_cond)
     {
-        printf("Epetra Warning: Hessenberg matrix in GMRES is ill-conditioned.\n");
+        if(mDisplayDiagnostics)
+            printf("Epetra Warning: Hessenberg matrix in GMRES is ill-conditioned.\n");
     }
     else if (tSolverStatus[AZ_why] == AZ_maxits)
     {
         const std::string tWarningMessage = std::string("Epetra Warning: Specified maximum iterations (")
               + std::to_string(mIterations) + ") reached without convergence to requested tolerance ("
               + std::to_string(mTolerance) + ").";
-        std::cout << tWarningMessage << std::endl;
+        if(mDisplayDiagnostics)
+            std::cout << tWarningMessage << std::endl;
     }
     else if (tSolverStatus[AZ_why] == AZ_param)
     {

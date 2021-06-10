@@ -10,12 +10,12 @@
 
 #include "MetaData.hpp"
 #include "WorkSets.hpp"
-#include "FluidsUtils.hpp"
 #include "SpatialModel.hpp"
 #include "ExpInstMacros.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
+#include "hyperbolic/FluidsUtils.hpp"
 #include "hyperbolic/SimplexFluids.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 #include "hyperbolic/MomentumConservationUtils.hpp"
@@ -82,9 +82,10 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setAritificalDamping(aInputs);
-        mBuoyancyConst = Plato::Fluids::calculate_buoyancy_constant(aInputs);
+        auto tMyMaterialName = mSpatialDomain.getMaterialName();
+        mBuoyancyConst = Plato::Fluids::calculate_buoyancy_constant(tMyMaterialName, aInputs);
         mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
-        mNaturalConvectionNum = Plato::Fluids::parse_natural_convection_number<mNumSpatialDims>(aInputs);
+        mNaturalConvectionNum = Plato::Fluids::parse_natural_convection_number<mNumSpatialDims>(tMyMaterialName, aInputs);
     }
 
     /***************************************************************************//**

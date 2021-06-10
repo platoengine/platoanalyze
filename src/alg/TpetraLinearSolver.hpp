@@ -94,7 +94,9 @@ class TpetraLinearSolver : public AbstractSolver
     int    mDisplayIterations;
     int    mNumIterations;
     int    mDofsPerNode;
+    bool   mDisplayDiagnostics = true; /*!< display solver warnings/diagnostics to console */
     double mAchievedTolerance;
+    
   public:
     /******************************************************************************//**
      * \brief TpetraLinearSolver constructor
