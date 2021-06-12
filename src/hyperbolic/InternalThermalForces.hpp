@@ -68,7 +68,7 @@ private:
     using PrevFluxT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevTempT, ConfigT>; /*!< previous flux FAD evaluation type */
     using ConvectionT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevTempT, CurVelT, ConfigT>; /*!< convection FAD evaluation type */
 
-    Plato::Scalar mStabilization = 0.0; /*!< stabilization scalar multiplier */
+    Plato::Scalar mStabilization = 1.0; /*!< stabilization scalar multiplier */
     Plato::Scalar mArtificialDamping = 1.0; /*!< artificial temperature damping - damping is a byproduct from time integration scheme */
     Plato::Scalar mHeatSourceConstant = 0.0; /*!< heat source constant */
     Plato::Scalar mThermalConductivity = 1.0; /*!< thermal conductivity */

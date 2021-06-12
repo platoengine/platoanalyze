@@ -118,7 +118,7 @@ private:
     // set member scalar data
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
     Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
-    Plato::Scalar mStabilization = 0.0; /*!< stabilization scalar multiplier */
+    Plato::Scalar mStabilization = 1.0; /*!< stabilization scalar multiplier */
 
     bool mCalculateBrinkmanForces = false; /*!< indicator to determine if Brinkman forces will be considered in calculations */
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
