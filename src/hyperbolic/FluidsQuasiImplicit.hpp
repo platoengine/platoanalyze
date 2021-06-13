@@ -64,10 +64,10 @@ private:
     std::ofstream mDiagnostics; /*!< output diagnostics */
 
     Plato::Scalar mTimeStepDamping = 1.0; /*!< time step damping */
-    Plato::Scalar mPressureTolerance = 1e-10; /*!< pressure solver stopping tolerance */
-    Plato::Scalar mPredictorTolerance = 1e-10; /*!< velocity predictor solver stopping tolerance */
-    Plato::Scalar mCorrectorTolerance = 1e-10; /*!< velocity corrector solver stopping tolerance */
-    Plato::Scalar mTemperatureTolerance = 1e-10; /*!< temperature solver stopping tolerance */
+    Plato::Scalar mPressureTolerance = 1e-8; /*!< pressure solver stopping tolerance */
+    Plato::Scalar mPredictorTolerance = 1e-8; /*!< velocity predictor solver stopping tolerance */
+    Plato::Scalar mCorrectorTolerance = 1e-8; /*!< velocity corrector solver stopping tolerance */
+    Plato::Scalar mTemperatureTolerance = 1e-8; /*!< temperature solver stopping tolerance */
     Plato::Scalar mSteadyStateTolerance = 1e-5; /*!< steady-state stopping tolerance */
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
     Plato::Scalar mCriticalTimeStepDamping = 1.0; /*!< critical time step damping, positive number between epsilon and 1.0, where epsilon is usually taken to be 1e-3 or 1e-4 if needed */
@@ -1524,8 +1524,8 @@ private:
             aPrimal.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aPrimal);
-            //if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
-            if(tNormResidual <= mCorrectorTolerance || tIteration >= mMaxCorrectorIterations)
+            auto tPrimalStoppingCriterionSatisfied = tNormResidual <= mCorrectorTolerance || std::abs(tNormStep) <= std::numeric_limits<Plato::Scalar>::epsilon();
+            if(tPrimalStoppingCriterionSatisfied || tIteration >= mMaxCorrectorIterations)
             {
                 break;
             }
@@ -1657,8 +1657,8 @@ private:
             aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
-            //if(tNormStep <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
-            if(tNormResidual <= mPredictorTolerance || tIteration >= mMaxPredictorIterations)
+            auto tPrimalStoppingCriterionSatisfied = tNormResidual <= mPredictorTolerance || std::abs(tNormStep) <= std::numeric_limits<Plato::Scalar>::epsilon();
+            if(tPrimalStoppingCriterionSatisfied || tIteration >= mMaxPredictorIterations)
             {
                 break;
             }
@@ -1754,8 +1754,8 @@ private:
             aStates.scalar("norm residual", tNormResidual);
 
             this->printNewtonDiagnostics(aStates);
-            //if(tNormStep <= mPressureTolerance || tIteration >= mMaxPressureIterations)
-            if(tNormResidual <= mPressureTolerance || tIteration >= mMaxPressureIterations)
+            auto tPrimalStoppingCriterionSatisfied = tNormResidual <= mPressureTolerance || std::abs(tNormStep) <= std::numeric_limits<Plato::Scalar>::epsilon();
+            if(tPrimalStoppingCriterionSatisfied || tIteration >= mMaxPressureIterations)
             {
                 break;
             }
@@ -1853,7 +1853,8 @@ private:
 
             // check stopping criteria
             this->printNewtonDiagnostics(aStates);
-            if(tNormResidual < mTemperatureTolerance || tIteration >= mMaxTemperatureIterations)
+            auto tPrimalStoppingCriterionSatisfied = tNormResidual <= mTemperatureTolerance || std::abs(tNormStep) <= std::numeric_limits<Plato::Scalar>::epsilon();
+            if(tPrimalStoppingCriterionSatisfied || tIteration >= mMaxTemperatureIterations)
             {
                 break;
             }
