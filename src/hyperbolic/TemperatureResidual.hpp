@@ -148,9 +148,9 @@ private:
     void setNaturalBoundaryConditions
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Energy Natural Boundary Conditions"))
+        if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
         {
-            auto tSublist = aInputs.sublist("Energy Natural Boundary Conditions");
+            auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
             mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
         }
     }
