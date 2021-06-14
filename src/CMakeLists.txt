@@ -150,6 +150,8 @@ set(LINK_LIBS
     ${Trilinos_TPL_LIBRARIES}
     ${Trilinos_EXTRA_LD_FLAGS}
     ${SOLVER_INTERFACE_LIBRARIES}
+    blas
+    lapack
     )
 
 target_link_libraries(analyzelib PUBLIC ${LINK_LIBS})
