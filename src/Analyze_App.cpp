@@ -1341,7 +1341,13 @@ MPMD_App::OutputToHDF5::operator()()
 MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
         LocalOp(aMyApp, aNode, aOpDef)
 { 
-    std::string tCommand = "mkdir " + mTopOutputDirectory;
+    auto tVizDirectory = Plato::Get::String(aNode,"VizDirectory");
+    if( !tVizDirectory.empty() )
+    {
+        mVizDirectory = tVizDirectory;
+    }
+
+    std::string tCommand = "mkdir " + mVizDirectory;
     auto tOutput = std::system(tCommand.c_str());
     if(false) {std::cout << tOutput << std::flush; }
 }
@@ -1350,7 +1356,7 @@ MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode
 /******************************************************************************/
 void MPMD_App::Visualization::operator()()
 {
-    auto tOutputDirectory = mTopOutputDirectory + std::string("/iteration") + std::to_string(mOptimizationIterationCounter);
+    auto tOutputDirectory = mVizDirectory + std::string("/iteration") + std::to_string(mOptimizationIterationCounter);
     mMyApp->mProblem->output(tOutputDirectory);
 
     if(mOptimizationIterationCounter == 0u)
@@ -1358,12 +1364,12 @@ void MPMD_App::Visualization::operator()()
         mNumSimulationTimeSteps = Plato::read_num_time_steps_from_pvd_file(tOutputDirectory, "timestep="); 
     }
 
-    std::ofstream tOuptutFile(mTopOutputDirectory + "/steps.pvd"); 
+    std::ofstream tOuptutFile(mVizDirectory + "/steps.pvd"); 
     auto tLastTimeStep = mNumSimulationTimeSteps - 1u;
     
     if(tOuptutFile.is_open() == false)
     {
-        THROWERR(std::string("Visualization operation failed to open file with path '") + mTopOutputDirectory + "/steps.pvd" + "'.")
+        THROWERR(std::string("Visualization operation failed to open file with path '") + mVizDirectory + "/steps.pvd" + "'.")
     }
 
     tOuptutFile << "<VTKFile type=\"Collection\" version=\"0.1\">\n";

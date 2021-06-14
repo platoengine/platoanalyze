@@ -845,7 +845,7 @@ private:
         size_t mNumSimulationTimeSteps = 0;
         size_t mOptimizationIterationCounter = 0;
 
-        std::string mTopOutputDirectory = "plato_analyze_output";
+        std::string mVizDirectory = "plato_analyze_output";
     };
     friend class Visualization;
 #ifdef PLATO_GEOMETRY

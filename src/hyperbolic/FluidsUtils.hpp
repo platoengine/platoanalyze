@@ -85,7 +85,7 @@ inline bool calculate_brinkman_forces
     auto tFlowProps = aInputs.sublist("Hyperbolic");
     auto tScenario = tFlowProps.get<std::string>("Scenario", "Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
-    if (tLowerScenario == "density to")
+    if (tLowerScenario == "density-based topology optimization")
     {
         return true;
     }
