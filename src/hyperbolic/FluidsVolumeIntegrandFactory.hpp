@@ -58,17 +58,18 @@ createInternalThermalForces
 
     auto tScenario = tHyperbolic.get<std::string>("Scenario","Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
-    if( tLowerScenario == "density to" )
+    if( tLowerScenario == "density-based topology optimization" )
     {
         return ( std::make_shared<Plato::Fluids::SIMP::InternalThermalForces<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
     }
-    else if( tLowerScenario == "analysis" || tLowerScenario == "levelset to" )
+    else if( tLowerScenario == "analysis" || tLowerScenario == "levelset topology optimization" )
     {
         return ( std::make_shared<Plato::Fluids::InternalThermalForces<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
     }
     else
     {
-        THROWERR(std::string("Scenario '") + tScenario + "' is not supported. Options are 1) Analysis, 2) Density TO or 3) Levelset TO.")
+        THROWERR(std::string("Scenario '") + tScenario + 
+            "' is not supported. Supported options are 1) Analysis, 2) Density-Based Topology Optimization or 3) Levelset Topology Optimization.")
     }
 }
 
