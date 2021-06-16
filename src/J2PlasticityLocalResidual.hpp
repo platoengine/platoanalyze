@@ -337,6 +337,7 @@ public:
       Plato::ScalarMultiVector                  tPrevStrain("previous strain", tNumCells, mNumStressTerms);
 
       Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
+      auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;
@@ -360,7 +361,7 @@ public:
         // compute elastic strain
         tComputeTotalStrain(aCellOrdinal, tStrainIncr, aGlobalState, tGradient);
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
-                                                    tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain);
+                                                    tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain, tLoadControlVector);
 
         // apply penalization to elastic shear modulus
         ControlT tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
@@ -468,6 +469,7 @@ public:
       Plato::ScalarMultiVector tPrevStrain("previous strain", tNumCells, mNumStressTerms);
 
       Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
+      auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;
@@ -499,7 +501,7 @@ public:
         // compute elastic strain
         tComputeTotalStrain(aCellOrdinal, tStrainIncr, aGlobalState, tGradient);
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
-                                                    tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain);
+                                                    tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain, tLoadControlVector);
 
         // apply penalization to elastic shear modulus
         Plato::Scalar tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);

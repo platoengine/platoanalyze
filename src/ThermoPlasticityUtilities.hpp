@@ -110,7 +110,8 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarVector                          & aBasisFunctions,
                 const Plato::ScalarMultiVectorT< StrainIncrT >     & aStrainIncr,
                 const Plato::ScalarMultiVector                     & aPrevStrain,
-                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const;
+                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
+                const Plato::ScalarVector                          & aRefScale) const;
 };
 // class ThermoPlasticityUtilities
 
@@ -134,10 +135,10 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
   {
       // Compute elastic strain
-      aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-      aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-      aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(0,1); // epsilon_{12}^{e}
-      aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(2,2); // epsilon_{33}^{e}
+      aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2); // epsilon_{11}^{e}
+      aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3); // epsilon_{22}^{e}
+      aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4); // epsilon_{12}^{e}
+      aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5); // epsilon_{33}^{e}
   }
 
   /******************************************************************************//**
@@ -156,12 +157,12 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
   {
       // Compute elastic strain
-      aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-      aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-      aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(2,2); // epsilon_{33}^{e}
-      aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(1,2); // epsilon_{23}^{e}
-      aElasticStrain(aCellOrdinal, 4) = aTotalStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6) - mReferenceStrain(0,2); // epsilon_{13}^{e}
-      aElasticStrain(aCellOrdinal, 5) = aTotalStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7) - mReferenceStrain(0,1); // epsilon_{12}^{e}
+      aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2); // epsilon_{11}^{e}
+      aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3); // epsilon_{22}^{e}
+      aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4); // epsilon_{33}^{e}
+      aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5); // epsilon_{23}^{e}
+      aElasticStrain(aCellOrdinal, 4) = aTotalStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6); // epsilon_{13}^{e}
+      aElasticStrain(aCellOrdinal, 5) = aTotalStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7); // epsilon_{12}^{e}
 
     //printf("J2Plasticity Elastic Strain Computation\n");
   }
@@ -183,13 +184,14 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarVector                          & aBasisFunctions,
                 const Plato::ScalarMultiVectorT< StrainIncrT >     & aStrainIncr,
                 const Plato::ScalarMultiVector                     & aPrevStrain,
-                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
+                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
+                const Plato::ScalarVector                          & aRefScale) const
   {
       // Compute elastic strain
-      aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-      aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-      aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(0,1); // epsilon_{12}^{e}
-      aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(2,2); // epsilon_{33}^{e}
+      aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - aRefScale(aCellOrdinal) * mReferenceStrain(0,0); // epsilon_{11}^{e}
+      aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - aRefScale(aCellOrdinal) * mReferenceStrain(1,1); // epsilon_{22}^{e}
+      aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - aRefScale(aCellOrdinal) * mReferenceStrain(0,1); // epsilon_{12}^{e}
+      aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - aRefScale(aCellOrdinal) * mReferenceStrain(2,2); // epsilon_{33}^{e}
   }
 
   /******************************************************************************//**
@@ -206,15 +208,16 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarVector                          & aBasisFunctions,
                 const Plato::ScalarMultiVectorT< StrainIncrT >     & aStrainIncr,
                 const Plato::ScalarMultiVector                     & aPrevStrain,
-                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
+                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
+                const Plato::ScalarVector                          & aRefScale) const
   {
       // Compute elastic strain
-      aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-      aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-      aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(2,2); // epsilon_{33}^{e}
-      aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(1,2); // epsilon_{23}^{e}
-      aElasticStrain(aCellOrdinal, 4) = aStrainIncr(aCellOrdinal, 4) + aPrevStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6) - mReferenceStrain(0,2); // epsilon_{13}^{e}
-      aElasticStrain(aCellOrdinal, 5) = aStrainIncr(aCellOrdinal, 5) + aPrevStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7) - mReferenceStrain(0,1); // epsilon_{12}^{e}
+      aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - aRefScale(aCellOrdinal) * mReferenceStrain(0,0); // epsilon_{11}^{e}
+      aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - aRefScale(aCellOrdinal) * mReferenceStrain(1,1); // epsilon_{22}^{e}
+      aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - aRefScale(aCellOrdinal) * mReferenceStrain(2,2); // epsilon_{33}^{e}
+      aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - aRefScale(aCellOrdinal) * mReferenceStrain(1,2); // epsilon_{23}^{e}
+      aElasticStrain(aCellOrdinal, 4) = aStrainIncr(aCellOrdinal, 4) + aPrevStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6) - aRefScale(aCellOrdinal) * mReferenceStrain(0,2); // epsilon_{13}^{e}
+      aElasticStrain(aCellOrdinal, 5) = aStrainIncr(aCellOrdinal, 5) + aPrevStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7) - aRefScale(aCellOrdinal) * mReferenceStrain(0,1); // epsilon_{12}^{e}
 
     //printf("J2Plasticity Elastic Strain Computation\n");
   }
@@ -238,10 +241,10 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
   {
     // Compute elastic strain
-    aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-    aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-    aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(0,1); // epsilon_{12}^{e}
-    aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(2,2); // epsilon_{33}^{e}
+    aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2); // epsilon_{11}^{e}
+    aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3); // epsilon_{22}^{e}
+    aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4); // epsilon_{12}^{e}
+    aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5); // epsilon_{33}^{e}
 
     // Compute the temperature
     GlobalStateT tTemperature = 0.0;
@@ -275,12 +278,12 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
   {
       // Compute elastic strain
-      aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-      aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-      aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(3,3); // epsilon_{33}^{e}
-      aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(1,2); // epsilon_{23}^{e}
-      aElasticStrain(aCellOrdinal, 4) = aTotalStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6) - mReferenceStrain(0,2); // epsilon_{13}^{e}
-      aElasticStrain(aCellOrdinal, 5) = aTotalStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7) - mReferenceStrain(0,1); // epsilon_{12}^{e}
+      aElasticStrain(aCellOrdinal, 0) = aTotalStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2); // epsilon_{11}^{e}
+      aElasticStrain(aCellOrdinal, 1) = aTotalStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3); // epsilon_{22}^{e}
+      aElasticStrain(aCellOrdinal, 2) = aTotalStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4); // epsilon_{33}^{e}
+      aElasticStrain(aCellOrdinal, 3) = aTotalStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5); // epsilon_{23}^{e}
+      aElasticStrain(aCellOrdinal, 4) = aTotalStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6); // epsilon_{13}^{e}
+      aElasticStrain(aCellOrdinal, 5) = aTotalStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7); // epsilon_{12}^{e}
 
       // Compute the temperature
       GlobalStateT tTemperature = 0.0;
@@ -314,13 +317,14 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarVector                          & aBasisFunctions,
                 const Plato::ScalarMultiVectorT< StrainIncrT >     & aStrainIncr,
                 const Plato::ScalarMultiVector                     & aPrevStrain,
-                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
+                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
+                const Plato::ScalarVector                          & aRefScale) const
   {
     // Compute elastic strain
-    aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-    aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-    aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(0,1); // epsilon_{12}^{e}
-    aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(2,2); // epsilon_{33}^{e}
+    aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - aRefScale(aCellOrdinal) * mReferenceStrain(0,0); // epsilon_{11}^{e}
+    aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - aRefScale(aCellOrdinal) * mReferenceStrain(1,1); // epsilon_{22}^{e}
+    aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - aRefScale(aCellOrdinal) * mReferenceStrain(0,1); // epsilon_{12}^{e}
+    aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - aRefScale(aCellOrdinal) * mReferenceStrain(2,2); // epsilon_{33}^{e}
 
     // Compute the temperature
     GlobalStateT tTemperature = 0.0;
@@ -352,15 +356,16 @@ class ThermoPlasticityUtilities
                 const Plato::ScalarVector                          & aBasisFunctions,
                 const Plato::ScalarMultiVectorT< StrainIncrT >     & aStrainIncr,
                 const Plato::ScalarMultiVector                     & aPrevStrain,
-                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain) const
+                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
+                const Plato::ScalarVector                          & aRefScale) const
   {
       // Compute elastic strain
-      aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - mReferenceStrain(0,0); // epsilon_{11}^{e}
-      aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - mReferenceStrain(1,1); // epsilon_{22}^{e}
-      aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - mReferenceStrain(3,3); // epsilon_{33}^{e}
-      aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - mReferenceStrain(1,2); // epsilon_{23}^{e}
-      aElasticStrain(aCellOrdinal, 4) = aStrainIncr(aCellOrdinal, 4) + aPrevStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6) - mReferenceStrain(0,2); // epsilon_{13}^{e}
-      aElasticStrain(aCellOrdinal, 5) = aStrainIncr(aCellOrdinal, 5) + aPrevStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7) - mReferenceStrain(0,1); // epsilon_{12}^{e}
+      aElasticStrain(aCellOrdinal, 0) = aStrainIncr(aCellOrdinal, 0) + aPrevStrain(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 2) - aRefScale(aCellOrdinal) * mReferenceStrain(0,0); // epsilon_{11}^{e}
+      aElasticStrain(aCellOrdinal, 1) = aStrainIncr(aCellOrdinal, 1) + aPrevStrain(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 3) - aRefScale(aCellOrdinal) * mReferenceStrain(1,1); // epsilon_{22}^{e}
+      aElasticStrain(aCellOrdinal, 2) = aStrainIncr(aCellOrdinal, 2) + aPrevStrain(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 4) - aRefScale(aCellOrdinal) * mReferenceStrain(3,3); // epsilon_{33}^{e}
+      aElasticStrain(aCellOrdinal, 3) = aStrainIncr(aCellOrdinal, 3) + aPrevStrain(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 5) - aRefScale(aCellOrdinal) * mReferenceStrain(1,2); // epsilon_{23}^{e}
+      aElasticStrain(aCellOrdinal, 4) = aStrainIncr(aCellOrdinal, 4) + aPrevStrain(aCellOrdinal, 4) - aLocalState(aCellOrdinal, 6) - aRefScale(aCellOrdinal) * mReferenceStrain(0,2); // epsilon_{13}^{e}
+      aElasticStrain(aCellOrdinal, 5) = aStrainIncr(aCellOrdinal, 5) + aPrevStrain(aCellOrdinal, 5) - aLocalState(aCellOrdinal, 7) - aRefScale(aCellOrdinal) * mReferenceStrain(0,1); // epsilon_{12}^{e}
 
       // Compute the temperature
       GlobalStateT tTemperature = 0.0;

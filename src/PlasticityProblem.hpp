@@ -336,11 +336,11 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: INPUT CONTROL VECTOR IS EMPTY.")
         }
-        // TODO:
-        // mSolutions.resetToZero();
 
         auto& tSequenceSteps = mSequence.getSteps();
         auto tNumSequenceSteps = tSequenceSteps.size();
+
+        mDataMap.scalarVectors["LoadControlVector"] = Plato::ScalarVector("Load control vector", mSpatialModel.Mesh.nelems());
 
         for (Plato::OrdinalType tSequenceStepIndex=0; tSequenceStepIndex<tNumSequenceSteps; tSequenceStepIndex++)
         {
@@ -852,7 +852,6 @@ private:
         {
             mTimeData->updateTimeData(tCurrentStepIndex);
 
-            //if(mDataMap.stateDataMaps.size())
             if(aSequenceStepIndex > 0)
             {
                 auto tPrevTotalStates = mSolutions.get("Total States", aSequenceStepIndex-1);
@@ -862,7 +861,7 @@ private:
                 Plato::ScalarVector tPrevTotalState = Kokkos::subview(tPrevTotalStates, tLastStepIndex, Kokkos::ALL());
                 Kokkos::deep_copy(tTotalState, tPrevTotalState);
 
-                mDataMap.scalarMultiVectors["Previous Strain"] = mDataMap.stateDataMaps.back().scalarMultiVectors["Total Strain"];
+                mDataMap.scalarMultiVectors["Previous Strain"] = Plato::blas1::copy(mDataMap.stateDataMaps.back().scalarMultiVectors["Total Strain"]);
             }
             else
             {
@@ -903,6 +902,7 @@ private:
             this->computeReactionForce(aControls, tCurrentState);
 
             mDataMap.saveState();
+            mDataMap.scalarVectors["LoadControlVector"] = Plato::blas1::copy(mDataMap.stateDataMaps.back().scalarVectors["LoadControlVector"]);
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -925,6 +925,7 @@ private:
         return tForwardProblemSolved;
     }
 
+public:
     /***************************************************************************//**
      * \brief Update displacement and load control multiplier.
      * \param [in] aInput  current time step index
@@ -933,6 +934,20 @@ private:
     {
         auto tLoadControlConstant = mTimeData->mCurrentTimeStepSize * static_cast<Plato::Scalar>(aInput + 1);
         mDataMap.mScalarValues["LoadControlConstant"] = tLoadControlConstant;
+
+        auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
+
+        // loop over blocks
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tCellOrds = tDomain.cellOrdinals();
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aOrdinal)
+            {
+                auto tGlobalCellOrd = tCellOrds(aOrdinal);
+                tLoadControlVector(tGlobalCellOrd) = (tLoadControlVector(tGlobalCellOrd) == 1.0) ? 1.0 : tLoadControlConstant;
+            }, "update load control vector");
+        }
 
         if (aInput != static_cast<Plato::OrdinalType>(0))
           Plato::blas1::copy(mDirichletValues, mPreviousStepDirichletValues);
@@ -951,6 +966,7 @@ private:
 
         mNewtonSolver->appendDirichletValues(tNewtonUpdateDirichletValues);
     }
+private:
 
     /***************************************************************************//**
      * \brief Update projected pressure gradient.

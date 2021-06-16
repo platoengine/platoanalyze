@@ -204,6 +204,28 @@ inline void copy(const VecOneT & aInput, const VecTwoT & aOutput)
 // function copy
 
 /******************************************************************************//**
+ * \brief Copy input 1D container into new output 1D container
+ * \param [in] aInput   1D Kokkos container
+**********************************************************************************/
+inline Plato::ScalarVector copy(const Plato::ScalarVector & aInput)
+{
+    Plato::ScalarVector tRetVal(aInput.label(), aInput.size());
+    Kokkos::deep_copy(tRetVal, aInput);
+    return tRetVal;
+}
+
+/******************************************************************************//**
+ * \brief Copy input 1D container into new output 1D container
+ * \param [in] aInput   1D Kokkos container
+**********************************************************************************/
+inline Plato::ScalarMultiVector copy(const Plato::ScalarMultiVector & aInput)
+{
+    Plato::ScalarMultiVector tRetVal(aInput.label(), aInput.extent(0), aInput.extent(1));
+    Kokkos::deep_copy(tRetVal, aInput);
+    return tRetVal;
+}
+
+/******************************************************************************//**
  * \brief Scale all the elements by input scalar value
  * \param [in] aInput   scalar value
  * \param [out] aOutput 1D Kokkos container

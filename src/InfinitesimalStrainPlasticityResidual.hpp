@@ -464,6 +464,7 @@ public:
         auto tElasticShearModulus = mElasticShearModulus;
 
         Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
+        auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
 
         auto tQuadratureWeight = mCubatureRule->getCubWeight();
         auto tBasisFunctions = mCubatureRule->getBasisFunctions();
@@ -476,7 +477,7 @@ public:
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic
             tComputeTotalStrain(aCellOrdinal, tStrainIncr, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                        tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain);
+                                                        tBasisFunctions, tStrainIncr, tPrevStrain, tElasticStrain, tLoadControlVector);
 
             // compute pressure gradient
             tComputeScalarGrad(aCellOrdinal, tNumDofsPerNode, tPressureDofOffset,
