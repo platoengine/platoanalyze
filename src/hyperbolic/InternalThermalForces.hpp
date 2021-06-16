@@ -226,9 +226,9 @@ private:
     void setSourceTerm
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Heat Source"))
+        if(aInputs.isSublist("Thermal Source"))
         {
-            auto tHeatSource = aInputs.sublist("Heat Source");
+            auto tHeatSource = aInputs.sublist("Thermal Source");
             mHeatSourceConstant = tHeatSource.get<Plato::Scalar>("Constant", 0.0);
             mReferenceTemperature = tHeatSource.get<Plato::Scalar>("Reference Temperature", 1.0);
             if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
@@ -249,7 +249,7 @@ private:
     void setThermalProperties
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Heat Source"))
+        if(aInputs.isSublist("Thermal Source"))
         {
             auto tMaterialName = mSpatialDomain.getMaterialName();
             mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
@@ -405,7 +405,7 @@ public:
         }
 
         // set constant heat source
-        Plato::ScalarVectorT<ResultT> tHeatSource("prescribed heat source", tNumCells);
+        Plato::ScalarVectorT<ResultT> tHeatSource("prescribed thermal source", tNumCells);
         Plato::blas1::fill(mHeatSourceConstant, tHeatSource);
 
         // set local data
@@ -515,17 +515,16 @@ private:
     void setSourceTerm
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Heat Source"))
+        if(aInputs.isSublist("Thermal Source"))
         {
-            auto tHeatSource = aInputs.sublist("Heat Source");
+            auto tHeatSource = aInputs.sublist("Thermal Source");
             mHeatSourceConstant = tHeatSource.get<Plato::Scalar>("Constant", 0.0);
             mReferenceTemperature = tHeatSource.get<Plato::Scalar>("Reference Temperature", 1.0);
+            mHeatSourcePenaltyExponent = tHeatSource.get<Plato::Scalar>("Thermal Source Penalty Exponent", 3.0);
             if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
             {
-                THROWERR(std::string("Invalid 'Reference Temperature' input, value is set to an invalid numeric number '")
-                    + std::to_string(mReferenceTemperature) + "'.")
+                THROWERR(std::string("'Reference Temperature' keyword cannot be set to zero."))
             }
-
             this->setThermalConductivity(aInputs);
             this->setCharacteristicLength(aInputs);
         }
@@ -537,7 +536,7 @@ private:
      ******************************************************************************/
     void setThermalConductivity(Teuchos::ParameterList &aInputs)
     {
-        if (aInputs.isSublist("Heat Source"))
+        if (aInputs.isSublist("Thermal Source"))
         {
             auto tMaterialName = mSpatialDomain.getMaterialName();
             mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
@@ -601,7 +600,6 @@ private:
             if (tEnergyParamList.isSublist("Penalty Function"))
             {
                 auto tPenaltyFuncList = tEnergyParamList.sublist("Penalty Function");
-                mHeatSourcePenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Heat Source Penalty Exponent", 3.0);
                 mThermalDiffusivityPenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Thermal Diffusion Penalty Exponent", 3.0);
             }
         }

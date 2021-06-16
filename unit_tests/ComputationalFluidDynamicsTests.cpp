@@ -14,6 +14,235 @@
 
 #include "PlatoTestHelpers.hpp"
 
+namespace Plato
+{
+
+namespace Fluids
+{
+
+/***************************************************************************//**
+ * \tparam PhysicsT    Plato physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ *
+ * \class CriterionThermalCompliance
+ *
+ * \brief Evaluate the thermal compliance of a body, defined as
+ *
+ *  \f[ \int_{\Omega_e} w^h Q_n d\Omega_e + \int_{\Gamma_e} w^h F_n d\Gamma_e \f],
+ *
+ * where the subscript \f$ n \f$ is the current time step, \f$ Q \f$ is a 
+ * thermal source and \f$ F \f$ is the thermal flux.
+ ******************************************************************************/
+template<typename PhysicsT, typename EvaluationT>
+class CriterionThermalCompliance : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
+{
+private:
+    static constexpr auto mNumDofsPerNode  = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
+    static constexpr auto mNumDofsPerCell  = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
+    static constexpr auto mNumSpatialDims  = PhysicsT::SimplexT::mNumSpatialDims; /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell = PhysicsT::SimplexT::mNumNodesPerCell; /*!< number of nodes per cell/element */
+
+    // set local ad type
+    using ResultT   = typename EvaluationT::ResultScalarType; /*!< result FAD evaluation type */
+    using ConfigT   = typename EvaluationT::ConfigScalarType; /*!< configuration FAD evaluation type */
+    using ControlT  = typename EvaluationT::ControlScalarType; /*!< control FAD evaluation type */
+    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;  /*!< previous energy FAD evaluation type */
+
+    // member parameters
+    Plato::Scalar mThermalConductivity = 1.0; /*!< thermal conductivity */
+    Plato::Scalar mCharacteristicLength = 0.0; /*!< characteristic lenght */
+    Plato::Scalar mReferenceTemperature = 1.0; /*!< reference temperature */
+    Plato::Scalar mThermalSourceConstant = 0.0; /*!< thermal source constant */
+    Plato::Scalar mThermalSourcePenaltyExponent = 3.0; /*!< thermal source simp penalty model exponent */
+
+    std::string mFuncName; /*!< scalar funciton name */
+    std::vector<std::string> mElemBlockNames; /*!< names assigned to element blocks where thermal source is applied */
+
+    // member metadata
+    Plato::DataMap& mDataMap; /*!< holds output metadata */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature integration rule */
+
+    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux; /*!< natural boundary condition evaluator */
+
+public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aName    scalar function name
+     * \param [in] aDomain  spatial domain metadata
+     * \param [in] aDataMap output database
+     * \param [in] aInputs  input database
+     ******************************************************************************/
+    CriterionThermalCompliance
+    (const std::string          & aName,
+     const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap,
+     Teuchos::ParameterList     & aInputs) :
+         mDataMap(aDataMap),
+         mSpatialDomain(aDomain),
+         mFuncName(aName)
+    {
+        this->initializeThermalFluxes(aInputs);
+        this->initializeThermalSource(aInputs);
+    }
+
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
+    virtual ~CriterionThermalCompliance(){}
+
+    /***************************************************************************//**
+     * \fn std::string name
+     * \brief Returns scalar function name
+     * \return scalar function name
+     ******************************************************************************/
+    std::string name() const override { return mFuncName; }
+
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate scalar function within the computational domain \f$ \Omega \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
+    void evaluate
+    (const Plato::WorkSets &aWorkSets, 
+     Plato::ScalarVectorT<ResultT> &aResultWS) const
+    {
+        if(mElemBlockNames.empty()) { return; }
+
+        auto tMySpatialDomainElemBlockName = mSpatialDomain.getElementBlockName();
+        auto tItr = std::find(mElemBlockNames.begin(), mElemBlockNames.end(), tMySpatialDomainElemBlockName);
+        if(tItr != mElemBlockNames.end())
+        {
+            auto tNumCells = mSpatialDomain.numCells();
+            if( tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
+            {
+                THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
+                    + "cell number does not match. " + "Spatial domain has '" + std::to_string(tNumCells)
+                    + "' cells/elements and output workset has '" + std::to_string(aResultWS.extent(0)) + "' cells/elements.")
+            }
+
+            // set local functors
+            Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
+
+            // set constant heat source
+            Plato::ScalarVectorT<ResultT> tThermalSource("thermal source", tNumCells);
+            Plato::blas1::fill(mThermalSourceConstant, tThermalSource);
+
+            // set local arrays
+            Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
+            Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+
+            // set input state worksets
+            auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+            auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
+
+            // transfer member data to device
+            auto tRefTemp = mReferenceTemperature;
+            auto tCharLength = mCharacteristicLength;
+            auto tThermalCond = mThermalConductivity;
+            auto tHeatSourcePenaltyExponent = mThermalSourcePenaltyExponent;
+
+            auto tCubWeight = mCubatureRule.getCubWeight();
+            auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            {
+                tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+                tCellVolume(aCellOrdinal) = tCellVolume(aCellOrdinal) * tCubWeight;
+            
+                auto tHeatSrcDimlessConstant = ( tCharLength * tCharLength ) / (tThermalCond * tRefTemp);
+                ControlT tPenalizedDimlessHeatSrcConstant = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
+                    (aCellOrdinal, tHeatSrcDimlessConstant, tHeatSourcePenaltyExponent, tControlWS);
+                Plato::Fluids::integrate_scalar_field<mNumDofsPerCell>
+                    (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalSource, aResultWS, -tPenalizedDimlessHeatSrcConstant);
+            }, "intergate the thermal source term");
+        }
+    }
+
+    /***************************************************************************//**
+     * \fn void evaluateBoundary
+     * \brief Evaluate scalar function along the computational boudary \f$ \Gamma \f$.
+     * \param [in] aSpatialModel spatial domain metadata, holds mesh and entity sets
+     * \param [in] aWorkSets     state work sets initialized with proper FAD types
+     * \param [in] aResult       output work set 
+     ******************************************************************************/
+    void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel, 
+     const Plato::WorkSets & aWorkSets, 
+     Plato::ScalarVectorT<ResultT> & aResultWS) 
+     const override
+    {
+        if( mHeatFlux != nullptr )
+        {
+            // get state worksets
+            auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+            auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
+            auto tCurTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("current temperature"));
+
+            // evaluate prescribed flux
+            auto tNumCells = aResultWS.extent(0);
+            Plato::ScalarMultiVectorT<ResultT> tHeatFluxWS("heat flux", tNumCells, mNumDofsPerCell);
+            mHeatFlux->get( aSpatialModel, tCurTempWS, tControlWS, tConfigWS, tHeatFluxWS );
+
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            {
+                for(Plato::OrdinalType tDof = 0; tDof < mNumDofsPerCell; tDof++)
+                {
+                    aResultWS(aCellOrdinal) += tCurTempWS(aCellOrdinal, tDof) * tHeatFluxWS(aCellOrdinal, tDof);
+                }
+            }, "integrate the thermal flux term");
+        }
+    }
+
+private:
+    /***************************************************************************//**
+     * \brief Initialize thermal fluxes.
+     * \param [in] aInputs  input database
+     ******************************************************************************/
+    void initializeThermalFluxes(Teuchos::ParameterList& aInputs)
+    {
+        if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
+        {
+            auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
+            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Initialize thermal source.
+     * \param [in] aInputs  input database
+     ******************************************************************************/
+    void initializeThermalSource(Teuchos::ParameterList& aInputs)
+    {
+        if(aInputs.isSublist("Thermal Source"))
+        {
+            auto tThermalSourceParamList = aInputs.sublist("Thermal Source");
+            mThermalSourceConstant = tThermalSourceParamList.get<Plato::Scalar>("Constant", 0.0);
+            mReferenceTemperature = tThermalSourceParamList.get<Plato::Scalar>("Reference Temperature", 1.0);
+            mThermalSourcePenaltyExponent = tThermalSourceParamList.get<Plato::Scalar>("Thermal Source Penalty Exponent", 3.0);
+            if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
+            {
+                THROWERR(std::string("'Reference Temperature' keyword cannot be set to zero."))
+            }
+            mElemBlockNames = Plato::teuchos::parse_array<std::string>("Element Blocks", tThermalSourceParamList);
+
+            auto tMaterialName = mSpatialDomain.getMaterialName();
+            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
+            Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+
+            mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+            Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
+        }
+    }
+};
+// class CriterionThermalCompliance
+
+}
+// namespace Fluids
+
+}
+// namespace Plato
+
 namespace ComputationalFluidDynamicsTests
 {
 
