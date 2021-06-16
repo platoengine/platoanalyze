@@ -335,9 +335,10 @@ public:
       Plato::ScalarMultiVectorT<TotalStrainT>   tStrainIncr("total strain",tNumCells,mNumStressTerms);
       Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumStressTerms);
       Plato::ScalarMultiVector                  tPrevStrain("previous strain", tNumCells, mNumStressTerms);
+      Plato::ScalarVector                       tLoadControlVector("load control vector", tNumCells);
 
       Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
-      auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
+      Plato::fromMap(mDataMap, tLoadControlVector, "LoadControlVector", mSpatialDomain);
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;
@@ -467,9 +468,10 @@ public:
       Plato::ScalarMultiVector tYieldSurfaceNormal("yield surface normal",tNumCells,mNumStressTerms);
       Plato::ScalarVector      tDevStressMinusBackstressNorm("||(deviatoric stress - backstress)||",tNumCells);
       Plato::ScalarMultiVector tPrevStrain("previous strain", tNumCells, mNumStressTerms);
+      Plato::ScalarVector      tLoadControlVector("load control vector", tNumCells);
 
       Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
-      auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
+      Plato::fromMap(mDataMap, tLoadControlVector, "LoadControlVector", mSpatialDomain);
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;

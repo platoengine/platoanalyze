@@ -228,7 +228,38 @@ fromMap(
         }
     }, "Add domain entries");
 }
-// function toMap
+// function fromMap
+
+/******************************************************************************//**
+ * \brief Retrieve 1D container from data map.
+ * \param [in/out] aDataMap output data storage
+ * \param [in] aOutput 1D container
+ * \param [in] aEntryName output data name
+ **********************************************************************************/
+inline void
+fromMap(
+          Plato::DataMap       & aDataMap,
+    const Plato::ScalarVector  & aOutput,
+    const std::string          & aEntryName,
+    const Plato::SpatialDomain & aSpatialDomain
+)
+{
+    auto tNumCells = aSpatialDomain.numCells();
+    if( aOutput.extent(0) != tNumCells )
+    {
+        THROWERR( "DataMap error: attempted to extract domain data into an incompatible view");
+    }
+
+    auto tData = aDataMap.scalarVectors.at(aEntryName);
+
+    auto tOrdinals = aSpatialDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tGlobalOrdinal = tOrdinals[aCellOrdinal];
+        aOutput(aCellOrdinal) = tData(tGlobalOrdinal);
+    }, "Add domain entries");
+}
+// function fromMap
 
 
 /******************************************************************************//**

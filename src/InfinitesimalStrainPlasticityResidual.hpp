@@ -453,6 +453,7 @@ public:
         Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
         Plato::ScalarVectorT<LocalStateT> tAccumPlasticStrain("accumulated plastic strain", tNumCells);
         Plato::ScalarVectorT<LocalStateT> tPlasticMultiplier("plastic multiplier increment", tNumCells);
+        Plato::ScalarVector               tLoadControlVector("load control vector", tNumCells);
         Plato::ScalarMultiVectorT<LocalStateT> tPlasticStrain("plastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<LocalStateT> tBackStress("back-stress stress", tNumCells, mNumStressTerms);
 
@@ -464,7 +465,7 @@ public:
         auto tElasticShearModulus = mElasticShearModulus;
 
         Plato::fromMap(mDataMap, tPrevStrain, "Previous Strain", mSpatialDomain);
-        auto tLoadControlVector = mDataMap.scalarVectors["LoadControlVector"];
+        Plato::fromMap(mDataMap, tLoadControlVector, "LoadControlVector", mSpatialDomain);
 
         auto tQuadratureWeight = mCubatureRule->getCubWeight();
         auto tBasisFunctions = mCubatureRule->getBasisFunctions();

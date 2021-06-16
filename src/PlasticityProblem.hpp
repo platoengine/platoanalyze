@@ -347,6 +347,24 @@ public:
             const auto& tSequenceStep = tSequenceSteps[tSequenceStepIndex];
             mSpatialModel.applyMask(tSequenceStep.getMask());
 
+            if(tSequenceStepIndex > 0)
+            {
+                auto tPrevTotalStates = mSolutions.get("Total States", tSequenceStepIndex-1);
+                Plato::OrdinalType tLastStepIndex = tPrevTotalStates.extent(0) - 1;
+
+                auto tTotalStates = mSolutions.get("Total States", tSequenceStepIndex);
+
+                Plato::ScalarVector tTotalState = Kokkos::subview(tTotalStates, 0, Kokkos::ALL());
+                Plato::ScalarVector tPrevTotalState = Kokkos::subview(tPrevTotalStates, tLastStepIndex, Kokkos::ALL());
+                Kokkos::deep_copy(tTotalState, tPrevTotalState);
+
+                mDataMap.scalarMultiVectors["Previous Strain"] = Plato::blas1::copy(mDataMap.stateDataMaps.back().scalarMultiVectors["Total Strain"]);
+            }
+            else
+            {
+                mDataMap.scalarMultiVectors["Previous Strain"] = Plato::ScalarMultiVector("previous strain", mSpatialModel.Mesh.nelems(), PhysicsT::mNumVoigtTerms);
+            }
+
             bool tStop = false;
             while (tStop == false)
             {
@@ -852,22 +870,6 @@ private:
         {
             mTimeData->updateTimeData(tCurrentStepIndex);
 
-            if(aSequenceStepIndex > 0)
-            {
-                auto tPrevTotalStates = mSolutions.get("Total States", aSequenceStepIndex-1);
-                Plato::OrdinalType tLastStepIndex = tPrevTotalStates.extent(0) - 1;
-
-                Plato::ScalarVector tTotalState = Kokkos::subview(tTotalStates, tCurrentStepIndex, Kokkos::ALL());
-                Plato::ScalarVector tPrevTotalState = Kokkos::subview(tPrevTotalStates, tLastStepIndex, Kokkos::ALL());
-                Kokkos::deep_copy(tTotalState, tPrevTotalState);
-
-                mDataMap.scalarMultiVectors["Previous Strain"] = Plato::blas1::copy(mDataMap.stateDataMaps.back().scalarMultiVectors["Total Strain"]);
-            }
-            else
-            {
-                mDataMap.scalarMultiVectors["Previous Strain"] = Plato::ScalarMultiVector("previous strain", mSpatialModel.Mesh.nelems(), PhysicsT::mNumVoigtTerms);
-            }
-
             std::stringstream tMsg;
             tMsg << "TIME STEP #" << mTimeData->getTimeStepIndexPlusOne() << " OUT OF " << mTimeData->mNumTimeSteps
                  << " TIME STEPS, TOTAL TIME = " << mTimeData->mCurrentTime << "\n";
@@ -887,6 +889,11 @@ private:
 
             Plato::ScalarVector tTotalState = Kokkos::subview(tTotalStates, tCurrentStepIndex, Kokkos::ALL());
             Plato::ScalarVector tGlobalState = Kokkos::subview(tGlobalStates, tCurrentStepIndex, Kokkos::ALL());
+            if(tCurrentStepIndex > 0)
+            {
+                Plato::ScalarVector tPrevTotalState = Kokkos::subview(tTotalStates, tCurrentStepIndex-1, Kokkos::ALL());
+                Kokkos::deep_copy(tTotalState, tPrevTotalState);
+            }
             Plato::blas1::axpy(1.0, tGlobalState, tTotalState);
 
             Plato::ScalarMultiVector tStrainIncrement = mDataMap.scalarMultiVectors["Strain Increment"];
@@ -903,6 +910,7 @@ private:
 
             mDataMap.saveState();
             mDataMap.scalarVectors["LoadControlVector"] = Plato::blas1::copy(mDataMap.stateDataMaps.back().scalarVectors["LoadControlVector"]);
+            mDataMap.scalarMultiVectors["Previous Strain"] = Plato::blas1::copy(mDataMap.stateDataMaps.back().scalarMultiVectors["Total Strain"]);
 
             if(tNewtonRaphsonConverged == false)
             {
