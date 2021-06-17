@@ -338,8 +338,11 @@ private:
     void initializeSolver(Plato::CurrentStates & aStates)
     {
         mCurrentSolverIter = 0;
-        Plato::blas1::update(1.0, aStates.mPreviousLocalState, 0.0, aStates.mCurrentLocalState);
-        Plato::blas1::update(1.0, aStates.mPreviousGlobalState, 0.0, aStates.mCurrentGlobalState);
+        if(aStates.mCurrentStepIndex != 0)
+        {
+            Plato::blas1::update(1.0, aStates.mPreviousLocalState, 0.0, aStates.mCurrentLocalState);
+            Plato::blas1::update(1.0, aStates.mPreviousGlobalState, 0.0, aStates.mCurrentGlobalState);
+        }
     }
 
     /***************************************************************************//**

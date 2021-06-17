@@ -1009,9 +1009,12 @@ private:
      * \param [in]     aStates           states at each time step
      * \param [in/out] aOutput           previous state
     *******************************************************************************/
-    void getPreviousState(const Plato::OrdinalType & aCurrentStepIndex,
-                          const Plato::ScalarMultiVector & aStates,
-                          Plato::ScalarVector & aOutput) const
+    void
+    getPreviousState(
+        const Plato::OrdinalType       & aCurrentStepIndex,
+        const Plato::ScalarMultiVector & aStates,
+              Plato::ScalarVector      & aOutput
+    ) const
     {
         auto tPreviousStepIndex = aCurrentStepIndex - static_cast<Plato::OrdinalType>(1);
         if(tPreviousStepIndex >= static_cast<Plato::OrdinalType>(0))
@@ -1220,8 +1223,19 @@ private:
         aStateData.mProjectedPressGrad = Kokkos::subview(tProjectedPressGrad, aStateData.mCurrentStepIndex, Kokkos::ALL());
 
         // GET PREVIOUS STATE
-        this->getPreviousState(aStateData.mCurrentStepIndex, tLocalStates, aStateData.mPreviousLocalState);
-        this->getPreviousState(aStateData.mCurrentStepIndex, tGlobalStates, aStateData.mPreviousGlobalState);
+        if(aSequenceStepIndex > 0 && aStateData.mCurrentStepIndex == 0) 
+        {
+            auto tPrevLocalStates  = mSolutions.get("Local States", aSequenceStepIndex-1);
+            auto tPrevGlobalStates = mSolutions.get("Global States", aSequenceStepIndex-1);
+            Plato::OrdinalType tLastStepIndex = tPrevLocalStates.extent(0)-1;
+            aStateData.mPreviousLocalState = Kokkos::subview(tPrevLocalStates, tLastStepIndex, Kokkos::ALL());
+            aStateData.mPreviousGlobalState = Kokkos::subview(tPrevGlobalStates, tLastStepIndex, Kokkos::ALL());
+        }
+        else
+        {
+            this->getPreviousState(aStateData.mCurrentStepIndex, tLocalStates, aStateData.mPreviousLocalState);
+            this->getPreviousState(aStateData.mCurrentStepIndex, tGlobalStates, aStateData.mPreviousGlobalState);
+        }
 
         // SET ENTRIES IN CURRENT STATES TO ZERO
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
