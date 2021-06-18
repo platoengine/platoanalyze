@@ -302,15 +302,15 @@ public:
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
         {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not in the criteria list");
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not defined in the criteria list");
         }
 
         auto tDirectory = std::string("solution_history");
         auto tSolutionHistory = Plato::omega_h::read_pvtu_file_paths(tDirectory);
         if(tSolutionHistory.size() != static_cast<size_t>(mNumForwardSolveTimeSteps + 1))
         {
-            THROWERR(std::string("Number of time steps read from the '") + tDirectory
-                 + "' directory does not match the expected value: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
+            THROWERR(std::string("Number of time steps read from directory '") + tDirectory
+                 + "' does not match the expected number of time steps: '" + std::to_string(mNumForwardSolveTimeSteps + 1) + "'.")
         }
 
         // evaluate steady-state criterion
@@ -318,6 +318,7 @@ public:
         auto tLastTimeStepIndex = tSolutionHistory.size() - 1u;
         tPrimal.scalar("time step index", tLastTimeStepIndex);
         this->setPrimal(tSolutionHistory, tPrimal);
+        this->setCriticalTimeStep(tPrimal);
         auto tOutput = tItr->second->value(aControl, tPrimal);
 
         return tOutput;

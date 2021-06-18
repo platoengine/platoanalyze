@@ -11,6 +11,7 @@
 #include "hyperbolic/CriterionFlowRate.hpp"
 #include "hyperbolic/AverageSurfacePressure.hpp"
 #include "hyperbolic/AverageSurfaceTemperature.hpp"
+#include "hyperbolic/CriterionThermalCompliance.hpp"
 
 #include "hyperbolic/PressureResidual.hpp"
 #include "hyperbolic/TemperatureResidual.hpp"
@@ -125,6 +126,12 @@ public:
         {
             return ( std::make_shared<Plato::Fluids::CriterionFlowRate<PhysicsT, EvaluationT>>
                 (aTag, aDomain, aDataMap, aInputs) );
+        }
+        else
+        if( tCriterionLowerTag == "thermal compliance" )
+        {
+            return ( std::make_shared<Plato::Fluids::CriterionThermalCompliance<PhysicsT, EvaluationT>>
+                (aTag, aDomain, aDataMap, aInputs) );           
         }
         else 
         if( tCriterionLowerTag == "average surface pressure" )

@@ -375,6 +375,35 @@ inline void copy_1Dview_to_write(const Plato::ScalarVector & aInput, Omega_h::Wr
 /******************************************************************************//**
  * \tparam ViewType view type
  *
+ * \fn DEVICE_TYPE inline void print_fad_val_values
+ *
+ * \brief Print 2D view of type forward automatic differentiation (FAD).
+ * \param [in] aOrdinal lead ordinal
+ * \param [in] aInput input 2D FAD view
+ * \param [in] aName  view name
+**********************************************************************************/
+template <typename ViewType>
+inline void print_fad_val_values
+(const Plato::ScalarMultiVectorT<ViewType> & aInput,
+ const std::string & aName)
+{
+    std::cout << "\nSTART: Print ScalarMultiVectorT '" << aName << "'.\n";
+    const auto tLenghtDim1 = aInput.extent(0);
+    const auto tLenghtDim2 = aInput.extent(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLenghtDim1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        for(Plato::OrdinalType tIndex = 0; tIndex < tLenghtDim2; tIndex++)
+        {
+            printf("X(%d,%d) = %f\n", aOrdinal, tIndex, aInput(aOrdinal,tIndex).val());
+        }
+    }, "print_fad_val_values");
+    std::cout << "\nEND: Print ScalarMultiVectorT '" << aName << "'.\n";
+}
+// function print_fad_val_values
+
+/******************************************************************************//**
+ * \tparam ViewType view type
+ *
  * \fn inline void print_fad_val_values
  *
  * \brief Print values of 1D view of forward automatic differentiation (FAD) types.

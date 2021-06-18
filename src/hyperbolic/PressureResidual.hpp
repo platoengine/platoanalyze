@@ -131,8 +131,8 @@ public:
 
     /***************************************************************************//**
      * \brief Evaluate internal forces.
-     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
-     * \param [in/out] aResultWS result/output workset
+     * \param [in]  aWorkSets holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS result/output workset
      ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
@@ -220,9 +220,11 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Evaluate non-prescribed boundary conditions.
-     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
-     * \param [in/out] aResultWS result/output workset
+     * \brief Evaluate boundary forces, not related to any prescribed boundary force, 
+     *        resulting from applying integration by part to the residual equation.
+     * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in]  aWorkSets     holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS     result/output workset
      ******************************************************************************/
     void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
@@ -237,9 +239,10 @@ public:
 
     /***************************************************************************//**
      * \fn void evaluateBoundary
-     * \brief Evaluate predictor residual.
-     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
-     * \param [in/out] aResultWS result/output workset
+     * \brief Evaluate prescribed boundary forces.
+     * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in]  aWorkSets     holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS     result/output workset
      ******************************************************************************/
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
@@ -250,7 +253,7 @@ public:
 private:
     /***************************************************************************//**
      * \brief Set artifical pressure and momentum damping.
-     * \param [in] aInputs input file metadata.
+     * \param [in] aInputs input file database.
      ******************************************************************************/
     void setAritificalDamping(Teuchos::ParameterList &aInputs)
     {
@@ -275,7 +278,7 @@ private:
 
     /***************************************************************************//**
      * \brief Set surface boundary integrals.
-     * \param [in] aInputs input file metadata.
+     * \param [in] aInputs input file database.
      ******************************************************************************/
     void setSurfaceBoundaryIntegrals(Teuchos::ParameterList& aInputs)
     {
