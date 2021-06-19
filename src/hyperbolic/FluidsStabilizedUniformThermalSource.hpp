@@ -56,7 +56,7 @@ private:
     Plato::Scalar mStabilizationMultiplier = 0.0; /*!< stabilization scalar multiplier */
 
     std::string mFuncName; /*!< scalar funciton name */
-    std::vector<std::string> mThermalSourceElemBlocks; /*!< names assigned to element blocks where thermal source is applied */
+    std::string mElemBlock; /*!< element block name where thermal source is applied */
 
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
@@ -94,11 +94,10 @@ public:
      Plato::Scalar aMultiplier = 1.0) 
      const override
     {
-        if(mThermalSourceElemBlocks.empty()) { return; }
+        if(mElemBlock.empty()) { return; }
 
         auto tMySpatialDomainElemBlockName = mSpatialDomain.getElementBlockName();
-        auto tItr = std::find(mThermalSourceElemBlocks.begin(), mThermalSourceElemBlocks.end(), tMySpatialDomainElemBlockName);
-        if(tItr != mThermalSourceElemBlocks.end())
+        if(mElemBlock == tMySpatialDomainElemBlockName)
         {
             auto tNumCells = mSpatialDomain.numCells();
             if (tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
@@ -173,22 +172,33 @@ private:
         {
             auto tThermalSourceParamList = aInputs.sublist("Thermal Sources");
             mMagnitude = Plato::teuchos::parse_parameter<Plato::Scalar>("Value", mFuncName, tThermalSourceParamList);
-            mReferenceTemperature = Plato::teuchos::parse_parameter<Plato::Scalar>("Reference Temperature", mFuncName, tThermalSourceParamList);
-            if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
-            {
-                THROWERR(std::string("'Reference Temperature' keyword cannot be set to zero."))
-            }
+            mElemBlock = Plato::teuchos::parse_parameter<std::string>("Element Block", mFuncName, tThermalSourceParamList);
 
-            auto tMyThermalSourceParamList = tThermalSourceParamList.sublist(mFuncName);
-            mThermalSourceElemBlocks = Plato::teuchos::parse_array<std::string>("Element Blocks", tMyThermalSourceParamList);
-            mPenaltyExponent = tMyThermalSourceParamList.get<Plato::Scalar>("Thermal Source Penalty Exponent", 3.0);
+            this->initializeMaterialProperties(aInputs);
+        }
+    }
 
-            auto tMaterialName = mSpatialDomain.getMaterialName();
-            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
-            Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+    /***************************************************************************//**
+     * \brief Initialize material proerties.
+     * \param [in] aInputs  input database
+     ******************************************************************************/
+    void initializeMaterialProperties(Teuchos::ParameterList& aInputs)
+    {
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
 
-            mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
-            Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
+        mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
+
+        mReferenceTemperature = Plato::Fluids::get_material_property<Plato::Scalar>("Reference Temperature", tMaterialName, aInputs);
+        if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
+            { THROWERR(std::string("'Reference Temperature' keyword cannot be set to zero.")) }
+            
+        if(Plato::Fluids::is_material_property_defined("Thermal Source Penalty Exponent", tMaterialName, aInputs))
+        {
+            mPenaltyExponent = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Source Penalty Exponent", tMaterialName, aInputs);
+            Plato::is_positive_finite_number(mPenaltyExponent, "Thermal Source Penalty Exponent");
         }
     }
 };
@@ -221,7 +231,7 @@ private:
     Plato::Scalar mStabilizationMultiplier = 0.0; /*!< stabilization scalar multiplier */
 
     std::string mFuncName; /*!< scalar funciton name */
-    std::vector<std::string> mThermalSourceElemBlocks; /*!< names assigned to element blocks where thermal source is applied */
+    std::string mElemBlock; /*!< element block name where thermal source is applied */
 
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
@@ -259,11 +269,10 @@ public:
      Plato::Scalar aMultiplier = 1.0) 
      const override
     {
-        if(mThermalSourceElemBlocks.empty()) { return; }
+        if(mElemBlock.empty()) { return; }
 
         auto tMySpatialDomainElemBlockName = mSpatialDomain.getElementBlockName();
-        auto tItr = std::find(mThermalSourceElemBlocks.begin(), mThermalSourceElemBlocks.end(), tMySpatialDomainElemBlockName);
-        if(tItr != mThermalSourceElemBlocks.end())
+        if(mElemBlock == tMySpatialDomainElemBlockName)
         {
             auto tNumCells = mSpatialDomain.numCells();
             if (tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
@@ -334,22 +343,28 @@ private:
         {
             auto tThermalSourceParamList = aInputs.sublist("Thermal Source");
             mMagnitude = Plato::teuchos::parse_parameter<Plato::Scalar>("Value", mFuncName, tThermalSourceParamList);
-            mReferenceTemperature = Plato::teuchos::parse_parameter<Plato::Scalar>("Reference Temperature", mFuncName, tThermalSourceParamList);
-            if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
-            {
-                THROWERR(std::string("'Reference Temperature' keyword cannot be set to zero."))
-            }
+            mElemBlock = Plato::teuchos::parse_parameter<std::string>("Element Block", mFuncName, tThermalSourceParamList);
 
-            auto tMyThermalSourceParamList = tThermalSourceParamList.sublist(mFuncName);
-            mThermalSourceElemBlocks = Plato::teuchos::parse_array<std::string>("Element Blocks", tMyThermalSourceParamList);
-
-            auto tMaterialName = mSpatialDomain.getMaterialName();
-            mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
-            Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
-
-            mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
-            Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
+            this->initializeMaterialProperties(aInputs);
         }
+    }
+
+    /***************************************************************************//**
+     * \brief Initialize material proerties.
+     * \param [in] aInputs  input database
+     ******************************************************************************/
+    void initializeMaterialProperties(Teuchos::ParameterList& aInputs)
+    {
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        mThermalConductivity = Plato::Fluids::get_material_property<Plato::Scalar>("Thermal Conductivity", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mThermalConductivity, "Thermal Conductivity");
+
+        mCharacteristicLength = Plato::Fluids::get_material_property<Plato::Scalar>("Characteristic Length", tMaterialName, aInputs);
+        Plato::is_positive_finite_number(mCharacteristicLength, "Characteristic Length");
+
+        mReferenceTemperature = Plato::Fluids::get_material_property<Plato::Scalar>("Reference Temperature", tMaterialName, aInputs);
+        if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
+            { THROWERR(std::string("'Reference Temperature' keyword cannot be set to zero.")) }
     }
 };
 // class StabilizedUniformThermalSource
