@@ -16,6 +16,7 @@
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "hyperbolic/SimplexFluids.hpp"
+#include "hyperbolic/FluidsThermalSources.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 #include "hyperbolic/AbstractVectorFunction.hpp"
 #include "hyperbolic/FluidsVolumeIntegrandFactory.hpp"
@@ -50,8 +51,9 @@ private:
     using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;  /*!< previous energy FAD evaluation type */
 
     const Plato::SpatialDomain& mSpatialDomain; /*!< spatial domain metadata */
+    Plato::Fluids::ThermalSources<PhysicsT, EvaluationT> mThermalSources; /*!< interface to thermal source evaluator */
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux; /*!< natural boundary condition evaluator */
-    std::shared_ptr<Plato::AbstractVolumeIntegrand<PhysicsT,EvaluationT>> mVolumeIntegral; /*!< volume integral evaluator */
+    std::shared_ptr<Plato::AbstractVolumeIntegrand<PhysicsT,EvaluationT>> mInternalForces; /*!< internal force evaluator */
 
 public:
     /***************************************************************************//**
@@ -66,10 +68,15 @@ public:
      Teuchos::ParameterList     & aInputs) :
          mSpatialDomain(aDomain)
     {
-        this->setNaturalBoundaryConditions(aInputs);
+        // initialize neumann/natural force evaluator
+        this->initializeNaturalBoundaryConditions(aInputs);
 
+        // initializr internal force evaluator 
         Plato::Fluids::VolumeIntegrandFactory tFactory;
-        mVolumeIntegral = tFactory.createInternalThermalForces<PhysicsT,EvaluationT>(aDomain,aDataMap,aInputs);
+        mInternalForces = tFactory.createInternalThermalForces<PhysicsT,EvaluationT>(aDomain,aDataMap,aInputs);
+
+        // initialize thermal source evaluator
+        mThermalSources.initializeStabilizedThermalSources(aDomain, aDataMap, aInputs);
     }
 
     /***************************************************************************//**
@@ -80,22 +87,25 @@ public:
     /***************************************************************************//**
      * \fn void evaluate
      * \brief Evaluate predictor residual.
-     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
-     * \param [in/out] aResultWS result/output workset
+     * \param [in]  aWorkSets holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS result/output workset
      ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResultWS)
     const override
     {
-        mVolumeIntegral->evaluate(aWorkSets, aResultWS);
+        mInternalForces->evaluate(aWorkSets, aResultWS);
+        mThermalSources.evaluate(aWorkSets, aResultWS);
     }
 
     /***************************************************************************//**
      * \fn void evaluateBoundary
-     * \brief Evaluate predictor residual.
-     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
-     * \param [in/out] aResultWS result/output workset
+     * \brief Evaluate boundary forces, not related to any prescribed boundary force, 
+     *        resulting from applying integration by part to the residual equation.
+     * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in]  aWorkSets     holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS     result/output workset
      ******************************************************************************/
     void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
@@ -108,8 +118,8 @@ public:
      * \fn void evaluatePrescribed
      * \brief Evaluate prescribed boundary forces.
      * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
-     * \param [in] aWorkSets holds input worksets (e.g. states, control, etc)
-     * \param [in/out] aResultWS result/output workset
+     * \param [in]  aWorkSets     holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS     result/output workset
      ******************************************************************************/
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
@@ -140,12 +150,12 @@ public:
 
 private:
     /***************************************************************************//**
-     * \fn void setNaturalBoundaryConditions
+     * \fn void initializeNaturalBoundaryConditions
      * \brief Set natural boundary conditions. The boundary conditions are set based
      *   on the information available in the input file.
      * \param [in] aInputs  input file metadata
      ******************************************************************************/
-    void setNaturalBoundaryConditions
+    void initializeNaturalBoundaryConditions
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Thermal Natural Boundary Conditions"))

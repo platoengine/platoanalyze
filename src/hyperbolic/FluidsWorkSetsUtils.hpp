@@ -82,6 +82,10 @@ build_scalar_function_worksets
         tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
         aWorkSets.set("current temperature", tCurTempWS);
     }
+
+    auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
+    Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
+    aWorkSets.set("critical time step", tCriticalTimeStep);
 }
 // function build_scalar_function_worksets
 
@@ -146,6 +150,10 @@ build_scalar_function_worksets
         tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
         aWorkSets.set("current temperature", tCurTempWS);
     }
+
+    auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
+    Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
+    aWorkSets.set("critical time step", tCriticalTimeStep);
 }
 // function build_scalar_function_worksets
 

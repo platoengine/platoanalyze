@@ -110,11 +110,13 @@ public:
     /***************************************************************************//**
      * \fn void evaluateBoundary
      * \brief Evaluate scalar function along the computational boudary \f$ d\Gamma \f$.
-     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
-     * \param [in] aResult   1D output work set of size number of cells
+     * \param [in] aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in] aWorkSets     holds state work sets initialize with correct FAD types
+     * \param [in] aResult       1D output work set of size number of cells
      ******************************************************************************/
     void evaluateBoundary
-    (const Plato::WorkSets & aWorkSets,
+    (const Plato::SpatialModel & aSpatialModel, 
+     const Plato::WorkSets & aWorkSets,
      Plato::ScalarVectorT<ResultT> & aResult)
     const override
     {

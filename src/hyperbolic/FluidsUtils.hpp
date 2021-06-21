@@ -68,13 +68,15 @@ inline bool is_material_property_defined(
 }
 
 /***************************************************************************//**
- * \fn inline bool calculate_brinkman_forces
+ * \fn inline std::string scenario
  *
- * \brief Return true if Brinkman forces are enabled, return false if disabled.
+ * \brief Return lower case scenario. Supported options. Supported options are: 
+ *        'analysis', 'density-based topology optimization', 'levelset topology optimization'.
  * \param [in] aInputs input file metadata
- * \return boolean (true or false)
+ * 
+ * \return scenario type
  ******************************************************************************/
-inline bool calculate_brinkman_forces
+inline std::string scenario
 (Teuchos::ParameterList& aInputs)
 {
     if (aInputs.isSublist("Hyperbolic") == false)
@@ -82,16 +84,33 @@ inline bool calculate_brinkman_forces
         THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
 
-    auto tFlowProps = aInputs.sublist("Hyperbolic");
-    auto tScenario = tFlowProps.get<std::string>("Scenario", "Analysis");
+    auto tHyperbolicParaamList = aInputs.sublist("Hyperbolic");
+    auto tScenario = tHyperbolicParaamList.get<std::string>("Scenario", "Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
     auto tScenarioSupported = (tLowerScenario == "density-based topology optimization" || tLowerScenario == "levelset topology optimization" || tLowerScenario == "analysis");
     if( !tScenarioSupported )
     {
         THROWERR(std::string("Scenario '") + tScenario + 
-            "' is not supported. Supported options are 1) Analysis, 2) Density-Based Topology Optimization or 3) Levelset Topology Optimization.")
+            "' is not supported. Supported options are: 'analysis', 'density-based topology optimization', 'levelset topology optimization'.")
     }
 
+    return tLowerScenario;
+}
+// function scenario
+
+/***************************************************************************//**
+ * \fn inline bool calculate_brinkman_forces
+ *
+ * \brief Return true if Brinkman force calculation is enabled, return false 
+ *        if Brinkman force calculation disabled. Brinkman force calculation
+ *        is only enabled for density-based topology optimization problems.
+ * \param [in] aInputs input file metadata
+ * \return boolean (true or false)
+ ******************************************************************************/
+inline bool calculate_brinkman_forces
+(Teuchos::ParameterList& aInputs)
+{
+    auto tLowerScenario = Plato::Fluids::scenario(aInputs);
     if (tLowerScenario == "density-based topology optimization")
     {
         return true;

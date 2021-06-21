@@ -62,7 +62,7 @@ private:
     using ControlT = typename EvaluationT::ControlScalarType; /*!< control FAD type */
     using PrevVelT = typename EvaluationT::PreviousMomentumScalarType; /*!< previous velocity FAD type */
 
-    Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+    Plato::Scalar mStabilization = 1.0; /*!< stabilization multiplier */
     Plato::Scalar mImpermeability = 1.0; /*!< permeability dimensionless number */
     Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
 
