@@ -162,6 +162,14 @@ if(HYPERBOLIC)
   )
 endif()
 
+## helmholtz sources
+if(HELMHOLTZ)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    helmholtz/Problem.cpp
+    helmholtz/HelmholtzResidual.cpp
+  )
+endif()
+
 if (PLATOANALYZE_ENABLE_TPETRA)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES} alg/TpetraLinearSolver.cpp)
 endif()

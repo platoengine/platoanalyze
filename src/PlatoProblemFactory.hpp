@@ -43,6 +43,11 @@
 #include "StabilizedThermomechanics.hpp"
 #endif
 
+#ifdef PLATO_HELMHOLTZ
+#include "helmholtz/Helmholtz.hpp"
+#include "helmholtz/Problem.hpp"
+#endif
+
 //#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
@@ -461,6 +466,15 @@ public:
         {
             return ( Plato::create_incompressible_fluid_problem<SpatialDim>(aMesh, aMeshSets, tInputData, aMachine) );
         }
+#ifdef PLATO_HELMHOLTZ
+        else
+        if(tLowerPhysics == "helmholtz filter")
+        {
+            auto tOutput = std::make_shared < Plato::Helmholtz::Problem<::Plato::HelmholtzFilter<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+            /* tOutput->readEssentialBoundaryConditions(tInputData); // NEED THIS??!! */
+            return tOutput;
+        }
+#endif
         else
         {
             THROWERR(std::string("'Physics' of type ") + tLowerPhysics + "' is not supported.");

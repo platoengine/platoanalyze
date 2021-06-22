@@ -715,6 +715,37 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/SolverInterfaceU
 add_test(NAME runSolverInterfaceUnitTests COMMAND ${ES_MPI_TEST})
 ################################################################################
 
+################################################################################
+if(HELMHOLTZ)
+  set(HelmholtzFilterTests_SOURCES
+    PlatoHelmholtzFilterTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(HelmholtzFilterTests_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(HelmholtzFilterUnitTests
+    ${HelmholtzFilterTests_SOURCES}
+    ${HelmholtzFilterTests_HEADERS}
+  )
+
+  target_link_libraries(HelmholtzFilterUnitTests
+    analyzelib
+    ${PLATO_LIBS}
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
+  )
+  target_include_directories(HelmholtzFilterUnitTests PRIVATE "${PLATOENGINE_PREFIX}/include")
+  target_include_directories(HelmholtzFilterUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/HelmholtzFilterUnitTests)
+  add_test(NAME runHelmholtzFilterUnitTests COMMAND ${ES_MPI_TEST})
+endif()
+################################################################################
+
 if(PLATOANALYZE_ENABLE_MPMD)
   set(AnalyzeApp_HEADERS
     ${CMAKE_SOURCE_DIR}/src/Analyze_App.hpp
