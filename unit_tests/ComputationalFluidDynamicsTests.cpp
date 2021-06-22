@@ -2562,6 +2562,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDoma
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     Plato::blas1::fill(3.0, tCurTemp);
     tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tCriticalTimeStep("critical time step", 1);
+    Plato::blas1::fill(0.1, tCriticalTimeStep);
+    tPrimal.vector("critical time step", tCriticalTimeStep);
 
     // call build_scalar_function_worksets
     Plato::WorkSets tWorkSets;
@@ -3098,7 +3101,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     Plato::blas1::fill(3.0, tCurTemp);
     tPrimal.vector("current temperature", tCurTemp);
-
+    Plato::ScalarVector tCriticalTimeStep("critical time step", 1);
+    Plato::blas1::fill(0.1, tCriticalTimeStep);
+    tPrimal.vector("critical time step", tCriticalTimeStep);
+    
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
