@@ -71,8 +71,6 @@ class HelmholtzResidual :
         {
             auto tLengthParamList = aProblemParams.get < Teuchos::ParameterList > ("Length Scale");
             mLengthScale = tLengthParamList.get<Plato::Scalar>("Length Scale");
-
-            printf("\n Length Scale in residual constructor Is: %f \n ",mLengthScale);
         }
 
         // parse boundary Conditions
@@ -133,12 +131,7 @@ class HelmholtzResidual :
 
       // create a bunch of functors:
       Plato::ComputeGradientWorkset<mSpaceDim>    tComputeGradient;
-
       Plato::ScalarGrad<mSpaceDim>                tScalarGrad;
-
-
-      printf("\n Length Scale in residual evaluate() Is: %f \n ",mLengthScale);
-
       Plato::Helmholtz::HelmholtzFlux<mSpaceDim>  tHelmholtzFlux(mLengthScale);
       Plato::FluxDivergence<mSpaceDim>            tFluxDivergence;
       Plato::Helmholtz::AddMassTerm<mSpaceDim>    tAddMassTerm;
@@ -150,27 +143,14 @@ class HelmholtzResidual :
 
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
       {
-
-        printf("\n In element: %i \n ",aCellOrdinal);
-    
         tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
-
-        printf("\n Shape Function Gradients: [%f, %f] \n ",tGradient(aCellOrdinal,0,0),tGradient(aCellOrdinal,1,0));
-
-
-
         tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-
-        printf("\n Cell Volume: %f \n ",tCellVolume(aCellOrdinal));
         
         // compute filtered and unfiltered densities
         //
         tInterpolateFromNodal(aCellOrdinal, tBasisFunctions, aState, tFilteredDensity);
         tInterpolateFromNodal(aCellOrdinal, tBasisFunctions, aControl, tUnfilteredDensity);
 
-        printf("\n Interpolated unfiltered density: %f \n ",tUnfilteredDensity(aCellOrdinal));
-        printf("\n Interpolated filtered density: %f \n ",tFilteredDensity(aCellOrdinal));
-    
         // compute filtered density gradient
         //
         tScalarGrad(aCellOrdinal, tGrad, aState, tGradient);
@@ -187,9 +167,6 @@ class HelmholtzResidual :
         //
         tAddMassTerm(aCellOrdinal, aResult, tFilteredDensity, tUnfilteredDensity, tBasisFunctions, tCellVolume);
 
-
-        printf("\n Local residual: [%f, %f] \n ",aResult(aCellOrdinal,0),aResult(aCellOrdinal,1));
-        
       },"helmholtz residual");
 
       /* if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad", mSpatialDomain); */

@@ -50,19 +50,72 @@ void PrintFullMatrix(const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrix)
 
 /******************************************************************************/
 /*!
-  \brief 2D Helmholtz problem
+  \brief test parsing of length scale parameter
 
-  Construct a linear system and solve it with the old AmgX interface, the new
-  AmgX interface, and the Epetra interface.  Test passes if all solutions are
-  the same.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2D )
+TEUCHOS_UNIT_TEST(HelmholtzFilterTests, LengthScaleKeywordError)
 {
   // create test mesh
   //
-  constexpr int meshWidth=2;
+  constexpr int meshWidth=20;
   constexpr int spaceDim=1;
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::HelmholtzFilter<spaceDim>;
+
+  // set parameters
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                      \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Helmholtz Filter'/> \n"
+    "  <ParameterList name='Length Scale'>                                    \n"
+    "    <Parameter name='LengthScale' type='double' value='0.10'/>              \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                      \n"
+    "</ParameterList>                                                        \n"
+  );
+
+  // get mesh sets
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  // create PDE
+  Plato::DataMap tDataMap;
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
+  TEST_THROW(Plato::Helmholtz::VectorFunction<SimplexPhysics> vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint")), std::runtime_error);
+}
+
+/******************************************************************************/
+/*!
+  \brief 1D Helmholtz problem
+
+  Construct a 1D Helmholtz filter problem and solve.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2DUniformFieldTest )
+{
+  // create test mesh
+  //
+  constexpr int meshWidth=8;
+  constexpr int spaceDim=2;
   auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::HelmholtzFilter<spaceDim>;
@@ -96,7 +149,7 @@ TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2D )
     "  </ParameterList>                                                        \n"
     "  <Parameter name='PDE Constraint' type='string' value='Helmholtz Filter'/> \n"
     "  <ParameterList name='Length Scale'>                                    \n"
-    "    <Parameter name='Length Scale' type='double' value='0.50'/>              \n"
+    "    <Parameter name='Length Scale' type='double' value='0.10'/>              \n"
     "  </ParameterList>                                                        \n"
     "  <ParameterList name='Material Models'>                                  \n"
     "    <ParameterList name='Unobtainium'>                                    \n"
@@ -124,17 +177,9 @@ TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2D )
   auto residual = vectorFunction.value(state, control);
   Plato::blas1::scale(-1.0, residual);
 
-  std::cout << "Residual values" << std::endl;
-  print_view(residual);
-  std::cout << '\n';
-
   // compute jacobian
   //
   auto jacobian = vectorFunction.gradient_u(state, control);
-
-  std::cout << "Jacobian values" << std::endl;
-  PrintFullMatrix(jacobian);
-  std::cout << '\n';
 
   // create solver
   //
@@ -164,13 +209,13 @@ TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2D )
   Plato::ScalarVector statesView("State",tNumDofs);
   Kokkos::deep_copy(statesView, state);
 
-  std::cout << "Unfiltered Density" << std::endl;
-  print_view(control);
-  std::cout << '\n';
+  /* std::cout << "Unfiltered Density" << std::endl; */
+  /* print_view(control); */
+  /* std::cout << '\n'; */
 
-  std::cout << "Solution Field" << std::endl;
-  print_view(statesView);
-  std::cout << '\n';
+  /* std::cout << "Solution Field" << std::endl; */
+  /* print_view(statesView); */
+  /* std::cout << '\n'; */
 
 
   auto stateView_host = Kokkos::create_mirror_view(statesView);
@@ -178,9 +223,9 @@ TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2D )
 
   // test that filtered density field is still 1
   //
-  TEST_FLOATING_EQUALITY(stateView_host(0), 1.0, 1.0e-8);
-  TEST_FLOATING_EQUALITY(stateView_host(1), 1.0, 1.0e-8);
-  TEST_FLOATING_EQUALITY(stateView_host(2), 1.0, 1.0e-8);
+  for(int iDof=0; iDof<tNumDofs; iDof++){
+    TEST_FLOATING_EQUALITY(stateView_host(iDof), 1.0, 1.0e-14);
+  }
 
 }
 
