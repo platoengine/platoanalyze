@@ -291,16 +291,16 @@ class ComputeGradientWorkset
                                         Plato::ScalarArray3DT<ScalarType> config,
                                         Plato::ScalarVectorT<ScalarType> cellVolume) const
   {
-    ScalarType j11=config(cellOrdinal,0,0)-config(cellOrdinal,1,0);
+    ScalarType j11=config(cellOrdinal,1,0)-config(cellOrdinal,0,0);
 
     ScalarType detj = j11;
 
     ScalarType i11 = 1.0/detj;
 
-    cellVolume(cellOrdinal) = fabs(detj);
+    cellVolume(cellOrdinal) = fabs(detj)/2.0;
 
-    gradients(cellOrdinal,0,0) = i11;
-    gradients(cellOrdinal,1,0) =-i11;
+    gradients(cellOrdinal,0,0) =-i11;
+    gradients(cellOrdinal,1,0) = i11;
   }
 
 /******************************************************************************/
