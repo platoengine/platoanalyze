@@ -42,11 +42,7 @@ public:
         for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
         {
             Plato::OrdinalType tLocalOrdinal = tNodeIndex * NumDofsPerNode + DofOffset;
-            for(Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerNode; tDofIndex++)
-            {
-                aOutput(aCellOrdinal, tLocalOrdinal) += aBasisFunctions(tNodeIndex) 
-                        * ( aFilteredDensity(aCellOrdinal, tDofIndex) - aUnfilteredDensity(aCellOrdinal, tDofIndex) ) * aCellVolume(aCellOrdinal);
-            }
+            aOutput(aCellOrdinal, tLocalOrdinal) += aBasisFunctions(tNodeIndex) * ( aFilteredDensity(aCellOrdinal) - aUnfilteredDensity(aCellOrdinal) ) * aCellVolume(aCellOrdinal);
         }
     }
 };

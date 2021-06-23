@@ -25,6 +25,9 @@ class HelmholtzFlux
 
     HelmholtzFlux(const Plato::Scalar aLengthScale) {
       mLengthScale = aLengthScale;
+
+      printf("\n Length Scale input to flux constructor Is: %f \n ",aLengthScale);
+      printf("\n Length Scale output to flux constructor Is: %f \n ",mLengthScale);
     }
 
     template<typename HGradScalarType, typename HFluxScalarType>
@@ -37,7 +40,7 @@ class HelmholtzFlux
       //
       Plato::Scalar tLengthScaleSquared = mLengthScale*mLengthScale;
 
-      printf("\n Length Scale Is: %f \n ",mLengthScale);
+      printf("\n Length Scale in flux operator() Is: %f \n ",mLengthScale);
 
       for( Plato::OrdinalType iDim=0; iDim<SpaceDim; iDim++){
         tflux(cellOrdinal,iDim) = tLengthScaleSquared*tgrad(cellOrdinal,iDim);

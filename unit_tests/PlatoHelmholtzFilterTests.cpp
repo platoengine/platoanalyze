@@ -178,7 +178,9 @@ TEUCHOS_UNIT_TEST( HelmholtzFilterTests, Helmholtz2D )
 
   // test that filtered density field is still 1
   //
-  TEST_FLOATING_EQUALITY(stateView_host(10), 1.0, 1.0e-8);
+  TEST_FLOATING_EQUALITY(stateView_host(0), 1.0, 1.0e-8);
+  TEST_FLOATING_EQUALITY(stateView_host(1), 1.0, 1.0e-8);
+  TEST_FLOATING_EQUALITY(stateView_host(2), 1.0, 1.0e-8);
 
 }
 

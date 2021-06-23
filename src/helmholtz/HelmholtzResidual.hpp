@@ -70,7 +70,9 @@ class HelmholtzResidual :
         else
         {
             auto tLengthParamList = aProblemParams.get < Teuchos::ParameterList > ("Length Scale");
-            auto mLengthScale = tLengthParamList.get<Plato::Scalar>("Length Scale");
+            mLengthScale = tLengthParamList.get<Plato::Scalar>("Length Scale");
+
+            printf("\n Length Scale in residual constructor Is: %f \n ",mLengthScale);
         }
 
         // parse boundary Conditions
@@ -133,6 +135,10 @@ class HelmholtzResidual :
       Plato::ComputeGradientWorkset<mSpaceDim>    tComputeGradient;
 
       Plato::ScalarGrad<mSpaceDim>                tScalarGrad;
+
+
+      printf("\n Length Scale in residual evaluate() Is: %f \n ",mLengthScale);
+
       Plato::Helmholtz::HelmholtzFlux<mSpaceDim>  tHelmholtzFlux(mLengthScale);
       Plato::FluxDivergence<mSpaceDim>            tFluxDivergence;
       Plato::Helmholtz::AddMassTerm<mSpaceDim>    tAddMassTerm;
@@ -179,7 +185,10 @@ class HelmholtzResidual :
         
         // add mass term
         //
-        /* tAddMassTerm(aCellOrdinal, aResult, tFilteredDensity, tUnfilteredDensity, tBasisFunctions, tCellVolume); */
+        tAddMassTerm(aCellOrdinal, aResult, tFilteredDensity, tUnfilteredDensity, tBasisFunctions, tCellVolume);
+
+
+        printf("\n Local residual: [%f, %f] \n ",aResult(aCellOrdinal,0),aResult(aCellOrdinal,1));
         
       },"helmholtz residual");
 
