@@ -150,10 +150,6 @@ endif()
 ## hyperbolic sources
 if(HYPERBOLIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    hyperbolic/AbstractHyperbolicLinearStress.cpp
-    hyperbolic/HyperbolicLinearStress.cpp
-    hyperbolic/HyperbolicLinearStressExpression.cpp
-    hyperbolic/HyperbolicLinearStressFactory.cpp
     AbstractVolumetricSource.cpp
     hyperbolic/BrinkmanForces.cpp
     hyperbolic/ThermalBuoyancy.cpp
@@ -168,6 +164,7 @@ if(HYPERBOLIC)
     hyperbolic/InternalThermalForces.cpp
     hyperbolic/MomentumSurfaceForces.cpp
     hyperbolic/FluidsCriterionFactory.cpp
+    hyperbolic/AbstractHyperbolicLinearStress.cpp
     hyperbolic/AbstractScalarFunction.cpp
     hyperbolic/AbstractVectorFunction.cpp
     hyperbolic/AverageSurfacePressure.cpp
@@ -177,6 +174,9 @@ if(HYPERBOLIC)
     hyperbolic/CriterionThermalCompliance.cpp
     hyperbolic/FluidsUniformThermalSource.cpp
     hyperbolic/FluidsWeightedScalarFunction.cpp
+    hyperbolic/HyperbolicLinearStress.cpp
+    hyperbolic/HyperbolicLinearStressExpression.cpp
+    hyperbolic/HyperbolicLinearStressFactory.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
     hyperbolic/FluidsLeastSquaresScalarFunction.cpp
