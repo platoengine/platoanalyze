@@ -8,13 +8,13 @@
 
 #include "MetaData.hpp"
 #include "WorkSets.hpp"
-#include "FluidsUtils.hpp"
 #include "UtilsTeuchos.hpp"
 #include "SpatialModel.hpp"
 #include "ExpInstMacros.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
+#include "hyperbolic/FluidsUtils.hpp"
 #include "hyperbolic/SimplexFluids.hpp"
 #include "hyperbolic/SimplexFluidsFadTypes.hpp"
 #include "hyperbolic/MomentumConservationUtils.hpp"
@@ -62,7 +62,7 @@ private:
     using ControlT = typename EvaluationT::ControlScalarType; /*!< control FAD type */
     using PrevVelT = typename EvaluationT::PreviousMomentumScalarType; /*!< previous velocity FAD type */
 
-    Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+    Plato::Scalar mStabilization = 1.0; /*!< stabilization multiplier */
     Plato::Scalar mImpermeability = 1.0; /*!< permeability dimensionless number */
     Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
 
@@ -165,15 +165,21 @@ private:
     void setImpermeability
     (Teuchos::ParameterList & aInputs)
     {
-        if(Plato::Fluids::is_impermeability_defined(aInputs))
+        auto tMyMaterialName = mSpatialDomain.getMaterialName();
+        if( Plato::Fluids::is_material_property_defined("Impermeability Number", tMyMaterialName, aInputs) )
         {
-            mImpermeability = Plato::teuchos::parse_parameter<Plato::Scalar>("Impermeability Number", "Flow Properties", aInputs);
+            mImpermeability = Plato::Fluids::get_material_property<Plato::Scalar>("Impermeability Number", tMyMaterialName, aInputs);
+        }
+        else if( Plato::Fluids::is_material_property_defined("Darcy Number", tMyMaterialName, aInputs) && 
+            Plato::Fluids::is_material_property_defined("Prandtl Number", tMyMaterialName, aInputs) )
+        {
+            auto tDaNum = Plato::Fluids::get_material_property<Plato::Scalar>("Darcy Number", tMyMaterialName, aInputs);
+            auto tPrNum = Plato::Fluids::get_material_property<Plato::Scalar>("Prandtl Number", tMyMaterialName, aInputs);
+            mImpermeability = tPrNum / tDaNum;
         }
         else
         {
-            auto tDaNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Darcy Number", "Flow Properties", aInputs);
-            auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
-            mImpermeability = tPrNum / tDaNum;
+            mImpermeability = 1e2;
         }
     }
 };

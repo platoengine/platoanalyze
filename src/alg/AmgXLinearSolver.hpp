@@ -26,13 +26,13 @@ class AmgXLinearSolver : public AbstractSolver
     AMGX_config_handle    mConfigHandle;
     AMGX_resources_handle mResources;
 
-    int mDofsPerNode;
+    int mDofsPerNode; /*!< degrees of freedome per node */
+    int mDisplayIterations; /*!< display solver iterations history to console */
 
-    int mDisplayIterations;
+    double mSolverTime; /*!< linear solver solution time */
 
-    double mSolverTime;
-
-    bool mDivergenceIsFatal;
+    bool mDivergenceIsFatal; /*!< throw fatal error if solver diverges */
+    bool mDisplayDiagnostics = true; /*!< display solver warnings/diagnostics to console */
 
     Teuchos::RCP<Teuchos::Time> mLinearSolverTimer;
 

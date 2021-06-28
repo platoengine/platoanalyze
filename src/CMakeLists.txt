@@ -154,6 +154,7 @@ if(HYPERBOLIC)
     hyperbolic/HyperbolicLinearStress.cpp
     hyperbolic/HyperbolicLinearStressExpression.cpp
     hyperbolic/HyperbolicLinearStressFactory.cpp
+    AbstractVolumetricSource.cpp
     hyperbolic/BrinkmanForces.cpp
     hyperbolic/ThermalBuoyancy.cpp
     hyperbolic/PressureResidual.cpp
@@ -162,6 +163,7 @@ if(HYPERBOLIC)
     hyperbolic/FluidsQuasiImplicit.cpp
     hyperbolic/FluidsScalarFunction.cpp
     hyperbolic/FluidsVectorFunction.cpp
+    hyperbolic/FluidsThermalSources.cpp
     hyperbolic/FluidsWorkSetBuilders.cpp
     hyperbolic/InternalThermalForces.cpp
     hyperbolic/MomentumSurfaceForces.cpp
@@ -172,10 +174,13 @@ if(HYPERBOLIC)
     hyperbolic/AverageSurfaceTemperature.cpp
     hyperbolic/VelocityCorrectorResidual.cpp
     hyperbolic/VelocityPredictorResidual.cpp
+    hyperbolic/CriterionThermalCompliance.cpp
+    hyperbolic/FluidsUniformThermalSource.cpp
     hyperbolic/FluidsWeightedScalarFunction.cpp
-    hyperbolic/FluidsLeastSquaresScalarFunction.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
+    hyperbolic/FluidsLeastSquaresScalarFunction.cpp
+    hyperbolic/FluidsStabilizedUniformThermalSource.cpp
   )
 endif()
 

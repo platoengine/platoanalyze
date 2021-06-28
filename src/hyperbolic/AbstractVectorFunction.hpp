@@ -40,7 +40,6 @@ public:
     /***************************************************************************//**
      * \fn void evaluate
      * \brief Evaluate vector function within the domain.
-     *
      * \param [in] aWorkSets holds state and control worksets
      * \param [in/out] aResult   result workset
      ******************************************************************************/
@@ -50,10 +49,11 @@ public:
 
     /***************************************************************************//**
      * \fn void evaluateBoundary
-     * \brief Evaluate vector function on non-prescribed boundaries.
-     *
-     * \param [in] aWorkSets holds state and control worksets
-     * \param [in/out] aResult   result workset
+     * \brief Evaluate boundary forces, not related to any prescribed boundary force, 
+     *        resulting from applying integration by part to the residual equation.
+     * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in]  aWorkSets     holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS     result/output workset
      ******************************************************************************/
     virtual void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
@@ -63,9 +63,9 @@ public:
     /***************************************************************************//**
      * \fn void evaluatePrescribed
      * \brief Evaluate vector function on prescribed boundaries.
-     *
-     * \param [in] aWorkSets holds state and control worksets
-     * \param [in/out] aResult   result workset
+     * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in]  aWorkSets     holds input worksets (e.g. states, control, etc)
+     * \param [out] aResultWS     result/output workset
      ******************************************************************************/
     virtual void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,

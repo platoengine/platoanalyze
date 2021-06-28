@@ -19,106 +19,101 @@ namespace Plato
 namespace Fluids
 {
 
-/***************************************************************************//**
- * \fn inline bool is_impermeability_defined
- *
- * \brief Return true if dimensionless impermeability number is defined; return
- *   false if it is not defined.
- *
- * \param [in] aInputs input file metadata
- *
- * \return boolean (true or false)
- ******************************************************************************/
-inline bool
-is_impermeability_defined
-(Teuchos::ParameterList & aInputs)
+template<typename Type>
+inline Type get_material_property(
+    const std::string& aMaterialProperty,
+    const std::string& aMaterialBlockName,
+    Teuchos::ParameterList & aInputs)
 {
-    if( !aInputs.isSublist("Flow Properties") )
+    if(aInputs.isSublist("Material Models") == false)
     {
-        THROWERR("Parameter Sublist 'Flow Properties' is not defined.")
+        THROWERR("Parsing 'Plato Problem'. 'Material Models' parameter sublist not defined within 'Plato Problem' parameter list.")
     }
-    auto tSublist = aInputs.sublist("Flow Properties");
-    return (tSublist.isParameter("Impermeability Number"));
-}
-// function is_impermeability_defined
-
-/***************************************************************************//**
- * \fn inline bool is_dimensionless_parameter_defined
- *
- * \brief Check if dimensionless parameter is deifned.
- *
- * \param [in] aTag    parameter tag
- * \param [in] aInputs input file metadata
- *
- * \return boolean (true or false)
- ******************************************************************************/
-inline bool is_dimensionless_parameter_defined
-(const std::string & aTag,
- Teuchos::ParameterList & aInputs)
-{
-    if( aInputs.isSublist("Flow Properties") == false )
+    auto tMaterialParamList = aInputs.sublist("Material Models");
+    
+    if(tMaterialParamList.isSublist(aMaterialBlockName) == false)
     {
-        THROWERR("'Flow Properties' sublist is not defined.")
+        THROWERR(std::string("Parameter sublist with tag '") + aMaterialBlockName + "' is not defined within 'Material Models' Parameter List.")
     }
-    auto tSublist = aInputs.sublist("Flow Properties");
-    auto tIsDefined = tSublist.isParameter(aTag);
-    return tIsDefined;
+    auto tMyMaterial = tMaterialParamList.sublist(aMaterialBlockName);
+    
+    if(tMyMaterial.isParameter(aMaterialProperty) == false)
+    {
+        THROWERR(std::string("Requested material property with tag '") + aMaterialProperty 
+            + "' is not defined in material Parameter Sublist '" + aMaterialBlockName 
+            + " within the 'Material Models' Parameter List.")
+    }
+    auto tProperty = tMyMaterial.get<Type>(aMaterialProperty);
+    return tProperty;
 }
-// function is_dimensionless_parameter_defined
+
+inline bool is_material_property_defined(
+    const std::string& aMaterialProperty,
+    const std::string& aMaterialBlockName,
+    Teuchos::ParameterList& aInputs)
+{
+    if(aInputs.isSublist("Material Models") == false)
+    {
+        THROWERR("'Material Models' parameter list is not defined in the input file.")
+    }
+    auto tMaterialParamList = aInputs.sublist("Material Models");
+    
+    if(tMaterialParamList.isSublist(aMaterialBlockName) == false)
+    {
+        THROWERR(std::string("Material with tag '") + aMaterialBlockName + "' is not defined in 'Material Models' Parameter List.")
+    }
+    auto tMyMaterial = tMaterialParamList.sublist(aMaterialBlockName);
+    
+    return ( tMyMaterial.isParameter(aMaterialProperty) );
+}
 
 /***************************************************************************//**
- * \fn inline Plato::Scalar reynolds_number
+ * \fn inline std::string scenario
  *
- * \brief Parse Reynolds number from input file.
+ * \brief Return lower case scenario. Supported options. Supported options are: 
+ *        'analysis', 'density-based topology optimization', 'levelset topology optimization'.
  * \param [in] aInputs input file metadata
- * \return Reynolds number
+ * 
+ * \return scenario type
  ******************************************************************************/
-inline Plato::Scalar
-reynolds_number
-(Teuchos::ParameterList & aInputs)
+inline std::string scenario
+(Teuchos::ParameterList& aInputs)
 {
-    auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Flow Properties", aInputs);
-    return tReNum;
-}
-// function reynolds_number
+    if (aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
 
-/***************************************************************************//**
- * \fn inline Plato::Scalar prandtl_number
- *
- * \brief Parse Prandtl number from input file.
- * \param [in] aInputs input file metadata
- * \return Prandtl number
- ******************************************************************************/
-inline Plato::Scalar
-prandtl_number
-(Teuchos::ParameterList & aInputs)
-{
-    auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
-    return tPrNum;
+    auto tHyperbolicParaamList = aInputs.sublist("Hyperbolic");
+    auto tScenario = tHyperbolicParaamList.get<std::string>("Scenario", "Analysis");
+    auto tLowerScenario = Plato::tolower(tScenario);
+    auto tScenarioSupported = (tLowerScenario == "density-based topology optimization" || tLowerScenario == "levelset topology optimization" || tLowerScenario == "analysis");
+    if( !tScenarioSupported )
+    {
+        THROWERR(std::string("Scenario '") + tScenario + 
+            "' is not supported. Supported options are: 'analysis', 'density-based topology optimization', 'levelset topology optimization'.")
+    }
+
+    return tLowerScenario;
 }
-// function prandtl_number
+// function scenario
 
 /***************************************************************************//**
  * \fn inline bool calculate_brinkman_forces
  *
- * \brief Return true if Brinkman forces are enabled, return false if disabled.
+ * \brief Return true if Brinkman force calculation is enabled, return false 
+ *        if Brinkman force calculation disabled. Brinkman force calculation
+ *        is only enabled for density-based topology optimization problems.
  * \param [in] aInputs input file metadata
  * \return boolean (true or false)
  ******************************************************************************/
 inline bool calculate_brinkman_forces
 (Teuchos::ParameterList& aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
+    auto tLowerScenario = Plato::Fluids::scenario(aInputs);
+    if (tLowerScenario == "density-based topology optimization")
     {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-
-    auto tFlowProps = aInputs.sublist("Hyperbolic");
-    auto tScenario = tFlowProps.get<std::string>("Scenario", "Analysis");
-    auto tLowerScenario = Plato::tolower(tScenario);
-    if(tLowerScenario == "density to")
-    {
-    return true;
+        return true;
     }
     return false;
 }
@@ -134,12 +129,12 @@ inline bool calculate_brinkman_forces
 inline std::string heat_transfer_tag
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Flow Properties") == false)
+    if(aInputs.isSublist("Hyperbolic") == false)
     {
-        THROWERR("'Flow Properties' Parameter List is not defined.")
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
-    auto tFlowProps = aInputs.sublist("Flow Properties");
-    auto tTag = tFlowProps.get<std::string>("Heat Transfer", "None");
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
     auto tHeatTransfer = Plato::tolower(tTag);
     return tHeatTransfer;
 }
@@ -165,19 +160,21 @@ inline bool calculate_heat_transfer
  * \fn inline bool calculate_effective_conductivity
  *
  * \brief Calculate effective conductivity based on the heat transfer mechanism requested.
+ * \param [in] aMaterialName material name for a given spatial domain (i.e. element block)
  * \param [in] aInputs input file metadata
  * \return effective conductivity
  ******************************************************************************/
 inline Plato::Scalar
 calculate_effective_conductivity
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName,
+ Teuchos::ParameterList & aInputs)
 {
     auto tOutput = 0;
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced" || tHeatTransfer == "mixed")
     {
-        auto tPrNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Prandtl Number", "Flow Properties", aInputs);
-        auto tReNum = Plato::teuchos::parse_parameter<Plato::Scalar>("Reynolds Number", "Flow Properties", aInputs);
+        auto tPrNum = Plato::Fluids::get_material_property<Plato::Scalar>("Prandtl Number", aMaterialName, aInputs);
+        auto tReNum = Plato::Fluids::get_material_property<Plato::Scalar>("Reynolds Number", aMaterialName, aInputs);
         tOutput = static_cast<Plato::Scalar>(1) / (tReNum*tPrNum);
     }
     else if(tHeatTransfer == "natural")
@@ -205,18 +202,19 @@ calculate_effective_conductivity
  ******************************************************************************/
 inline Plato::Scalar
 calculate_viscosity_constant
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName,
+ Teuchos::ParameterList & aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced" || tHeatTransfer == "mixed" || tHeatTransfer == "none")
     {
-        auto tReNum = Plato::Fluids::reynolds_number(aInputs);
+        auto tReNum = Plato::Fluids::get_material_property<Plato::Scalar>("Reynolds Number", aMaterialName, aInputs);
         auto tViscocity = static_cast<Plato::Scalar>(1) / tReNum;
         return tViscocity;
     }
     else if(tHeatTransfer == "natural")
     {
-        auto tViscocity = Plato::Fluids::prandtl_number(aInputs);
+        auto tViscocity = Plato::Fluids::get_material_property<Plato::Scalar>("Prandtl Number", aMaterialName, aInputs);
         return tViscocity;
     }
     else
@@ -232,20 +230,22 @@ calculate_viscosity_constant
  * \brief Calculate buoyancy constant for mixed convection problems.
  *
  * \param [in] aInputs input file metadata
+ * \param [in] aMaterialName material model name for this spatial domain
  *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
 buoyancy_constant_mixed_convection_problems
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName,
+ Teuchos::ParameterList& aInputs)
 {
-    if(Plato::Fluids::is_dimensionless_parameter_defined("Richardson Number", aInputs))
+    if( Plato::Fluids::is_material_property_defined("Richardson Number", aMaterialName, aInputs) )
     {
         return static_cast<Plato::Scalar>(1.0);
     }
-    else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
+    else if( Plato::Fluids::is_material_property_defined("Grashof Number", aMaterialName, aInputs) )
     {
-        auto tReNum = Plato::Fluids::reynolds_number(aInputs);
+        auto tReNum = Plato::Fluids::get_material_property<Plato::Scalar>("Reynolds Number", aMaterialName, aInputs); 
         auto tBuoyancy = static_cast<Plato::Scalar>(1.0) / (tReNum * tReNum);
         return tBuoyancy;
     }
@@ -262,20 +262,22 @@ buoyancy_constant_mixed_convection_problems
  * \brief Calculate buoyancy constant for natural convection problems.
  *
  * \param [in] aInputs input file metadata
+ * \param [in] aMaterialName material name for a given spatial domain
  *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
 buoyancy_constant_natural_convection_problems
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName,
+ Teuchos::ParameterList & aInputs)
 {
-    auto tPrNum = Plato::Fluids::prandtl_number(aInputs);
-    if(Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs))
+    auto tPrNum = Plato::Fluids::get_material_property<Plato::Scalar>("Prandtl Number", aMaterialName, aInputs); 
+    if( Plato::Fluids::is_material_property_defined("Rayleigh Number", aMaterialName, aInputs) )
     {
         auto tBuoyancy = tPrNum;
         return tBuoyancy;
     }
-    else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
+    else if( Plato::Fluids::is_material_property_defined("Grashof Number", aMaterialName, aInputs) )
     {
         auto tBuoyancy = tPrNum*tPrNum;
         return tBuoyancy;
@@ -296,24 +298,26 @@ buoyancy_constant_natural_convection_problems
  * is given by \f$ \nu=Pr^2 \f$ or \f$ \nu=Pr \f$ depending on which dimensionless
  * convective constant was provided by the user (e.g. Rayleigh or Grashof number).
  *
+ * \param [in] aMaterialName material model name for a given spatial domain
  * \param [in] aInputs input file metadata
  *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
 calculate_buoyancy_constant
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName, 
+ Teuchos::ParameterList & aInputs)
 {
     Plato::Scalar tBuoyancy = 0.0; // heat transfer calculations inactive if buoyancy = 0.0
 
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "mixed")
     {
-        tBuoyancy = Plato::Fluids::buoyancy_constant_mixed_convection_problems(aInputs);
+        tBuoyancy = Plato::Fluids::buoyancy_constant_mixed_convection_problems(aMaterialName, aInputs);
     }
     else if(tHeatTransfer == "natural")
     {
-        tBuoyancy = Plato::Fluids::buoyancy_constant_natural_convection_problems(aInputs);
+        tBuoyancy = Plato::Fluids::buoyancy_constant_natural_convection_problems(aMaterialName, aInputs);
     }
     else if(tHeatTransfer == "forced" || tHeatTransfer == "none")
     {
@@ -335,6 +339,7 @@ calculate_buoyancy_constant
  *
  * \brief Parse dimensionless Rayleigh constants.
  *
+ * \param [in] aMaterialName material name for a given spatial domain (i.e. element block).
  * \param [in] aInputs input file metadata
  *
  * \return Rayleigh constants
@@ -342,7 +347,8 @@ calculate_buoyancy_constant
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
 rayleigh_number
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName, 
+ Teuchos::ParameterList & aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
@@ -350,7 +356,7 @@ rayleigh_number
     Plato::ScalarVector tOuput("Rayleigh Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tRaNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Rayleigh Number", "Flow Properties", aInputs);
+        auto tRaNum = Plato::Fluids::get_material_property< Teuchos::Array<Plato::Scalar> >("Rayleigh Number", aMaterialName, aInputs);
         if(tRaNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Rayleigh Number' array length should match the number of spatial dimensions. ")
@@ -380,7 +386,8 @@ rayleigh_number
  * \fn inline Plato::ScalarVector grashof_number
  *
  * \brief Parse dimensionless Grashof constants.
- *
+ * 
+ * \param [in] aMaterialName material name for a given spatial domain (e.g. element block)
  * \param [in] aInputs input file metadata
  *
  * \return Grashof constants
@@ -388,7 +395,8 @@ rayleigh_number
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
 grashof_number
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName,
+ Teuchos::ParameterList& aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
@@ -396,7 +404,7 @@ grashof_number
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tGrNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Flow Properties", aInputs);
+        auto tGrNum = Plato::Fluids::get_material_property< Teuchos::Array<Plato::Scalar> >("Grashof Number", aMaterialName, aInputs);
         if(tGrNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Grashof Number' array length should match the number of spatial dimensions. ")
@@ -427,6 +435,7 @@ grashof_number
  *
  * \brief Parse dimensionless Richardson constants.
  *
+ * \param [in] aMaterialName material name for a given spatial domain (e.g. element block)
  * \param [in] aInputs input file metadata
  *
  * \return Richardson constants
@@ -434,7 +443,8 @@ grashof_number
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
 richardson_number
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName,
+ Teuchos::ParameterList& aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
@@ -442,7 +452,7 @@ richardson_number
     Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
-        auto tRiNum = Plato::teuchos::parse_parameter<Teuchos::Array<Plato::Scalar>>("Richardson Number", "Flow Properties", aInputs);
+        auto tRiNum = Plato::Fluids::get_material_property< Teuchos::Array<Plato::Scalar> >("Richardson Number", aMaterialName, aInputs);
         if(tRiNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Richardson Number' array length should match the number of spatial dimensions. ")
@@ -480,23 +490,24 @@ richardson_number
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
 parse_natural_convection_number
-(Teuchos::ParameterList & aInputs)
+(const std::string& aMaterialName, 
+ Teuchos::ParameterList & aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
-    if( Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs) &&
+    if( Plato::Fluids::is_material_property_defined("Rayleigh Number", aMaterialName, aInputs) &&
             (tHeatTransfer == "natural") )
     {
-        return (Plato::Fluids::rayleigh_number<SpaceDim>(aInputs));
+        return (Plato::Fluids::rayleigh_number<SpaceDim>(aMaterialName, aInputs));
     }
-    else if( Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs) &&
+    else if( Plato::Fluids::is_material_property_defined("Grashof Number", aMaterialName, aInputs) &&
             (tHeatTransfer == "natural" || tHeatTransfer == "mixed") )
     {
-        return (Plato::Fluids::grashof_number<SpaceDim>(aInputs));
+        return (Plato::Fluids::grashof_number<SpaceDim>(aMaterialName, aInputs));
     }
-    else if( Plato::Fluids::is_dimensionless_parameter_defined("Richardson Number", aInputs) &&
+    else if( Plato::Fluids::is_material_property_defined("Richardson Number", aMaterialName, aInputs) &&
             (tHeatTransfer == "mixed") )
     {
-        return (Plato::Fluids::richardson_number<SpaceDim>(aInputs));
+        return (Plato::Fluids::richardson_number<SpaceDim>(aMaterialName, aInputs));
     }
     else
     {
