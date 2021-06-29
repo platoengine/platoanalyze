@@ -40,9 +40,21 @@ struct JacobianTypes : EvaluationTypes<SimplexPhysicsT>
 };
 
 template <typename SimplexPhysicsT>
+struct GradientZTypes : EvaluationTypes<SimplexPhysicsT>
+{
+  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ControlFad;
+
+  using StateScalarType   = Plato::Scalar;
+  using ControlScalarType = SFadType;
+  using ConfigScalarType  = Plato::Scalar;
+  using ResultScalarType  = SFadType;
+};
+
+template <typename SimplexPhysicsT>
 struct Evaluation {
    using Residual  = ResidualTypes<SimplexPhysicsT>;
    using Jacobian  = JacobianTypes<SimplexPhysicsT>;
+   using GradientZ = GradientZTypes<SimplexPhysicsT>;
 };
 
 } // namespace Helmholtz

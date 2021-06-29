@@ -44,14 +44,17 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using Jacobian  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
+    using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
 
     using ResidualFunction  = std::shared_ptr<Plato::Helmholtz::AbstractVectorFunction<Residual>>;
     using JacobianFunction  = std::shared_ptr<Plato::Helmholtz::AbstractVectorFunction<Jacobian>>;
+    using GradientZFunction = std::shared_ptr<Plato::Helmholtz::AbstractVectorFunction<GradientZ>>;
 
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims*mNumNodesPerCell;
 
     std::map<std::string, ResidualFunction>  mResidualFunctions;
     std::map<std::string, JacobianFunction>  mJacobianFunctions;
+    std::map<std::string, GradientZFunction> mGradientZFunctions;
 
     const Plato::SpatialModel & mSpatialModel;
 
@@ -84,6 +87,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           auto tName = tDomain.getDomainName();
           mResidualFunctions [tName] = tFunctionFactory.template createVectorFunction<Residual> (tDomain, aDataMap, aProblemParams, aProblemType);
           mJacobianFunctions [tName] = tFunctionFactory.template createVectorFunction<Jacobian> (tDomain, aDataMap, aProblemParams, aProblemType);
+          mGradientZFunctions[tName] = tFunctionFactory.template createVectorFunction<GradientZ>(tDomain, aDataMap, aProblemParams, aProblemType);
         }
     }
 
@@ -374,6 +378,101 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
             auto tJacobianMatEntries = tJacobianMat->entries();
             Plato::WorksetBase<PhysicsT>::assembleJacobianFad
                 (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        }
+        return tJacobianMat;
+    }
+
+    /**************************************************************************/
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_z(
+        const Plato::ScalarVector & aState,
+        const Plato::ScalarVector & aControl,
+              Plato::Scalar         aTimeStep = 0.0
+    /**************************************************************************/
+    ) const
+    {
+        using ConfigScalar  = typename GradientZ::ConfigScalarType;
+        using StateScalar   = typename GradientZ::StateScalarType;
+        using ControlScalar = typename GradientZ::ControlScalarType;
+        using ResultScalar  = typename GradientZ::ResultScalarType;
+
+        // create return matrix
+        //
+        auto tMesh = mSpatialModel.Mesh;
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumDofsPerNode>( &tMesh );
+
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
+
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar>
+                tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
+ 
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS, tDomain);
+
+            // create result 
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl", tNumCells, mNumDofsPerCell);
+
+            // evaluate function 
+            //
+            mGradientZFunctions.at(tName)->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
+              tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+                (mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
+        }
+
+        {
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar>
+                tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+ 
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+            // create result 
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl", mNumCells, mNumDofsPerCell);
+
+            // evaluate function 
+            //
+            auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+            mGradientZFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
+              tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+                (mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
         }
         return tJacobianMat;
     }

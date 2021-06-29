@@ -208,6 +208,41 @@ public:
     }
 
     /******************************************************************************//**
+     * \brief Solve system of equations related to chain rule of Helmholtz filter 
+     * for gradients
+     * \param [in] aControl 1D view of criterion partial derivative 
+     * wrt filtered control
+     * \param [in] aName Name of criterion (is just a dummy for Helmhomtz to 
+     * match signature of base class virtual function).
+     * \return 1D view - criterion partial derivative wrt unfiltered control
+    **********************************************************************************/
+    Plato::ScalarVector
+    criterionGradient(
+        const Plato::ScalarVector & aControl,
+        const std::string         & aName
+    ) override
+    {
+        Plato::ScalarVector tSolution("derivative of criterion wrt unfiltered control", mPDE->size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tSolution);
+
+        mJacobian = mPDE->gradient_u(tSolution, aControl);
+
+        auto tPartialPDE_WRT_Control = mPDE->gradient_z(tSolution, aControl);
+
+        /* this->applyStateConstraints(mJacobian, mResidual); */
+
+        Plato::blas1::scale(-1.0, aControl);
+
+        Plato::ScalarVector tIntermediateSolution("intermediate solution", mPDE->size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tIntermediateSolution);
+        mSolver->solve(*mJacobian, tIntermediateSolution, aControl);
+
+        Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Control, tIntermediateSolution, tSolution);
+
+        return tSolution;
+    }
+
+    /******************************************************************************//**
      * \brief Evaluate criterion function
      * \param [in] aControl 1D view of control variables
      * \param [in] aName Name of criterion.
@@ -253,7 +288,7 @@ public:
         const std::string         & aName
     ) override
     {
-        THROWERR("CRITERION GRADIENT: NO CRITERION ASSOCIATED WITH HELMHOLTZ FILTER PROBLEM.")
+        THROWERR("CRITERION GRADIENT: NO INSTANCE OF THIS FUNCTION WITH SOLUTION INPUT IMPLEMENTED FOR HELMHOLTZ FILTER PROBLEM.")
     }
 
     /******************************************************************************//**
@@ -271,21 +306,6 @@ public:
     ) override
     {
         THROWERR("CRITERION GRADIENT X: NO CRITERION ASSOCIATED WITH HELMHOLTZ FILTER PROBLEM.")
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate criterion partial derivative wrt control variables
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aName Name of criterion.
-     * \return 1D view - criterion partial derivative wrt control variables
-    **********************************************************************************/
-    Plato::ScalarVector
-    criterionGradient(
-        const Plato::ScalarVector & aControl,
-        const std::string         & aName
-    ) override
-    {
-        THROWERR("CRITERION GRADIENT: NO CRITERION ASSOCIATED WITH HELMHOLTZ FILTER PROBLEM.")
     }
 
     /******************************************************************************//**
