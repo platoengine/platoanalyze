@@ -5,7 +5,16 @@ configure_file(
 
 ## material model sources
 set(ANALYZE_SOURCES
-    CustomMaterial.cpp
+    ParseTools.cpp
+    CustomMaterial.cpp 
+    AbstractLinearStress.cpp
+    LinearStress.cpp
+    LinearStressExpression.cpp
+    LinearStressFactory.cpp
+    AbstractYieldStress.cpp
+    YieldStress.cpp
+    YieldStressExpression.cpp
+    YieldStressFactory.cpp
 ##    ElasticModelFactory.cpp
     LinearElasticMaterial.cpp
     CubicLinearElasticMaterial.cpp
@@ -117,6 +126,10 @@ if(ELLIPTIC)
     elliptic/updated_lagrangian/ScalarFunctionBaseFactory.cpp
     elliptic/updated_lagrangian/PhysicsScalarFunction.cpp
     elliptic/updated_lagrangian/InternalElasticEnergy.cpp
+    elliptic/updated_lagrangian/AbstractEllipticUpLagLinearStress.cpp
+    elliptic/updated_lagrangian/EllipticUpLagLinearStress.cpp
+    elliptic/updated_lagrangian/EllipticUpLagLinearStressExpression.cpp
+    elliptic/updated_lagrangian/EllipticUpLagLinearStressFactory.cpp
   )
 endif()
 
@@ -151,6 +164,7 @@ if(HYPERBOLIC)
     hyperbolic/InternalThermalForces.cpp
     hyperbolic/MomentumSurfaceForces.cpp
     hyperbolic/FluidsCriterionFactory.cpp
+    hyperbolic/AbstractHyperbolicLinearStress.cpp
     hyperbolic/AbstractScalarFunction.cpp
     hyperbolic/AbstractVectorFunction.cpp
     hyperbolic/AverageSurfacePressure.cpp
@@ -160,6 +174,9 @@ if(HYPERBOLIC)
     hyperbolic/CriterionThermalCompliance.cpp
     hyperbolic/FluidsUniformThermalSource.cpp
     hyperbolic/FluidsWeightedScalarFunction.cpp
+    hyperbolic/HyperbolicLinearStress.cpp
+    hyperbolic/HyperbolicLinearStressExpression.cpp
+    hyperbolic/HyperbolicLinearStressFactory.cpp
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
     hyperbolic/FluidsLeastSquaresScalarFunction.cpp

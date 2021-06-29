@@ -8,7 +8,7 @@
 #include "ScalarProduct.hpp"
 #include "ApplyWeighting.hpp"
 #include "Strain.hpp"
-#include "LinearStress.hpp"
+#include "elliptic/updated_lagrangian/EllipticUpLagLinearStress.hpp"
 #include "ElasticModelFactory.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "ImplicitFunctors.hpp"
@@ -108,16 +108,17 @@ class InternalElasticEnergy :
               Plato::ScalarVectorT      <ResultScalarType>      & aResult,
               Plato::Scalar aTimeStep = 0.0) const
     {
-        auto tNumCells = mSpatialDomain.numCells();
-
-        Plato::Strain<mSpaceDim> tComputeVoigtStrainIncrement;
-        Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;
-        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::LinearStress<mSpaceDim> tComputeVoigtStress(mMaterialModel);
-
+      using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
       using StrainScalarType = 
-        typename Plato::fad_type_t<Plato::Elliptic::UpdatedLagrangian::SimplexMechanics
-           <EvaluationType::SpatialDim>, GlobalStateScalarType, ConfigScalarType>;
+        typename Plato::fad_type_t<Plato::Elliptic::UpdatedLagrangian::SimplexMechanics<EvaluationType::SpatialDim>, GlobalStateScalarType, ConfigScalarType>;
+      
+      auto tNumCells = mSpatialDomain.numCells();
+      
+      Plato::Strain<mSpaceDim> tComputeVoigtStrainIncrement;
+      Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;
+      Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+      Plato::Elliptic::UpdatedLagrangian::EllipticUpLagLinearStress<EvaluationType,
+                          SimplexPhysics> tComputeVoigtStress(mMaterialModel);
 
       Plato::ScalarVectorT<ConfigScalarType>
         tCellVolume("cell weight",tNumCells);

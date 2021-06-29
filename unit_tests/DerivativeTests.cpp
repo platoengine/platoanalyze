@@ -79,6 +79,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
+
+  using SimplexPhysics = typename Plato::SimplexMechanics<spaceDim>;
+
   auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
@@ -133,7 +136,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
   auto materialModel = mmfactory.create(tOnlyDomain.getMaterialName());
   auto tCellStiffness = materialModel->getStiffnessMatrix();
 
-  Plato::LinearStress<spaceDim>      voigtStress(tCellStiffness);
+  Plato::LinearStress<Plato::ResidualTypes<SimplexPhysics>,
+                      SimplexPhysics> voigtStress(tCellStiffness);
   Plato::StressDivergence<spaceDim>  stressDivergence;
 
   Plato::Scalar quadratureWeight = 1.0/6.0;
@@ -2355,6 +2359,9 @@ TEUCHOS_UNIT_TEST( DerivativeTests, referenceStrain3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
+
+  using SimplexPhysics = typename Plato::SimplexMechanics<spaceDim>;
+
   auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   int numCells = tMesh->nelems();
@@ -2384,7 +2391,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, referenceStrain3D )
   Plato::ElasticModelFactory<spaceDim> mmfactory(*tParamList);
   auto materialModel = mmfactory.create("Unobtainium");
 
-  Plato::LinearStress<spaceDim>      voigtStress(materialModel);
+  Plato::LinearStress<Plato::ResidualTypes<SimplexPhysics>,
+                      SimplexPhysics> voigtStress(materialModel);
 
   Plato::ScalarVectorT<Plato::Scalar> cellVolume("cell volume",numCells);
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numCells), LAMBDA_EXPRESSION(int cellOrdinal)

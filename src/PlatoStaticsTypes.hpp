@@ -21,7 +21,7 @@ using CrsMatrixType      = typename Plato::CrsMatrix<Plato::OrdinalType>;
 using LocalOrdinalVector = typename Kokkos::View<Plato::OrdinalType*, Plato::MemSpace>;
 
 template <typename ScalarType>
-using ScalarVectorT = typename Kokkos::View<ScalarType*,Plato:: MemSpace>;
+using ScalarVectorT = typename Kokkos::View<ScalarType*, Plato::MemSpace>;
 using ScalarVector  = ScalarVectorT<Plato::Scalar>;
 
 template <typename ScalarType>

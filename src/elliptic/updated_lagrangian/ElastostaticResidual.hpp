@@ -8,7 +8,7 @@
 
 #include "PlatoTypes.hpp"
 #include "Strain.hpp"
-#include "LinearStress.hpp"
+#include "elliptic/updated_lagrangian/EllipticUpLagLinearStress.hpp"
 #include "StressDivergence.hpp"
 #include "ApplyWeighting.hpp"
 #include "CellForcing.hpp"
@@ -172,15 +172,16 @@ public:
               Plato::Scalar aTimeStep = 0.0
     ) const override
     {
+      using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+      using StrainScalarType =
+        typename Plato::fad_type_t<Plato::Elliptic::UpdatedLagrangian::SimplexMechanics<EvaluationType::SpatialDim>, GlobalStateScalarType, ConfigScalarType>;
 
       auto tNumCells = mSpatialDomain.numCells();
 
-      using StrainScalarType =
-          typename Plato::fad_type_t<Plato::Elliptic::UpdatedLagrangian::SimplexMechanics<EvaluationType::SpatialDim>, GlobalStateScalarType, ConfigScalarType>;
-
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tComputeVoigtStrainIncrement;
-      Plato::LinearStress<mSpaceDim>           tComputeVoigtStress(mMaterialModel);
+      Plato::Elliptic::UpdatedLagrangian::EllipticUpLagLinearStress<EvaluationType,
+                          SimplexPhysics>      tComputeVoigtStress(mMaterialModel);
       Plato::StressDivergence<mSpaceDim>       tComputeStressDivergence;
 
       Plato::ScalarVectorT<ConfigScalarType>

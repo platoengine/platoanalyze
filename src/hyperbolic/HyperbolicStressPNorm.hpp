@@ -94,15 +94,16 @@ class StressPNorm :
     ) const
     /**************************************************************************/
     {
+      using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+      using StrainScalarType =
+        typename Plato::fad_type_t<SimplexPhysics, StateScalarType, ConfigScalarType>;
+
       auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tVoigtStrain;
-      Plato::LinearStress<mSpaceDim>           tVoigtStress(mMaterialModel);
-
-      using StrainScalarType = 
-        typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>,
-                            StateScalarType, ConfigScalarType>;
+      Plato::LinearStress<EvaluationType,
+                          SimplexPhysics>      tVoigtStress(mMaterialModel);
 
       Plato::ScalarVectorT      <ConfigScalarType> tCellVolume ("cell weight", tNumCells);
       Plato::ScalarArray3DT     <ConfigScalarType> tGradient   ("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);

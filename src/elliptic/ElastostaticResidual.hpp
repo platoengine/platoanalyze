@@ -166,15 +166,16 @@ public:
               Plato::Scalar aTimeStep = 0.0
     ) const override
     {
+      using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+      using StrainScalarType =
+          typename Plato::fad_type_t<SimplexPhysics, StateScalarType, ConfigScalarType>;
 
       auto tNumCells = mSpatialDomain.numCells();
 
-      using StrainScalarType =
-          typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
-
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tComputeVoigtStrain;
-      Plato::LinearStress<mSpaceDim>           tComputeVoigtStress(mMaterialModel);
+      Plato::LinearStress<EvaluationType,
+                          SimplexPhysics>      tComputeVoigtStress(mMaterialModel);
       Plato::StressDivergence<mSpaceDim>       tComputeStressDivergence;
 
       Plato::ScalarVectorT<ConfigScalarType>

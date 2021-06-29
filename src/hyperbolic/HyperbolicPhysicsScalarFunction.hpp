@@ -65,7 +65,7 @@ private:
 
     std::string mFunctionName;
 
-	/******************************************************************************//**
+    /******************************************************************************//**
      * \brief Initialization of Hyperbolic Physics Scalar Function
      * \param [in] aInputParams input parameters database
     **********************************************************************************/

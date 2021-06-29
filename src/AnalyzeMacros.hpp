@@ -32,5 +32,8 @@ namespace Plato
         + std::string("\nLINE:") + std::to_string(__LINE__) \
         + std::string("\nMESSAGE: ") + msg + "\n\n");
 
+#define GPU_WARNING(msg1, msg2)  \
+  printf("\n\nFILE: %s \nFUNCTION: %s \nLINE: %d \nMESSAGE: %s %s\n\n",  \
+         __FILE__, __PRETTY_FUNCTION__, __LINE__, msg1, msg2 );
 }
 //namespace Plato

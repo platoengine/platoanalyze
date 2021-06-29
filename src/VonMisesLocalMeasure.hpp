@@ -80,13 +80,15 @@ public:
                     const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
                     Plato::ScalarVectorT<ResultT> & aResultWS) override
     {
-        const Plato::OrdinalType tNumCells = aResultWS.size();
         using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;
+
+        const Plato::OrdinalType tNumCells = aResultWS.size();
 
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;
         Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
+        Plato::LinearStress<EvaluationType,
+                            SimplexPhysics>      tComputeCauchyStress(mCellStiffMatrix);
 
         // ****** ALLOCATE TEMPORARY MULTI-DIM ARRAYS ON DEVICE ******
         Plato::ScalarVectorT<ConfigT> tVolume("cell volume", tNumCells);

@@ -2,7 +2,6 @@
 
 #include "AbstractLocalMeasure.hpp"
 #include <Omega_h_matrix.hpp>
-#include "LinearStress.hpp"
 #include "TensileEnergyDensity.hpp"
 #include "Strain.hpp"
 #include "ImplicitFunctors.hpp"

@@ -112,49 +112,52 @@ class InternalElasticEnergy :
               Plato::Scalar aTimeStep = 0.0
     ) const
     {
+        using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+        using StrainScalarType =
+            typename Plato::fad_type_t<SimplexPhysics, StateScalarType, ConfigScalarType>;
+
         auto tNumCells = mSpatialDomain.numCells();
 
-        Plato::Strain<mSpaceDim> tComputeVoigtStrain;
-        Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;
+        Plato::Strain<mSpaceDim>                 tComputeVoigtStrain;
+        Plato::ScalarProduct<mNumVoigtTerms>     tComputeScalarProduct;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::LinearStress<mSpaceDim> tComputeVoigtStress(mMaterialModel);
+        Plato::LinearStress<EvaluationType,
+                            SimplexPhysics>      tComputeVoigtStress(mMaterialModel);
 
-      using StrainScalarType =
-        typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
+        Plato::ScalarVectorT      <ConfigScalarType> tCellVolume ("cell weight",tNumCells);
+        Plato::ScalarArray3DT     <ConfigScalarType> tGradient   ("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
+        Plato::ScalarMultiVectorT <StrainScalarType> tStrain     ("strain",tNumCells,mNumVoigtTerms);
+        Plato::ScalarMultiVectorT <ResultScalarType> tStress     ("stress",tNumCells,mNumVoigtTerms);
 
-      Plato::ScalarVectorT      <ConfigScalarType> tCellVolume ("cell weight",tNumCells);
-      Plato::ScalarArray3DT     <ConfigScalarType> tGradient   ("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
-      Plato::ScalarMultiVectorT <StrainScalarType> tStrain     ("strain",tNumCells,mNumVoigtTerms);
-      Plato::ScalarMultiVectorT <ResultScalarType> tStress     ("stress",tNumCells,mNumVoigtTerms);
+        auto tQuadratureWeight = mCubatureRule->getCubWeight();
+        auto tApplyWeighting   = mApplyWeighting;
+        Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+        {
+            tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
-      auto tQuadratureWeight = mCubatureRule->getCubWeight();
-      auto tApplyWeighting   = mApplyWeighting;
-      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
-      {
-        tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
-        tCellVolume(aCellOrdinal) *= tQuadratureWeight;
+            // compute strain
+            //
+            tComputeVoigtStrain(aCellOrdinal, tStrain, aState, tGradient);
 
-        // compute strain
-        //
-        tComputeVoigtStrain(aCellOrdinal, tStrain, aState, tGradient);
+            // compute stress
+            //
+            tComputeVoigtStress(aCellOrdinal, tStress, tStrain);
 
-        // compute stress
-        //
-        tComputeVoigtStress(aCellOrdinal, tStress, tStrain);
+            // apply weighting
+            //
+            tApplyWeighting(aCellOrdinal, tStress, aControl);
 
-        // apply weighting
-        //
-        tApplyWeighting(aCellOrdinal, tStress, aControl);
+            // compute element internal energy (inner product of strain and weighted stress)
+            //
+            tComputeScalarProduct(aCellOrdinal, aResult, tStress, tStrain, tCellVolume);
 
-        // compute element internal energy (inner product of strain and weighted stress)
-        //
-        tComputeScalarProduct(aCellOrdinal, aResult, tStress, tStrain, tCellVolume);
+        },"energy gradient");
 
-      },"energy gradient");
-
-      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStrain, "strain", mSpatialDomain);
-      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress", mSpatialDomain);
-
+        if( std::count(mPlottable.begin(),mPlottable.end(),"strain") )
+            toMap(mDataMap, tStrain, "strain", mSpatialDomain);
+        if( std::count(mPlottable.begin(),mPlottable.end(),"stress") )
+            toMap(mDataMap, tStress, "stress", mSpatialDomain);
     }
 }; // class InternalElasticEnergy
 

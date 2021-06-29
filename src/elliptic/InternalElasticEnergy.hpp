@@ -104,15 +104,17 @@ class InternalElasticEnergy :
               Plato::ScalarVectorT      <ResultScalarType>  & aResult,
               Plato::Scalar aTimeStep = 0.0) const
     {
+        using SimplexPhysics = typename Plato::SimplexMechanics<mSpaceDim>;
+        using StrainScalarType =
+            typename Plato::fad_type_t<SimplexPhysics, StateScalarType, ConfigScalarType>;
+
         auto tNumCells = mSpatialDomain.numCells();
 
-        Plato::Strain<mSpaceDim> tComputeVoigtStrain;
-        Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;
+        Plato::Strain<mSpaceDim>                 tComputeVoigtStrain;
+        Plato::ScalarProduct<mNumVoigtTerms>     tComputeScalarProduct;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::LinearStress<mSpaceDim> tComputeVoigtStress(mMaterialModel);
-
-      using StrainScalarType = 
-        typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
+        Plato::LinearStress<EvaluationType,
+                            SimplexPhysics>      tComputeVoigtStress(mMaterialModel);
 
       Plato::ScalarVectorT<ConfigScalarType>
         tCellVolume("cell weight",tNumCells);
