@@ -232,8 +232,7 @@ penalize_thermal_diffusivity
 {
     ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
     ControlT tPenalizedDensity = pow(tDensity, aPenaltyExponent);
-    ControlT tPenalizedThermalDiff =
-            aThermalDiffRatio + ( (static_cast<Plato::Scalar>(1.0) - aThermalDiffRatio) * tPenalizedDensity);
+    ControlT tPenalizedThermalDiff = aThermalDiffRatio + ( (static_cast<Plato::Scalar>(1.0) - aThermalDiffRatio) * tPenalizedDensity);
     return tPenalizedThermalDiff;
 }
 // function penalize_thermal_diffusivity
@@ -280,10 +279,11 @@ penalize_heat_source_constant
  * \tparam ConfigT  configuration FAD evaluation type
  * \tparam PrevVelT previous velocity FAD evaluation type
  * \tparam StabT    stabilization FAD evaluation type
+ * \tparam ScalarT  scalar multiplier FAD evaluation type
  *
  * \fn DEVICE_TYPE inline void integrate_stabilizing_scalar_forces
  *
- * \brief Integrate stabilized scalar field.
+ * \brief Integrate stabilizing scalar field.
  *
  * \param [in] aCellOrdinal cell/element ordinal
  * \param [in] aCellVolume  cell/element volume workset
@@ -300,7 +300,8 @@ template
  typename ResultT,
  typename ConfigT,
  typename PrevVelT,
- typename StabT>
+ typename StabT,
+ typename ScalarT>
 DEVICE_TYPE inline void
 integrate_stabilizing_scalar_forces
 (const Plato::OrdinalType & aCellOrdinal,
@@ -309,7 +310,7 @@ integrate_stabilizing_scalar_forces
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarVectorT<StabT> & aStabForce,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
- Plato::Scalar aMultiplier = 1.0)
+ const ScalarT & aMultiplier)
  {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {

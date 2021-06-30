@@ -29,8 +29,8 @@ namespace Fluids
  *
  * \class CriterionFlowRate
  *
- * \brief Class responsible for the evaluation of the volumetric flow rate
- *   along a user-specified side set (e.g. entity set).
+ * \brief Evaluatie volumetric flow rate along specidied side sets (e.g. entity 
+ *        set). The volumetric flow rate is defined as
  *
  *                  \f[ \int_{\Gamma_e} u_i^n n_i d\Gamma_e \f],
  *
@@ -108,10 +108,15 @@ public:
     /***************************************************************************//**
      * \fn void evaluateBoundary
      * \brief Evaluate scalar function along a set of user-defined boudaries \f$ d\Gamma \f$.
-     * \param [in] aWorkSets holds state work sets initialized with correct FAD types
-     * \param [in] aResult   1D output work set of size number of cells
+     * \param [in] aSpatialModel mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in] aWorkSets     state work sets initialized with correct FAD types
+     * \param [in] aResult       1D output work set of size number of cells
      ******************************************************************************/
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
+    void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel, 
+     const Plato::WorkSets & aWorkSets, 
+     Plato::ScalarVectorT<ResultT> & aResult) 
+    const override
     {
         // set face to element graph
         auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);

@@ -144,6 +144,9 @@ AmgXLinearSolver::AmgXLinearSolver(
     mDisplayIterations = 0;
     if(aSolverParams.isType<int>("Display Iterations"))
         mDisplayIterations = aSolverParams.get<int>("Display Iterations");
+    
+    if(aSolverParams.isParameter("Display Diagnostics"))
+        mDisplayDiagnostics = aSolverParams.get<bool>("Display Diagnostics");
 
     std::string tConfigFile("amgx.json");
     if(aSolverParams.isType<std::string>("Configuration File"))

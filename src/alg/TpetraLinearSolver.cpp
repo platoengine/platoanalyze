@@ -329,7 +329,7 @@ TpetraLinearSolver::TpetraLinearSolver(
   if(aSolverParams.isType<std::string>("Solver"))
     tSolver = aSolverParams.get<std::string>("Solver");
   else if (mSolverPackage == "belos")
-    tSolver = "bicgstab"; // Or "pseudoblock gmres"
+    tSolver = "pseudoblock gmres";
   else if (mSolverPackage == "amesos2")
     tSolver = "superlu";
   else
@@ -402,13 +402,16 @@ TpetraLinearSolver::setupSolverOptions (const Teuchos::ParameterList &aSolverPar
 
   if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
     mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
+
+  if(aSolverParams.isParameter("Display Diagnostics"))
+    mDisplayDiagnostics = aSolverParams.get<bool>("Display Diagnostics");
   
   this->addDefaultToParameterList(mSolverOptions, "Maximum Iterations",    tMaxIterations);
   this->addDefaultToParameterList(mSolverOptions, "Convergence Tolerance", tTolerance);
   this->addDefaultToParameterList(mSolverOptions, "Block Size",            mDofsPerNode);
 
   if (mSolver == "pseudoblock gmres")
-    addDefaultToParameterList(mSolverOptions, "Num Blocks", tMaxIterations); // This is the number of iterations between restarts
+    this->addDefaultToParameterList(mSolverOptions, "Num Blocks", tMaxIterations); // This is the number of iterations between restarts
 }
 
 void
@@ -507,7 +510,7 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
 
   if (result == Belos::Unconverged) {
     Plato::Scalar tTolerance = static_cast<Plato::Scalar>(100.0) * std::numeric_limits<Plato::Scalar>::epsilon();
-    if (mAchievedTolerance > tTolerance)
+    if (mAchievedTolerance > tTolerance && mDisplayDiagnostics)
     printf("Tpetra Warning: Belos solver did not achieve desired tolerance. Completed %d iterations, achieved absolute tolerance of %7.1e (not relative)\n",
             mNumIterations, mAchievedTolerance);
   }

@@ -25,10 +25,10 @@ private:
     std::string         mElementBlockName;  /*!< element block name */
     std::string         mMaterialModelName; /*!< material model name */
     std::string         mSpatialDomainName; /*!< element block name */
-    Omega_h::LOs        mElemLids;          /*!< element block local identification numbers */
+    Omega_h::LOs        mElemLids;          /*!< local element identification numbers (i.e. element ids) */
 
-    Plato::LocalOrdinalVector mTotalElemLids;   /*!< List of all elements in this domain */
-    Plato::LocalOrdinalVector mMaskedElemLids;  /*!< List of elements after a mask is applied */
+    Plato::LocalOrdinalVector mTotalElemLids;   /*!< List of local elements ids in this domain */
+    Plato::LocalOrdinalVector mMaskedElemLids;  /*!< List of local elements ids after application of a masked operation */
 
 public:
     /******************************************************************************//**
@@ -40,6 +40,16 @@ public:
     getDomainName() const
     {
         return mSpatialDomainName;
+    }
+
+    /******************************************************************************//**
+     * \fn setDomainName
+     * \brief Set patial domain name.
+     * \param [in] aName domain model name
+     **********************************************************************************/
+    void setDomainName(const std::string & aName)
+    {
+        mSpatialDomainName = aName;
     }
 
     /******************************************************************************//**
@@ -212,7 +222,7 @@ public:
         if(tElemSetsI == tElemSets.end())
         {
             std::ostringstream tMsg;
-            tMsg << "Could not find element set (block) with name = '" << aBlockName;
+            tMsg << "Did not find element set (i.e. element block) with name = '" << aBlockName << "'.";
             THROWERR(tMsg.str())
         }
 
@@ -306,7 +316,7 @@ public:
             auto tModelParams = aInputParams.sublist("Spatial Model");
             if (!tModelParams.isSublist("Domains"))
             {
-                THROWERR("Parsing 'Spatial Model'. Required 'Domains' list not found");
+                THROWERR("Parsing 'Spatial Model' parameter list. Required 'Domains' parameter sublist not found");
             }
 
             auto tDomainsParams = tModelParams.sublist("Domains");
@@ -317,7 +327,7 @@ public:
 
                 if (!tEntry.isList())
                 {
-                    THROWERR("Parameter in Domains list not valid.  Expect lists only.");
+                    THROWERR("Parameter in 'Domains' parameter sublist within 'Spatial Model' parameter list not valid.  Expect lists only.");
                 }
 
                 Teuchos::ParameterList &tDomainParams = tDomainsParams.sublist(tMyName);
@@ -326,7 +336,7 @@ public:
         }
         else
         {
-            THROWERR("Parsing 'Plato Problem'. Required 'Spatial Model' list not found");
+            THROWERR("Parsing 'Plato Problem'. Required 'Spatial Model' parameter list not found");
         }
     }
 
