@@ -111,7 +111,7 @@ void run(
         std::cout << "\nRunning Plato Analyze version " << version_major << "."
                 << version_minor << "." << version_patch << std::endl;
 
-        std::cout << "\n\nparameter list:" << std::endl;
+        std::cout << "\n\n User Parameter List:" << std::endl;
         aProblem.print(std::cout);
     }
 
