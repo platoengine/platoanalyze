@@ -422,7 +422,7 @@ TpetraLinearSolver::setupPreconditionerOptions (const Teuchos::ParameterList &aS
   
   if (mPreconditionerPackage != "muelu") return;
 
-  bool tUseSmoothedAggregation = false;
+  bool tUseSmoothedAggregation = true;
   if(aSolverParams.isType<bool>("Use Smoothed Aggregation"))
     tUseSmoothedAggregation = aSolverParams.get<bool>("Use Smoothed Aggregation");
 
