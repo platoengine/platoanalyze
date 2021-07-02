@@ -71,13 +71,13 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Initial conditions for the algebraic function used to represent the level set field.
+ * \brief Initial conditions for the algebraic function used to represent the level set field.
 **********************************************************************************/
 struct LevelSetInitialCondition
 {
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aParams parameters associated with the geometry and fields
+     * \brief Constructor
+     * \param [in] aParams parameters associated with the geometry and fields
     **********************************************************************************/
     explicit LevelSetInitialCondition(const Plato::ProblemParams & aParams) :
             mNlobes(5),
@@ -95,11 +95,11 @@ struct LevelSetInitialCondition
     const Plato::Scalar mYCenter;
 
     /******************************************************************************//**
-     * @brief Compute level set value
-     * @param [in] aX x-coordinate
-     * @param [in] aY y-coordinate
-     * @param [in] aZ z-coordinate
-     * @return level set value
+     * \brief Compute level set value
+     * \param [in] aX x-coordinate
+     * \param [in] aY y-coordinate
+     * \param [in] aZ z-coordinate
+     * \return level set value
     **********************************************************************************/
     Plato::Scalar operator()(const Plato::Scalar & aX, const Plato::Scalar & aY, const Plato::Scalar & aZ) const
     {
@@ -113,13 +113,13 @@ struct LevelSetInitialCondition
 // struct LevelSetInitialCondition
 
 /******************************************************************************//**
- * @brief Initial conditions for the algebraic function used to represent the burn rate field
+ * \brief Initial conditions for the algebraic function used to represent the burn rate field
 **********************************************************************************/
 struct BurnRateInitialCondition
 {
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aParams parameters associated with the geometry and fields
+     * \brief Constructor
+     * \param [in] aParams parameters associated with the geometry and fields
     **********************************************************************************/
     explicit BurnRateInitialCondition(const Plato::ProblemParams & aParams) :
             mRefBurnRate(aParams.mRefBurnRate[0]),
@@ -135,11 +135,11 @@ struct BurnRateInitialCondition
     const Plato::Scalar mYCenter;
 
     /******************************************************************************//**
-     * @brief Compute burn rate
-     * @param [in] aX x-coordinate
-     * @param [in] aY y-coordinate
-     * @param [in] aZ z-coordinate
-     * @return burn rate value
+     * \brief Compute burn rate
+     * \param [in] aX x-coordinate
+     * \param [in] aY y-coordinate
+     * \param [in] aZ z-coordinate
+     * \return burn rate value
     **********************************************************************************/
     Plato::Scalar operator()(const Plato::Scalar & aX, const Plato::Scalar & aY, const Plato::Scalar & aZ) const
     {
@@ -150,7 +150,7 @@ struct BurnRateInitialCondition
 // struct LevelSetInitialCondition
 
 /******************************************************************************//**
- * @brief Cylinder geometry model class
+ * \brief Cylinder geometry model class
 **********************************************************************************/
 class LevelSetCylinderInBox : public Plato::GeometryModel
 {
@@ -158,7 +158,7 @@ public:
     static constexpr Plato::OrdinalType mSpatialDim = 3;
 
     /******************************************************************************//**
-     * @brief Default constructor
+     * \brief Default constructor
      **********************************************************************************/
     explicit LevelSetCylinderInBox(MPI_Comm aComm = MPI_COMM_WORLD) :
             mTimes(),
@@ -167,14 +167,14 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     virtual ~LevelSetCylinderInBox()
     {
     }
 
     /******************************************************************************//**
-     * @brief compute the area of the side of a cylinder.
+     * \brief compute the area of the side of a cylinder.
      **********************************************************************************/
     Plato::Scalar area() override
     {
@@ -183,8 +183,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Compute the reference rate that gas mass is begin produced
-     * @return mass production rate
+     * \brief Compute the reference rate that gas mass is begin produced
+     * \return mass production rate
      **********************************************************************************/
     Plato::Scalar referenceMassProductionRate() override
     {
@@ -195,8 +195,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Output geometry and field data
-     * @param [in] aOutput output flag (true = output, false = do not output)
+     * \brief Output geometry and field data
+     * \param [in] aOutput output flag (true = output, false = do not output)
      **********************************************************************************/
     void output(bool aOutput = false) override
     {
@@ -207,8 +207,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief compute the gradient of a cylinder with respect to parameters that define geometry.
-     * @param aOutput gradient with respect to the parameters that defined a geometry
+     * \brief compute the gradient of a cylinder with respect to parameters that define geometry.
+     * \param aOutput gradient with respect to the parameters that defined a geometry
      **********************************************************************************/
     void gradient(std::vector<Plato::Scalar>& aOutput) override
     {
@@ -216,9 +216,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evolve geometry in time
-     * @param [in] aDeltaTime time step
-     * @param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
+     * \brief Evolve geometry in time
+     * \param [in] aDeltaTime time step
+     * \param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
      **********************************************************************************/
     void evolveGeometry(const Plato::Scalar aDeltaTime, const Plato::Scalar aBurnRateMultiplier) override
     {
@@ -226,8 +226,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update immersed geometry
-     * @param [in] aParams optimization parameters
+     * \brief Update immersed geometry
+     * \param [in] aParams optimization parameters
      **********************************************************************************/
     void updateGeometry(const Plato::ProblemParams & aParams) override
     {
@@ -237,8 +237,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Initialize level set cylinder
-     * @param [in] aParams parameters associated with the geometry and fields
+     * \brief Initialize level set cylinder
+     * \param [in] aParams parameters associated with the geometry and fields
     **********************************************************************************/
     void initialize(const Plato::ProblemParams & aParams) override
     {
@@ -249,7 +249,7 @@ public:
 
 private:
     /******************************************************************************//**
-     * @brief Output level set time history to visualization file
+     * \brief Output level set time history to visualization file
     **********************************************************************************/
     void outputLevelSetField()
     {
@@ -268,7 +268,7 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Cache level set field at this time snapshot
+     * \brief Cache level set field at this time snapshot
     **********************************************************************************/
     void cacheData()
     {
@@ -278,8 +278,8 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Update immersed cylinder
-     * @param [in] aParams optimization parameters
+     * \brief Update immersed cylinder
+     * \param [in] aParams optimization parameters
      **********************************************************************************/
     void updateImmersedGeometry(const Plato::Scalar aDeltaTime, const Plato::Scalar aBurnRateMultiplier)
     {
@@ -303,8 +303,8 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Initialize immersed geometry
-     * @param [in] aParams parameters associated with the geometry and fields
+     * \brief Initialize immersed geometry
+     * \param [in] aParams parameters associated with the geometry and fields
      **********************************************************************************/
     void initializeImmersedGeometry(const Plato::ProblemParams & aParams)
     {
@@ -337,9 +337,9 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Build bounding box and fields on computational mesh
-     * @param [in] aMeshMaxRadius maximum radius for bounding box
-     * @param [in] aMeshLength maximum bounding box length
+     * \brief Build bounding box and fields on computational mesh
+     * \param [in] aMeshMaxRadius maximum radius for bounding box
+     * \param [in] aMeshLength maximum bounding box length
      **********************************************************************************/
     void buildMesh(const Plato::Scalar & aMeshMaxRadius, const Plato::Scalar & aMeshLength)
     {
@@ -365,8 +365,8 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Build bounding box
-     * @param [in] aParams parameters associated with the geometry and fields
+     * \brief Build bounding box
+     * \param [in] aParams parameters associated with the geometry and fields
     **********************************************************************************/
     void buildBoundingBox(const Plato::ProblemParams & aParams)
     {

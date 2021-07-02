@@ -8,8 +8,8 @@
 
 #include "Teuchos_UnitTestHarness.hpp"
 
+#include "UtilsOmegaH.hpp"
 #include "PlatoUtilities.hpp"
-#include "OmegaHUtilities.hpp"
 #include "PlatoTestHelpers.hpp"
 #include "EllipticVMSProblem.hpp"
 
@@ -192,7 +192,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tEllipticVMSProblem.solution(tControls);
-    auto tState = tSolution.State;
+    auto tState = tSolution.get("State");
 
     // 5. Test Results
     std::vector<std::vector<Plato::Scalar>> tGold =
@@ -218,7 +218,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        tEllipticVMSProblem.saveStates("Output", *tMesh);
+        tEllipticVMSProblem.output("Output");
     }
 }
 

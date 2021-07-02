@@ -1,6 +1,7 @@
 configure_file(  ${CMAKE_CURRENT_SOURCE_DIR}/amgx.json
                  ${CMAKE_CURRENT_BINARY_DIR}/amgx.json COPYONLY)
-
+configure_file(  ${CMAKE_CURRENT_SOURCE_DIR}/points.xyz
+                 ${CMAKE_CURRENT_BINARY_DIR}/points.xyz COPYONLY)
 
 if(STRUCTURAL)
   #begin: Structural dynamics unit test
@@ -168,6 +169,34 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MassPropertiesUn
 add_test(NAME runMassPropertiesUnitTests COMMAND ${ES_MPI_TEST})
 #end: MassPropertiesTest unit test
 
+#begin: GeometryMisfitTest unit test
+set(GeometryMisfitTest_SOURCES
+  GeometryMisfitTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(GeometryMisfitTest_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(GeometryMisfitUnitTests
+  ${GeometryMisfitTest_SOURCES}
+  ${GeometryMisfitTest_HEADERS}
+)
+
+target_link_libraries(GeometryMisfitUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(GeometryMisfitUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(GeometryMisfitUnitTests ArborX::ArborX)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/GeometryMisfitUnitTests)
+add_test(NAME runGeometryMisfitUnitTests COMMAND ${ES_MPI_TEST})
+#end: GeometryMisfitTest unit test
+
 #begin: LinearMaterialModelTests unit test
 set(LinearMaterialModelTests_SOURCES
   LinearMaterialModelTests.cpp
@@ -249,6 +278,33 @@ if(PLASTICITY)
   build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ElastoPlasticityUnitTests)
   add_test(NAME runElastoPlasticityUnitTests COMMAND ${ES_MPI_TEST})
   #end: ElastoPlasticityTests unit test
+
+  #begin: ThermoplasticityTests unit test
+  set(ThermoplasticityTest_SOURCES
+    ThermoplasticityTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(ThermoplasticityTest_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(ThermoplasticityUnitTests
+    ${ThermoplasticityTest_SOURCES}
+    ${ThermoplasticityTest_HEADERS}
+  )
+
+  target_link_libraries(ThermoplasticityUnitTests
+    analyzelib
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
+    )
+  target_include_directories(ThermoplasticityUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ThermoplasticityUnitTests)
+  add_test(NAME runThermoplasticityUnitTests COMMAND ${ES_MPI_TEST})
+  #end: ThermoplasticityTests unit test
 endif()
 
 #begin: OmegaHUtilitiesTests unit test
@@ -358,6 +414,31 @@ target_include_directories(PlatoFunctorsUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/sr
 
 build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/PlatoFunctorsUnitTests)
 add_test(NAME runPlatoFunctorsUnitTests COMMAND ${ES_MPI_TEST})
+
+set(PlatoSpatialModel_SOURCES
+  PlatoSpatialModelTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(PlatoSpatialModel_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(PlatoSpatialModelUnitTests
+  ${PlatoSpatialModel_SOURCES}
+  ${PlatoSpatialModel_HEADERS}
+)
+
+target_link_libraries(PlatoSpatialModelUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(PlatoSpatialModelUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/PlatoSpatialModelUnitTests)
+add_test(NAME runPlatoSpatialModelUnitTests COMMAND ${ES_MPI_TEST})
 
 set(Derivatives_SOURCES
   DerivativeTests.cpp
@@ -504,6 +585,59 @@ if(HYPERBOLIC)
   build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/TransientDynamicsUnitTests)
   add_test(NAME runTransientDynamicsUnitTests COMMAND ${ES_MPI_TEST})
 endif()
+
+if(HYPERBOLIC)
+  set(ComputationalFluidDynamicsTests_SOURCES
+    ComputationalFluidDynamicsTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(ComputationalFluidDynamicsTests_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(ComputationalFluidDynamicsTests
+    ${ComputationalFluidDynamicsTests_SOURCES}
+    ${ComputationalFluidDynamicsTests_HEADERS}
+  )
+
+  target_link_libraries(ComputationalFluidDynamicsTests
+    analyzelib
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
+  )
+  target_include_directories(ComputationalFluidDynamicsTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ComputationalFluidDynamicsTests)
+  add_test(NAME runComputationalFluidDynamicsTests COMMAND ${ES_MPI_TEST})
+endif()
+
+set(EllipticUpdLagTests_SOURCES
+  EllipticUpdLagTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(EllipticUpdLagTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(EllipticUpdLagUnitTests
+  ${EllipticUpdLagTests_SOURCES}
+  ${EllipticUpdLagTests_HEADERS}
+)
+
+target_link_libraries(EllipticUpdLagUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+)
+target_include_directories(EllipticUpdLagUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/EllipticUpdLagUnitTests)
+add_test(NAME runEllipticUpdLagUnitTests COMMAND ${ES_MPI_TEST})
+
 
 set(TwoFieldTests_SOURCES
   TwoFieldTests.cpp

@@ -24,7 +24,6 @@ private:
 
     const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;  /*!< material stiffness matrix */
     Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;                      /*!< reference strain tensor */
-    Plato::Scalar mRayleighB;
 
 public:
     /******************************************************************************//**
@@ -46,8 +45,7 @@ public:
     **********************************************************************************/
     LinearStress(const Teuchos::RCP<Plato::LinearElasticMaterial<SpaceDim>> aMaterialModel) :
             mCellStiffness(aMaterialModel->getStiffnessMatrix()),
-            mReferenceStrain(aMaterialModel->getReferenceStrain()),
-            mRayleighB(aMaterialModel->getRayleighB())
+            mReferenceStrain(aMaterialModel->getReferenceStrain())
     {
     }
 
@@ -80,25 +78,31 @@ public:
      * \brief Compute Cauchy stress tensor
      * \param [in]  aCellOrdinal element ordinal
      * \param [out] aCauchyStress Cauchy stress tensor
-     * \param [in]  aSmallStrain Infinitesimal strain tensor
-     * \param [in]  aVelGrad Velocity gradient tensor
+     * \param [in]  aStrainInc Incremental strain tensor
+     * \param [in]  aPrevStrain Reference strain tensor
     **********************************************************************************/
-    template<typename StressScalarType, typename StrainScalarType, typename VelGradScalarType>
+    template<typename StressScalarType, typename StrainScalarType, typename PrevStrainScalarType>
     DEVICE_TYPE inline void
-    operator()( int cellOrdinal,
-                Kokkos::View<StressScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aCauchyStress,
-                Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aSmallStrain,
-                Kokkos::View<VelGradScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aVelGrad) const {
+    operator()(
+        Plato::OrdinalType aCellOrdinal,
+        Kokkos::View<StressScalarType**,     Plato::Layout, Plato::MemSpace> const& aCauchyStress,
+        Kokkos::View<StrainScalarType**,     Plato::Layout, Plato::MemSpace> const& aStrainInc,
+        Kokkos::View<PrevStrainScalarType**, Plato::Layout, Plato::MemSpace> const& aPrevStrain
+    ) const
+    {
 
-      // compute stress
-      //
-      for( int iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++){
-        aCauchyStress(cellOrdinal,iVoigt) = 0.0;
-        for( int jVoigt=0; jVoigt<mNumVoigtTerms; jVoigt++){
-          aCauchyStress(cellOrdinal,iVoigt) += (aSmallStrain(cellOrdinal,jVoigt)-mReferenceStrain(jVoigt))*mCellStiffness(iVoigt, jVoigt)
-                                     +  aVelGrad(cellOrdinal,jVoigt)*mCellStiffness(iVoigt, jVoigt)*mRayleighB;
+        // compute stress
+        //
+        for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
+        {
+            aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
+            for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
+            {
+                aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+                    (aStrainInc(aCellOrdinal, tVoigtIndex_J) - mReferenceStrain(tVoigtIndex_J) + aPrevStrain(aCellOrdinal, tVoigtIndex_J))
+                  * mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+            }
         }
-      }
     }
 
 };

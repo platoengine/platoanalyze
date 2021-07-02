@@ -18,7 +18,7 @@ namespace Elliptic
 {
 
 /******************************************************************************//**
- * @brief Solution function class
+ * \brief Solution function class
  **********************************************************************************/
 template<typename PhysicsT>
 class SolutionFunction : public Plato::Elliptic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
@@ -45,8 +45,8 @@ private:
     const Plato::SpatialModel & mSpatialModel;
 
     /******************************************************************************//**
-     * @brief Initialization of Solution Function
-     * @param [in] aProblemParams input parameters database
+     * \brief Initialization of Solution Function
+     * \param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize (
@@ -125,12 +125,12 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary solution function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aSpatialModel Plato Analyze spatial model
-     * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aProblemParams input parameters database
-     * @param [in] aName user defined function name
+     * \brief Primary solution function constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze data map
+     * \param [in] aProblemParams input parameters database
+     * \param [in] aName user defined function name
     **********************************************************************************/
     SolutionFunction(
         const Plato::SpatialModel    & aSpatialModel,
@@ -147,21 +147,22 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate solution function
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return scalar function evaluation
+     * \brief Evaluate solution function
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return scalar function evaluation
     **********************************************************************************/
     Plato::Scalar
     value(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
     {
-        auto tLastIndex = aSolution.State.extent(0) - 1;
-        auto tState = Kokkos::subview(aSolution.State, tLastIndex, Kokkos::ALL());
+        auto tState = aSolution.get("State");
+        auto tLastIndex = tState.extent(0) - 1;
+        auto tStateSubView = Kokkos::subview(tState, tLastIndex, Kokkos::ALL());
 
         auto& tNodeSets = mSpatialModel.MeshSets[Omega_h::NODE_SET];
         auto  tNodeIter = tNodeSets.find(mDomainName);
@@ -182,7 +183,7 @@ public:
                 Plato::Scalar ds(0.0);
                 for(int iDof=0; iDof<tNumDofsPerNode; iDof++)
                 {
-                    auto dv = tState(tNumDofsPerNode*tIndex+iDof);
+                    auto dv = tStateSubView(tNumDofsPerNode*tIndex+iDof);
                     ds += (tNormal[iDof]*dv) * (tNormal[iDof]*dv);
                 }
                 ds = (ds > 0.0) ? sqrt(ds) : ds;
@@ -198,7 +199,7 @@ public:
                 auto tIndex = tNodeIds[aNodeOrdinal];
                 for(int iDof=0; iDof<tNumDofsPerNode; iDof++)
                 {
-                    auto dv = tState(tNumDofsPerNode*tIndex+iDof);
+                    auto dv = tStateSubView(tNumDofsPerNode*tIndex+iDof);
                     aLocalValue += (tNormal[iDof]*dv);
                 }
             }, tReturnValue);
@@ -210,15 +211,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the solution function with respect to (wrt) the configuration parameters
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the configuration parameters
+     * \brief Evaluate gradient of the solution function with respect to (wrt) the configuration parameters
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
     Plato::ScalarVector
     gradient_x(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     ) const override
@@ -231,15 +232,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the solution function with respect to (wrt) the state variables
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the state variables
+     * \brief Evaluate gradient of the solution function with respect to (wrt) the state variables
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector
     gradient_u(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::OrdinalType    aStepIndex,
               Plato::Scalar         aTimeStep = 0.0
@@ -247,8 +248,8 @@ public:
     {
         const Plato::OrdinalType tNumDofs = mNumDofsPerNode * mNumNodes;
         Plato::ScalarVector tGradientU ("gradient control", tNumDofs);
-        
-        auto tState = Kokkos::subview(aSolution.State, aStepIndex, Kokkos::ALL());
+        auto tState = aSolution.get("State");
+        auto tStateSubView = Kokkos::subview(tState, aStepIndex, Kokkos::ALL());
 
         auto& tNodeSets = mSpatialModel.MeshSets[Omega_h::NODE_SET];
         auto  tNodeIter = tNodeSets.find(mDomainName);
@@ -267,14 +268,14 @@ public:
                 Plato::Scalar ds(0.0);
                 for(int iDof=0; iDof<tNumDofsPerNode; iDof++)
                 {
-                    auto dv = tState(tNumDofsPerNode*tIndex+iDof);
+                    auto dv = tStateSubView(tNumDofsPerNode*tIndex+iDof);
                     ds += (tNormal[iDof]*dv) * (tNormal[iDof]*dv);
                 }
                 ds = (ds > 0.0) ? sqrt(ds) : ds;
 
                 for(int iDof=0; iDof<tNumDofsPerNode; iDof++)
                 {
-                    auto dv = tState(tNumDofsPerNode*tIndex+iDof);
+                    auto dv = tStateSubView(tNumDofsPerNode*tIndex+iDof);
                     if( ds != 0.0 )
                     {
                         tGradientU(tNumDofsPerNode*tIndex+iDof) = tNormal[iDof] * (tNormal[iDof] * dv) / (ds*tNumNodes);
@@ -304,18 +305,18 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the solution function with respect to (wrt) the control variables
-     * @param [in] aSolution Plato::Solution composed of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the control variables
+     * \brief Evaluate gradient of the solution function with respect to (wrt) the control variables
+     * \param [in] aSolution solution database
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the scalar function wrt the control variables
 
        NOTE:  Currently, no penalty is applied, so the gradient wrt z is zero.
 
     **********************************************************************************/
     Plato::ScalarVector
     gradient_z(
-        const Plato::Solution     & aSolution,
+        const Plato::Solutions    & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar aTimeStep = 0.0
     ) const override
@@ -342,8 +343,8 @@ public:
 
 
     /******************************************************************************//**
-     * @brief Set user defined function name
-     * @param [in] function name
+     * \brief Set user defined function name
+     * \param [in] function name
     **********************************************************************************/
     void setFunctionName(const std::string aFunctionName)
     {
@@ -351,8 +352,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return user defined function name
-     * @return User defined function name
+     * \brief Return user defined function name
+     * \return User defined function name
     **********************************************************************************/
     std::string name() const
     {

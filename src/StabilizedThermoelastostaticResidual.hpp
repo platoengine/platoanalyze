@@ -153,7 +153,7 @@ public:
       Plato::StabilizedTMKinematics <SpaceDim> kinematics;
       Plato::StabilizedTMKinetics   <SpaceDim> kinetics(mMaterialModel);
 
-      Plato::InterpolateFromNodal   <SpaceDim, SpaceDim, 0, SpaceDim>         interpolatePGradFromNodal;
+      Plato::InterpolateFromNodal   <SpaceDim, SpaceDim, 0, SpaceDim>        interpolatePGradFromNodal;
       Plato::InterpolateFromNodal   <SpaceDim, mNumDofsPerNode, PDofOffset>  interpolatePressureFromNodal;
       Plato::InterpolateFromNodal   <SpaceDim, mNumDofsPerNode, TDofOffset>  interpolateTemperatureFromNodal;
       

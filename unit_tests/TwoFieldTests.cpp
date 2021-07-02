@@ -138,8 +138,8 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, 3D )
     "      <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>   \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/>\n"
     "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "      </ParameterList>                                                                    \n"
     "    </ParameterList>                                                                      \n"
@@ -694,8 +694,8 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
     "      <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>   \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/>\n"
     "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "      </ParameterList>                                                                    \n"
     "    </ParameterList>                                                                      \n"
@@ -730,8 +730,8 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
     "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "      <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>   \n"
+    "      <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/>\n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
@@ -955,8 +955,8 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
     "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>   \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/>\n"
     "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "      </ParameterList>                                                                    \n"
     "    </ParameterList>                                                                      \n"
@@ -1088,6 +1088,7 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
 
   { // test row summed solve
     //
+    Plato::blas1::scale(-1.0, tResidual);
     Plato::Solve::RowSummed<spaceDim>(tJacobian, tProjPGrad, tResidual);
 
     auto tProjPGrad_Host = Kokkos::create_mirror_view( tProjPGrad );

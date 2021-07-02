@@ -7,23 +7,11 @@
 #include "ComputePrincipalStresses.hpp"
 
 #ifdef PLATOANALYZE_2D
-template class Plato::ComputePrincipalStresses<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-template class Plato::ComputePrincipalStresses<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
+PLATO_EXPL_DEF_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexPlasticity, 2)
+PLATO_EXPL_DEF_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexThermoPlasticity, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-template class Plato::ComputePrincipalStresses<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-template class Plato::ComputePrincipalStresses<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
+PLATO_EXPL_DEF_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexPlasticity, 3)
+PLATO_EXPL_DEF_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexThermoPlasticity, 3)
 #endif

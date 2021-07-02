@@ -1,14 +1,16 @@
 #ifdef HAVE_AMGX
 #include "alg/AmgXLinearSolver.hpp"
+#include "AnalyzeMacros.hpp"
 #include <amgx_c.h>
 #include <string>
+#include <sstream>
 #include <fstream>
 #include <mpi.h>
 
 namespace Plato {
 
 /******************************************************************************//**
- * @brief Load AmgX configuration string from file
+ * \brief Load AmgX configuration string from file
 **********************************************************************************/
 std::string
 AmgXLinearSolver::loadConfigString(std::string aConfigFile)
@@ -76,24 +78,84 @@ AmgXLinearSolver::loadConfigString(std::string aConfigFile)
 }
 
 /******************************************************************************//**
+ * @brief AmgXLinearSolver status checking and iteration printing
+**********************************************************************************/
+void
+AmgXLinearSolver::checkStatusAndPrintIteration() 
+{
+    std::stringstream tMyOutputToConsole;
+    tMyOutputToConsole << "AmgX Lin. Solve ";
+    AMGX_SOLVE_STATUS tStatus;
+    AMGX_solver_get_status(mSolverHandle, &tStatus);
+    if (tStatus == AMGX_SOLVE_FAILED)
+    {
+        THROWERR("AMGX Solver Failed!");
+    }
+    else if (tStatus == AMGX_SOLVE_DIVERGED)
+    {
+        if (mDivergenceIsFatal)
+        {
+            THROWERR("AMGX Solver Diverged!");
+        }
+        else
+        {
+            WARNING("AMGX Solver Diverged!");
+            tMyOutputToConsole << "Diverged  | ";
+        }
+    }
+    else if (tStatus == AMGX_SOLVE_SUCCESS)
+    {
+        tMyOutputToConsole << "Succeeded | ";
+    }
+    else
+    {
+        tMyOutputToConsole << "Status Unknown | ";
+    }
+
+    if (mDisplayIterations <= 0) return; // If not requested, don't print the iteration information.
+
+    int tNumberOfIterations = 0;
+    AMGX_solver_get_iterations_number(mSolverHandle, &tNumberOfIterations);
+    tMyOutputToConsole << std::setw(4) << tNumberOfIterations << " Iteration(s) | Solved in ";
+    char tBuffer[9];
+    sprintf(tBuffer, "%8.1e", mSolverTime);
+    tMyOutputToConsole << std::string(tBuffer) << " second(s).";
+
+    std::cout << tMyOutputToConsole.str() << std::endl;
+}
+
+/******************************************************************************//**
  * @brief AmgXLinearSolver constructor
 **********************************************************************************/
 AmgXLinearSolver::AmgXLinearSolver(
     const Teuchos::ParameterList& aSolverParams,
     int aDofsPerNode
-) : mDofsPerNode(aDofsPerNode)
+) :
+    mDofsPerNode(aDofsPerNode),
+    mDisplayIterations(0),
+    mSolverTime(0.0),
+    mDivergenceIsFatal(false),
+    mLinearSolverTimer(Teuchos::TimeMonitor::getNewTimer("Analyze: AmgX Linear Solve"))
 {
     AMGX_SAFE_CALL(AMGX_initialize());
     AMGX_SAFE_CALL(AMGX_initialize_plugins());
     AMGX_SAFE_CALL(AMGX_install_signal_handler());
 
+    mDisplayIterations = 0;
+    if(aSolverParams.isType<int>("Display Iterations"))
+        mDisplayIterations = aSolverParams.get<int>("Display Iterations");
+    
+    if(aSolverParams.isParameter("Display Diagnostics"))
+        mDisplayDiagnostics = aSolverParams.get<bool>("Display Diagnostics");
+
     std::string tConfigFile("amgx.json");
     if(aSolverParams.isType<std::string>("Configuration File"))
-    {
         tConfigFile = aSolverParams.get<std::string>("Configuration File");
-    }
     auto tConfigString = loadConfigString(tConfigFile);
     AMGX_config_create(&mConfigHandle, tConfigString.c_str());
+
+    if(aSolverParams.isType<bool>("Divergence is Fatal"))
+        mDivergenceIsFatal = aSolverParams.get<bool>("Divergence is Fatal");
 
     // everything currently assumes exactly one MPI rank.
     MPI_Comm mpi_comm = MPI_COMM_SELF;
@@ -101,8 +163,7 @@ AmgXLinearSolver::AmgXLinearSolver(
     int devices[1];
     //it is critical to specify the current device, which is not always zero
     cudaGetDevice(&devices[0]);
-    AMGX_resources_create(
-        &mResources, mConfigHandle, &mpi_comm, ndevices, devices);
+    AMGX_resources_create(&mResources, mConfigHandle, &mpi_comm, ndevices, devices);
 
     AMGX_matrix_create(&mMatrixHandle,   mResources, AMGX_mode_dDDI);
     AMGX_vector_create(&mForcingHandle,  mResources, AMGX_mode_dDDI);
@@ -111,7 +172,7 @@ AmgXLinearSolver::AmgXLinearSolver(
 }
 
 /******************************************************************************//**
- * @brief AmgXLinearSolver constructor
+ * \brief AmgXLinearSolver constructor
 **********************************************************************************/
 void
 AmgXLinearSolver::solve(
@@ -119,6 +180,7 @@ AmgXLinearSolver::solve(
     Plato::ScalarVector   aX,
     Plato::ScalarVector   aB
 ) {
+    Teuchos::TimeMonitor LocalTimer(*mLinearSolverTimer);
 
 #ifndef NDEBUG
     check_inputs(aA, aX, aB);
@@ -141,12 +203,15 @@ AmgXLinearSolver::solve(
 
     int err = cudaDeviceSynchronize();
     assert(err == cudaSuccess);
+    double tStartTime = mLinearSolverTimer->wallTime();
     auto solverErr = AMGX_solver_solve(mSolverHandle, mForcingHandle, mSolutionHandle);
+    mSolverTime = mLinearSolverTimer->wallTime() - tStartTime;
+    checkStatusAndPrintIteration();
     AMGX_vector_download(mSolutionHandle, mSolution.data());
 }
 
 /******************************************************************************//**
- * @brief AmgXLinearSolver constructor
+ * \brief AmgXLinearSolver constructor
 **********************************************************************************/
 AmgXLinearSolver::
 ~AmgXLinearSolver()
@@ -163,7 +228,7 @@ AmgXLinearSolver::
 }
 
 /******************************************************************************//**
- * @brief sanity check for solve() arguments
+ * \brief sanity check for solve() arguments
 **********************************************************************************/
 void
 AmgXLinearSolver::

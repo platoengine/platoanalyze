@@ -138,6 +138,91 @@ void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMat
 // function MatrixTimesVectorPlusVector
 
 /******************************************************************************//**
+ * \brief Vector times Matrix plus vector
+ * \param [in] aInput input 1D container
+ * \param [in] aMatrix multiplier of 1D container A
+ * \param [out] aOutput output 1D container
+**********************************************************************************/
+template<typename ScalarT>
+void VectorTimesMatrixPlusVector(
+    const Plato::ScalarVectorT<ScalarT>      & aInput,
+    const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+    const Plato::ScalarVectorT<ScalarT>      & aOutput)
+{
+    if(aMatrix->numRows() != aInput.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "DIMENSION MISMATCH.  INPUT VECTOR LENGTH DOES NOT MATCH THE NUMBER OF ROWS IN MATRIX A.  "
+             << "INPUT VECTOR LENGTH = '" <<  aInput.size() << "' AND THE NUMBER OF ROWS IN MATRIX A = '"
+             << aMatrix->numCols() << "'. INPUT VECTOR LABEL IS '" << aInput.label()
+             << "' AND OUTPUT VECTOR LABEL IS '" << aOutput.label() << "'.";
+        THROWERR(tMsg.str());
+    }
+    if(aMatrix->numCols() != aOutput.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "DIMENSION MISMATCH.  OUTPUT VECTOR LENGTH DOES NOT MATCH THE NUMBER OF COLUMNS IN MATRIX A.  "
+             << "OUTPUT VECTOR LENGTH = '" <<  aOutput.size() << "' AND THE NUMBER OF COLUMNS IN MATRIX A = '"
+             << aMatrix->numRows() << "'. OUTPUT VECTOR LABEL IS '" << aOutput.label() << "'.";
+        THROWERR(tMsg.str());
+    }
+
+    if(aMatrix->isBlockMatrix())
+    {
+        auto tNodeRowMap = aMatrix->rowMap();
+        auto tNodeColIndices = aMatrix->columnIndices();
+        auto tNumRowsPerBlock = aMatrix->numRowsPerBlock();
+        auto tNumColsPerBlock = aMatrix->numColsPerBlock();
+        auto tEntries = aMatrix->entries();
+        auto tNumNodeRows = tNodeRowMap.size() - 1;
+
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodeRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeRowOrdinal)
+        {
+            auto tRowStartIndex = tNodeRowMap(aNodeRowOrdinal);
+            auto tRowEndIndex = tNodeRowMap(aNodeRowOrdinal + 1);
+            for (auto tCrsIndex = tRowStartIndex; tCrsIndex < tRowEndIndex; tCrsIndex++)
+            {
+                auto tNodeColumnIndex = tNodeColIndices(tCrsIndex);
+
+                auto tFromDofColIndex = tNumColsPerBlock*tNodeColumnIndex;
+                auto tToDofColIndex = tFromDofColIndex + tNumColsPerBlock;
+
+                auto tFromDofRowIndex = tNumRowsPerBlock*aNodeRowOrdinal;
+                auto tToDofRowIndex = tFromDofRowIndex + tNumRowsPerBlock;
+
+                auto tMatrixEntryIndex = tNumRowsPerBlock*tNumColsPerBlock*tCrsIndex;
+                for ( auto tDofRowIndex = tFromDofRowIndex; tDofRowIndex < tToDofRowIndex; tDofRowIndex++ )
+                {
+                    for ( auto tDofColIndex = tFromDofColIndex; tDofColIndex < tToDofColIndex; tDofColIndex++ )
+                    {
+                        Kokkos::atomic_add(&aOutput(tDofColIndex), tEntries(tMatrixEntryIndex) * aInput(tDofRowIndex));
+                        tMatrixEntryIndex += 1;
+                    }
+                }
+            }
+        }, "Vector_a * BlockMatrix + Vector_b");
+    }
+    else
+    {
+        auto tRowMap = aMatrix->rowMap();
+        auto tColIndices = aMatrix->columnIndices();
+        auto tEntries = aMatrix->entries();
+        auto tNumRows = tRowMap.size() - 1;
+
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aRowOrdinal)
+        {
+            auto tRowStart = tRowMap(aRowOrdinal);
+            auto tRowEnd = tRowMap(aRowOrdinal + 1);
+            for (auto tEntryIndex = tRowStart; tEntryIndex < tRowEnd; tEntryIndex++)
+            {
+                auto tColumnIndex = tColIndices(tEntryIndex);
+                Kokkos::atomic_add(&aOutput(tColumnIndex), tEntries(tEntryIndex) * aInput(aRowOrdinal));
+            }
+        },"Vector_a * Matrix + Vector_b");
+    }
+}
+// function MatrixTimesVectorPlusVector
+/******************************************************************************//**
  * \brief Compute row sum inverse product
  * \param [in] aA
  * \param [in/out] aB

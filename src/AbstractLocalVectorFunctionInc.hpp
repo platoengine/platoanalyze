@@ -2,6 +2,7 @@
 
 #include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -72,7 +73,7 @@ public:
         const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType         > & aControl,
         const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType          > & aConfig,
         const Plato::ScalarMultiVectorT< typename EvaluationType::ResultScalarType          > & aResult,
-              Plato::Scalar aTimeStep = 0.0) const = 0;
+        const Plato::TimeData & aTimeData) const = 0;
 
     /****************************************************************************//**
     * \brief Update the local state variables
@@ -85,7 +86,7 @@ public:
         const Plato::ScalarMultiVector & aLocalStatePrev,
         const Plato::ScalarMultiVector & aControl,
         const Plato::ScalarArray3D     & aConfig,
-              Plato::Scalar              aTimeStep = 0.0) const = 0;
+        const Plato::TimeData          & aTimeData) const = 0;
 
     /******************************************************************************//**
      * \brief Update physics-based data within a frequency of optimization iterations
@@ -99,7 +100,7 @@ public:
         const Plato::ScalarMultiVector & aGlobalState,
         const Plato::ScalarMultiVector & aLocalState,
         const Plato::ScalarVector      & aControl,
-              Plato::Scalar              aTimeStep = 0.0)
+        const Plato::TimeData          & aTimeData)
     { return; }
 };
 

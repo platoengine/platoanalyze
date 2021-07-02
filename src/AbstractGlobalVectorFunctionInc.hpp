@@ -10,6 +10,7 @@
 #include <Omega_h_assoc.hpp>
 
 #include "PlatoStaticsTypes.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -34,7 +35,7 @@ protected:
 public:
     /***************************************************************************//**
      * \brief Constructor
-     * @param [in] aSpatialDomain Plato spatial model
+     * \param [in] aSpatialDomain Plato spatial model
      * \param [in]  aDataMap output data map
     *******************************************************************************/
     explicit
@@ -84,7 +85,7 @@ public:
      * \param [in]     aControls        set of design variables
      * \param [in]     aConfig          set of configuration variables (cell node coordinates)
      * \param [in/out] aResult          residual evaluation
-     * \param [in]     aTimeStep        current time step, default = 0.0
+     * \param [in]     aTimeData        current time data
      *
     *******************************************************************************/
     virtual void
@@ -97,7 +98,7 @@ public:
         const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>        & aControls,
         const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>         & aConfig,
         const Plato::ScalarMultiVectorT <typename EvaluationType::ResultScalarType>         & aResult,
-              Plato::Scalar aTimeStep = 0.0) = 0;
+        const Plato::TimeData & aTimeData) = 0;
 
     /***************************************************************************//**
      *
@@ -111,7 +112,7 @@ public:
      * \param [in]     aControls        set of design variables
      * \param [in]     aConfig          set of configuration variables (cell node coordinates)
      * \param [in/out] aResult          residual evaluation
-     * \param [in]     aTimeStep        current time step, default = 0.0
+     * \param [in]     aTimeData        current time data
      *
     *******************************************************************************/
     virtual void
@@ -125,21 +126,21 @@ public:
         const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>        & aControls,
         const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>         & aConfig,
         const Plato::ScalarMultiVectorT <typename EvaluationType::ResultScalarType>         & aResult,
-              Plato::Scalar aTimeStep = 0.0) = 0;
+        const Plato::TimeData & aTimeData) = 0;
 
     /******************************************************************************//**
      * \brief Update physics-based data within a frequency of optimization iterations
      * \param [in] aGlobalState global state variables
      * \param [in] aLocalState  local state variables
      * \param [in] aControl     control variables, e.g. design variables
-     * \param [in] aTimeStep    pseudo time step
+     * \param [in] aTimeData    current time data
     **********************************************************************************/
     virtual void
     updateProblem(
         const Plato::ScalarMultiVector & aGlobalState,
         const Plato::ScalarMultiVector & aLocalState,
         const Plato::ScalarVector      & aControl,
-              Plato::Scalar              aTimeStep = 0.0)
+        const Plato::TimeData          & aTimeData)
     { return; }
 };
 // class AbstractGlobalVectorFunctionInc

@@ -26,11 +26,116 @@
 namespace PlatoUtestHelpers
 {
 
-/******************************************************************************//**
- * @brief get view from device
+/***************************************************************************//**
+ * \fn get_box_mesh_sets
+ * \brief Return collection of element, side, and node sets for a box mesh model.
  *
- * @param[in] aView data on device
- * @returns Mirror on host
+ * 1D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'x+', 'body'
+ *  Side Set Names   : 'x-', 'x+'
+ *  Element Set Names: 'body'
+ * 2D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'x+', 'y+', 'body'
+ *  Side Set Names   : 'x-', 'y-', 'x+', 'y+'
+ *  Element Set Names: 'body'
+ * 3D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+', 'body'
+ *  Side Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+'
+ *  Element Set Names: 'body'
+ *
+ * \param [in] aMesh mesh database
+ * \return collection of element, side, and node sets
+*******************************************************************************/
+Omega_h::MeshSets
+inline get_box_mesh_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    return tMeshSets;
+}
+
+/***************************************************************************//**
+ * \fn get_box_side_sets
+ * \brief Return side set for a box mesh model.
+ *
+ * 1D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'x+', 'body'
+ * 2D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'x+', 'y+', 'body'
+ * 3D Mesh Sets Description:
+ *  Node Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+', 'body'
+ *
+ * \param [in] aMesh mesh database
+ * \return side set
+*******************************************************************************/
+Omega_h::MeshDimSets
+inline get_box_node_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    const auto tNodeSets = tMeshSets[Omega_h::NODE_SET];
+    return tNodeSets;
+}
+
+/***************************************************************************//**
+ * \fn get_box_side_sets
+ * \brief Return side set for a box mesh model.
+ *
+ * 1D Mesh Sets Description:
+ *  Side Set Names   : 'x-', 'x+'
+ * 2D Mesh Sets Description:
+ *  Side Set Names   : 'x-', 'y-', 'x+', 'y+'
+ * 3D Mesh Sets Description:
+ *  Side Set Names   : 'x-', 'y-', 'z-', 'x+', 'y+', 'z+'
+ *
+ * \param [in] aMesh mesh database
+ * \return side set
+*******************************************************************************/
+Omega_h::MeshDimSets
+inline get_box_side_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    const auto tSideSets = tMeshSets[Omega_h::SIDE_SET];
+    return tSideSets;
+}
+
+/***************************************************************************//**
+ * \fn get_box_elem_sets
+ * \brief Return element set for a box mesh model.
+ *
+ * 1D Mesh Sets Description:
+ *  Element Set Names: 'body'
+ * 2D Mesh Sets Description:
+ *  Element Set Names: 'body'
+ * 3D Mesh Sets Description:
+ *  Element Set Names: 'body'
+ *
+ * \param [in] aMesh mesh database
+ * \return element set
+*******************************************************************************/
+Omega_h::MeshDimSets
+inline get_box_elem_sets
+(Omega_h::Mesh & aMesh)
+{
+    auto tNumSpaceDim = aMesh.dim();
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&aMesh, tAssoc);
+    const auto tElemSets = tMeshSets[Omega_h::ELEM_SET];
+    return tElemSets;
+}
+
+/******************************************************************************//**
+ * \brief get view from device
+ *
+ * \param[in] aView data on device
+ * \returns Mirror on host
 **********************************************************************************/
 template <typename ViewType>
 typename ViewType::HostMirror
@@ -163,6 +268,37 @@ inline Omega_h::LOs get_edge_ids_on_y1(Omega_h::Mesh & aMesh)
 {
     Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::EDGE, Omega_h::EDGE, 7 /* class id */);
     Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return (tLocalOrdinals);
+}
+
+/******************************************************************************//**
+ * \brief Get face IDs on a specific side of the box mesh for applying loads
+ *   Specialized for 3-D applications.
+ *
+ * \param [in] aMesh       finite element mesh
+ * \param [in] aBoundaryID boundary identifier
+ * \return array of face ids
+ **********************************************************************************/
+inline Omega_h::LOs get_face_ids_on_boundary_3D(Omega_h::Mesh & aMesh, const std::string & aBoundaryID)
+{
+    const Omega_h::Int tFaceDim = 2;
+    Omega_h::Read<Omega_h::I8> Marks;
+    if(aBoundaryID == "x0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 12);
+    else if(aBoundaryID == "x1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 14);
+    else if(aBoundaryID == "y0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 10);
+    else if(aBoundaryID == "y1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 16);
+    else if(aBoundaryID == "z0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 4);
+    else if(aBoundaryID == "z1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 22);
+    else
+        THROWERR("Specifed boundary ID not implemented.")
+
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(Marks);
     return (tLocalOrdinals);
 }
 
@@ -393,6 +529,110 @@ inline Omega_h::LOs get_2D_boundary_nodes_y1(Omega_h::Mesh& aMesh)
     Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 7);
     Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
     return tLocalOrdinals;
+}
+
+/******************************************************************************//**
+ * \brief Return list of boundary nodes, specialized for 3-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aBoundaryID boundary identifier
+ *
+ * \return list of boundary nodes
+ *
+ **********************************************************************************/
+inline Omega_h::LOs get_boundary_nodes_3D(Omega_h::Mesh & aMesh, const std::string & aBoundaryID)
+{
+    const Omega_h::Int tVertexDim = 0;
+    const Omega_h::Int tFaceDim = 2;
+    Omega_h::Read<Omega_h::I8> Marks;
+    if(aBoundaryID == "x0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 12);
+    else if(aBoundaryID == "x1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 14);
+    else if(aBoundaryID == "y0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 10);
+    else if(aBoundaryID == "y1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 16);
+    else if(aBoundaryID == "z0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 4);
+    else if(aBoundaryID == "z1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 22);
+    else
+        THROWERR("Specified boundary ID is not defined.")
+
+    Omega_h::LOs tBoundaryNodes = Omega_h::collect_marked(Marks);
+
+    return (tBoundaryNodes);
+}
+
+/******************************************************************************//**
+ * \brief Label boundarys with nodesets and sidesets, specialized for 2-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aMeshSets   mesh sets to be filled
+ *
+ *
+ **********************************************************************************/
+inline void set_mesh_sets_2D(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets)
+{
+    auto tNodesX0 = PlatoUtestHelpers::get_2D_boundary_nodes_x0(aMesh);
+    auto tNodesX1 = PlatoUtestHelpers::get_2D_boundary_nodes_x1(aMesh);
+    auto tNodesY0 = PlatoUtestHelpers::get_2D_boundary_nodes_y0(aMesh);
+    auto tNodesY1 = PlatoUtestHelpers::get_2D_boundary_nodes_y1(aMesh);
+
+    aMeshSets[Omega_h::NODE_SET]["ns_X0"] = tNodesX0;
+    aMeshSets[Omega_h::NODE_SET]["ns_X1"] = tNodesX1;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y0"] = tNodesY0;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y1"] = tNodesY1;
+
+    auto tFacesX0 = PlatoUtestHelpers::get_edge_ids_on_x0(aMesh);
+    auto tFacesX1 = PlatoUtestHelpers::get_edge_ids_on_x1(aMesh);
+    auto tFacesY0 = PlatoUtestHelpers::get_edge_ids_on_y0(aMesh);
+    auto tFacesY1 = PlatoUtestHelpers::get_edge_ids_on_y1(aMesh);
+
+    aMeshSets[Omega_h::SIDE_SET]["ss_X0"] = tFacesX0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_X1"] = tFacesX1;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y0"] = tFacesY0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y1"] = tFacesY1;
+}
+
+/******************************************************************************//**
+ * \brief Label boundarys with nodesets and sidesets, specialized for 3-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aMeshSets   mesh sets to be filled
+ *
+ *
+ **********************************************************************************/
+inline void set_mesh_sets_3D(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets)
+{
+    auto tNodesX0 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "x0");
+    auto tNodesX1 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "x1");
+    auto tNodesY0 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "y0");
+    auto tNodesY1 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "y1");
+    auto tNodesZ0 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "z0");
+    auto tNodesZ1 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "z1");
+
+    aMeshSets[Omega_h::NODE_SET]["ns_X0"] = tNodesX0;
+    aMeshSets[Omega_h::NODE_SET]["ns_X1"] = tNodesX1;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y0"] = tNodesY0;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y1"] = tNodesY1;
+    aMeshSets[Omega_h::NODE_SET]["ns_Z0"] = tNodesZ0;
+    aMeshSets[Omega_h::NODE_SET]["ns_Z1"] = tNodesZ1;
+
+    auto tFacesX0 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "x0");
+    auto tFacesX1 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "x1");
+    auto tFacesY0 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "y0");
+    auto tFacesY1 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "y1");
+    auto tFacesZ0 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "z0");
+    auto tFacesZ1 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "z1");
+
+    aMeshSets[Omega_h::SIDE_SET]["ss_X0"] = tFacesX0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_X1"] = tFacesX1;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y0"] = tFacesY0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y1"] = tFacesY1;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Z0"] = tFacesZ0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Z1"] = tFacesZ1;
 }
 
 /******************************************************************************//**
@@ -786,6 +1026,13 @@ toFull( Teuchos::RCP<Plato::CrsMatrixType> aInMatrix )
     return retMatrix;
 }
 
+/******************************************************************************//**
+ * \brief ignore a variable and suppress compiler warnings :)
+ *
+ * \tparam [in] Any typename
+ **********************************************************************************/
+template <typename T>
+void ignore_unused_variable_warning(T &&) {}
 
 } // namespace PlatoUtestHelpers
 

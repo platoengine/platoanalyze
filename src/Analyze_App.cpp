@@ -4,15 +4,14 @@
 
 #include "Analyze_App.hpp"
 #include "AnalyzeOutput.hpp"
+#include "AnalyzeAppUtils.hpp"
 #include "HDF5IO.hpp"
 #include <PlatoProblemFactory.hpp>
 #include <Plato_OperationsUtilities.hpp>
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
 
-#ifdef PLATO_CONSOLE
 #include <Plato_Console.hpp>
-#endif
 
 namespace Plato {
 
@@ -129,8 +128,7 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
         mLibOsh(&aArgc, &aArgv),
         mMachine(aLocalComm),
         mNumSpatialDims(0),
-        mMesh(&mLibOsh),
-        mNumSolutionDofs(0)
+        mMesh(&mLibOsh)
 /******************************************************************************/
 {
   // parse app file
@@ -290,8 +288,7 @@ createProblem(ProblemDefinition& aDefinition)
 void MPMD_App::resetProblemMetaData()
 /******************************************************************************/
 {
-  mGlobalSolution  = mProblem->getGlobalSolution();
-  mNumSolutionDofs = mProblem->getNumSolutionDofs();
+  //mGlobalSolution  = mProblem->getGlobalSolution();
 
   auto tNumLocalVals = mMesh.nverts();
   if(mControl.extent(0) != tNumLocalVals)
@@ -630,7 +627,7 @@ updateParameters(std::string aName, Plato::Scalar aValue)
         // if a target is given, update the problem definition
         if(tParam->mTarget.empty() == false)
         {
-            parseInline(mDef->params, tParam->mTarget, tParam->mValue);
+            parse_inline(mDef->params, tParam->mTarget, tParam->mValue);
             mDef->modified = true;
         }
     }
@@ -670,22 +667,25 @@ void MPMD_App::ComputeCriterion::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto& tState  = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradZ  = mMyApp->mCriterionGradientsZ[mStrCriterion];
 
-    mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    if ( mMyApp->mProblem->criterionIsLinear(mStrCriterion) == false )
+    {
+        mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    }
 
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
-    tGradZ = mMyApp->mProblem->criterionGradient(tControl, tState, mStrCriterion);
+    tGradZ = mMyApp->mProblem->criterionGradient(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion Operation - Print Criterion GradientZ.\n");
         Plato::print(tGradZ, "criterion gradient Z");
         std::ostringstream tMsg;
@@ -728,22 +728,24 @@ void MPMD_App::ComputeCriterionX::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto& tState  = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tState = mMyApp->mProblem->solution(tControl);
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    if ( mMyApp->mProblem->criterionIsLinear(mStrCriterion) == false )
+    {
+        mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    }
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
-
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion X Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion X Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion X Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
         std::ostringstream tMsg;
@@ -758,12 +760,23 @@ ComputeCriterionP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
     LocalOp       (aMyApp, aOpNode, aOpDef),
     ESP_Op        (aMyApp, aOpNode),
     CriterionOp   (aMyApp, aOpNode),
-    mStrGradientP ("Criterion Gradient")
+    mStrValName   (getArgumentName(aOpNode, "Value",    "ComputeCriterionP")),
+    mStrGradName  (getArgumentName(aOpNode, "Gradient", "ComputeCriterionP"))
 /******************************************************************************/
 {
 #ifdef PLATO_ESP
     auto tESP = mMyApp->mESP[mESPName];
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    if(aMyApp->mCriterionVectors.count(mStrCriterion) == 0)
+    {
+        aMyApp->mCriterionVectors[mStrCriterion] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    }
+    addUnique(aMyApp->mVectorNameToCriterionName, mStrGradName, mStrCriterion, "ComputeCriterionP");
+
+    if(aMyApp->mCriterionValues.count(mStrCriterion) == 0)
+    {
+        aMyApp->mCriterionValues[mStrCriterion] = {};
+    }
+    addUnique(aMyApp->mValueNameToCriterionName, mStrValName, mStrCriterion, "ComputeCriterionP");
 #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
 #endif
@@ -781,16 +794,16 @@ void MPMD_App::ComputeCriterionP::operator()()
 #ifdef PLATO_ESP
     mMyApp->mGlobalSolution = mMyApp->mProblem->solution(mMyApp->mControl);
 
-    auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
+    auto& tGradP = mMyApp->mCriterionVectors[mStrCriterion];
 
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mapToParameters(tESP, tGradP, tGradX);
@@ -800,7 +813,7 @@ void MPMD_App::ComputeCriterionP::operator()()
         REPORT("Analyze Application - Compute Criterion P Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion P Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion P Operation - Print Criterion GradientX.\n");
         Plato::print(mMyApp->mCriterionGradientsX[mStrCriterion], "criterion gradient X");
         std::ostringstream tMsg;
@@ -838,11 +851,14 @@ void MPMD_App::ComputeCriterionValue::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto& tState   = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
 
-    tState = mMyApp->mProblem->solution(tControl);
-    tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
+    if ( mMyApp->mProblem->criterionIsLinear(mStrCriterion) == false )
+    {
+        mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    }
+    tValue = mMyApp->mProblem->criterionValue(tControl, mMyApp->mGlobalSolution, mStrCriterion);
+    std::cout << "Criterion with name '" << mStrCriterion << "' has a value of '" << tValue << "'.\n";
     tValue -= mTarget;
 
     if(mMyApp->mDebugAnalyzeApp == true)
@@ -850,7 +866,7 @@ void MPMD_App::ComputeCriterionValue::operator()()
         REPORT("Analyze Application - Compute Criterion Value Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Value Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         std::ostringstream tMsg;
         tMsg << "Analyze Application - Compute Criterion Value Operation - Criterion Value '" << tValue << "'.\n";
         REPORT(tMsg.str().c_str());
@@ -885,17 +901,15 @@ void MPMD_App::ComputeCriterionGradient::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
-    auto& tGradZ   = mMyApp->mCriterionGradientsZ[mStrCriterion];
-
-    tGradZ = mMyApp->mProblem->criterionGradient(tControl, tState, mStrCriterion);
+    auto& tGradZ  = mMyApp->mCriterionGradientsZ[mStrCriterion];
+    tGradZ = mMyApp->mProblem->criterionGradient(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion Gradient Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Gradient Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion Gradient Operation - Print Criterion GradientZ.\n");
         Plato::print(tGradZ, "criterion gradient Z");
     }
@@ -928,17 +942,15 @@ void MPMD_App::ComputeCriterionGradientX::operator()()
     }
 
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
-
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion Gradient X Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion Gradient X Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion Gradient X Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
     }
@@ -998,11 +1010,15 @@ ComputeCriterionGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
     LocalOp       (aMyApp, aOpNode, aOpDef),
     ESP_Op        (aMyApp, aOpNode),
     CriterionOp   (aMyApp, aOpNode),
-    mStrGradientP ("Criterion Gradient")
+    mStrGradName  (getArgumentName(aOpNode, "Gradient", "ComputeCriterionGradientP"))
 {
 #ifdef PLATO_ESP
     auto tESP = mMyApp->mESP[mESPName];
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    if(aMyApp->mCriterionVectors.count(mStrCriterion) == 0)
+    {
+        aMyApp->mCriterionVectors[mStrCriterion] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    }
+    addUnique(aMyApp->mVectorNameToCriterionName, mStrGradName, mStrCriterion, "ComputeCriterionGradientP");
 #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
 #endif
@@ -1019,17 +1035,16 @@ void MPMD_App::ComputeCriterionGradientP::operator()()
     }
 #ifdef PLATO_ESP
     auto tControl = mMyApp->mControl;
-    auto tState   = mMyApp->mGlobalSolution;
-    auto& tGradP  = mMyApp->mValuesMap[mStrGradientP];
+    auto& tGradP  = mMyApp->mCriterionVectors[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
+    tGradX = mMyApp->mProblem->criterionGradientX(tControl, mMyApp->mGlobalSolution, mStrCriterion);
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	    mMyApp->mGlobalSolution.print();
         REPORT("Analyze Application - Compute Criterion GradientP Operation - Print Criterion GradientX.\n");
         Plato::print(tGradX, "criterion gradient X");
     }
@@ -1078,14 +1093,13 @@ void MPMD_App::ComputeSolution::operator()()
         REPORT("Analyze Application - Compute Solution Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Solution Operation - Print Global State.\n");
-        Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
+	    mMyApp->mGlobalSolution.print();
     }
 
     // optionally, write solution
     if(mWriteNativeOutput)
     {
-        auto tStateDataMap = mMyApp->mProblem->getDataMap();
-        Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalSolution, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
+        mMyApp->mProblem->output(mVizFilePath);
     }
 }
 
@@ -1110,18 +1124,15 @@ void MPMD_App::Reinitialize::operator()()
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: Reinitialize -- Recomputing Problem");
-#endif
+
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         mMyApp->createProblem(*def);
         mMyApp->resetProblemMetaData();
     }
     else
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: Reinitialize -- Not recomputing Problem");
-#endif
     }
 }
 
@@ -1143,9 +1154,8 @@ void MPMD_App::ReinitializeESP::operator()()
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: ReinitializeESP -- Recomputing Problem");
-#endif
+
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         auto& tESP = mMyApp->mESP[mESPName];
         auto tModelFileName = tESP->getModelFileName();
@@ -1156,9 +1166,7 @@ void MPMD_App::ReinitializeESP::operator()()
     }
     else
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: ReinitializeESP -- Not recomputing Problem");
-#endif
     }
   #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
@@ -1327,35 +1335,55 @@ MPMD_App::OutputToHDF5::operator()()
 /******************************************************************************/
 MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
         LocalOp(aMyApp, aNode, aOpDef)
-{
-    mOutputFile = Plato::Get::String(aNode, "OutputFile");
+{ 
+    auto tVizDirectory = Plato::Get::String(aNode,"VizDirectory");
+    if( !tVizDirectory.empty() )
+    {
+        mVizDirectory = tVizDirectory;
+    }
 
+    std::string tCommand = "mkdir " + mVizDirectory;
+    auto tOutput = std::system(tCommand.c_str());
+    if(false) {std::cout << tOutput << std::flush; }
 }
 /******************************************************************************/
 
 /******************************************************************************/
 void MPMD_App::Visualization::operator()()
 {
-    std::string tProblemPhysics     = mMyApp->mDefaultProblem->params.get<std::string>("Physics");
-    auto tSolution = mMyApp->mProblem->getGlobalSolution();
-    Plato::DataMap tDataMap = mMyApp->mProblem->getDataMap();
+    auto tOutputDirectory = mVizDirectory + std::string("/iteration") + std::to_string(mOptimizationIterationCounter);
+    mMyApp->mProblem->output(tOutputDirectory);
 
-    if (mMyApp->mNumSpatialDims == 3)
+    if(mOptimizationIterationCounter == 0u)
     {
-        Plato::output<3>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
-    }
-    else
-    if (mMyApp->mNumSpatialDims == 2)
-    {
-        Plato::output<2>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
-    }
-    else
-    if (mMyApp->mNumSpatialDims == 1)
-    {
-        Plato::output<1>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
+        mNumSimulationTimeSteps = Plato::read_num_time_steps_from_pvd_file(tOutputDirectory, "timestep="); 
     }
 
+    std::ofstream tOuptutFile(mVizDirectory + "/steps.pvd"); 
+    auto tLastTimeStep = mNumSimulationTimeSteps - 1u;
+    
+    if(tOuptutFile.is_open() == false)
+    {
+        THROWERR(std::string("Visualization operation failed to open file with path '") + mVizDirectory + "/steps.pvd" + "'.")
+    }
+
+    tOuptutFile << "<VTKFile type=\"Collection\" version=\"0.1\">\n";
+    tOuptutFile << "<Collection>\n";
+    for(decltype(mOptimizationIterationCounter) tItr = 0; tItr <= mOptimizationIterationCounter; tItr++)
+    {
+        auto tSubDirectory = std::string("iteration") + std::to_string(tItr);
+        auto tSolutionAtThisTimeStepDirectory = std::string("step_") + std::to_string(tLastTimeStep);
+        tOuptutFile << "<DataSet timestep=" << "\"" << std::to_string(tItr) << "\"  part=\"0\" file=\"" 
+            << tSubDirectory << "/steps/" << tSolutionAtThisTimeStepDirectory << "/pieces.pvtu\"/>\n";
+    }
+    tOuptutFile << "</Collection>\n";
+    tOuptutFile << "</VTKFile>";
+    tOuptutFile.close();
+
+    mOptimizationIterationCounter++;
 }
+
+
 /******************************************************************************/
 void MPMD_App::finalize() { }
 /******************************************************************************/
@@ -1423,119 +1451,15 @@ void MPMD_App::exportDataMap(const Plato::data::layout_t & aDataLayout, std::vec
 }
 
 /******************************************************************************/
-Plato::ScalarVector
-getVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride)
-/******************************************************************************/
-{
-  int tNumLocalVals = aFrom.size()/aStride;
-  Plato::ScalarVector tRetVal("vector component", tNumLocalVals);
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumLocalVals), LAMBDA_EXPRESSION(const int & aNodeOrdinal) {
-    tRetVal(aNodeOrdinal) = aFrom(aStride*aNodeOrdinal+aComponent);
-  },"copy component from vector");
-  return tRetVal;
-}
-
-/******************************************************************************/
-Plato::ScalarVector
-setVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride)
-/******************************************************************************/
-{
-  int tNumLocalVals = aFrom.size()/aStride;
-  Plato::ScalarVector tRetVal("vector component", tNumLocalVals);
-  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumLocalVals), LAMBDA_EXPRESSION(const int & aNodeOrdinal) {
-    tRetVal(aNodeOrdinal) = aFrom(aStride*aNodeOrdinal+aComponent);
-  },"copy component from vector");
-  return tRetVal;
-}
-
-
-/******************************************************************************/
 MPMD_App::~MPMD_App()
 /******************************************************************************/
 {
 }
 
 /******************************************************************************/
-std::vector<std::string>
-split( const std::string& aInputString, const char aDelimiter )
-/******************************************************************************/
-{
-  // break aInputString apart by 'aDelimiter' below //
-  // produces a vector of strings: tTokens   //
-  std::vector<std::string> tTokens;
-  {
-    std::istringstream tStream(aInputString);
-    std::string tToken;
-    while (std::getline(tStream, tToken, aDelimiter))
-    {
-      tTokens.push_back(tToken);
-    }
-  }
-  return tTokens;
-}
-/******************************************************************************/
-void
-parseInline( Teuchos::ParameterList& params,
-             const std::string& target,
-             Plato::Scalar value )
-/******************************************************************************/
-{
-  std::vector<std::string> tokens = split(target,':');
-
-  Teuchos::ParameterList& innerList = getInnerList(params, tokens);
-  setParameterValue(innerList, tokens, value);
-
-}
-
-/******************************************************************************/
-Teuchos::ParameterList&
-getInnerList( Teuchos::ParameterList& params,
-              std::vector<std::string>& tokens)
-/******************************************************************************/
-{
-    auto& token = tokens[0];
-    if( token.front() == '[' && token.back()  == ']' )
-    {
-      // listName = token with '[' and ']' removed.
-      std::string listName = token.substr(1,token.size()-2);
-      tokens.erase(tokens.begin());
-      return getInnerList( params.sublist(listName, /*must exist=*/true), tokens );
-    }
-    else
-    {
-      return params;
-    }
-}
-/******************************************************************************/
-void
-setParameterValue( Teuchos::ParameterList& params,
-                   std::vector<std::string> tokens, Plato::Scalar value)
-/******************************************************************************/
-{
-  // if '(int)' then
-  auto& token = tokens[0];
-  auto p1 = token.find("(");
-  auto p2 = token.find(")");
-  if( p1 != std::string::npos && p2 != std::string::npos )
-  {
-      std::string vecName = token.substr(0,p1);
-      auto vec = params.get<Teuchos::Array<Plato::Scalar>>(vecName);
-
-      std::string strVecEntry = token.substr(p1+1,p2-p1-1);
-      int vecEntry = std::stoi(strVecEntry);
-      vec[vecEntry] = value;
-
-      params.set(vecName,vec);
-  }
-  else
-  {
-      params.set<Plato::Scalar>(token,value);
-  }
-}
-
-/******************************************************************************/
-void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
-                                        typename Plato::ScalarVector::HostMirror & aHostMirror)
+void MPMD_App::getScalarFieldHostMirror
+(const    std::string & aName,
+ typename Plato::ScalarVector::HostMirror & aHostMirror)
 /******************************************************************************/
 {
     Plato::ScalarVector tDeviceData;
@@ -1555,41 +1479,31 @@ void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
     }
     else if(aName == "Solution")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 0/*dof*/,1/*stride*/);
     }
     else if(aName == "Solution X")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 0/*dof*/,mNumSpatialDims/*stride*/);
     }
     else if(aName == "Solution Y")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 1/*dof*/,mNumSpatialDims/*stride*/);
     }
     else if(aName == "Solution Z")
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::extract_solution(aName, mGlobalSolution, 2/*dof*/,mNumSpatialDims/*stride*/);
     }
     else if(mGradientXNameToCriterionName.count(tFieldName))
     {
         auto tStrCriterion = mGradientZNameToCriterionName[tFieldName];
-        tDeviceData = getVectorComponent(mCriterionGradientsX[tStrCriterion],/*component=*/tFieldIndex, /*stride=*/mNumSpatialDims);
+        tDeviceData = Plato::get_vector_component(mCriterionGradientsX[tStrCriterion],/*component=*/tFieldIndex, /*stride=*/mNumSpatialDims);
     }
 
     // create a mirror
     aHostMirror = Kokkos::create_mirror(tDeviceData);
 
-
     // copy to host from device
     Kokkos::deep_copy(aHostMirror, tDeviceData);
-
 }
 
 /******************************************************************************/

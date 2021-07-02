@@ -10,7 +10,7 @@
 namespace Plato {
 
 /******************************************************************************//**
- * @brief Solver factory for AbstractSolvers
+ * \brief Solver factory for AbstractSolvers
 **********************************************************************************/
 class SolverFactory
 {

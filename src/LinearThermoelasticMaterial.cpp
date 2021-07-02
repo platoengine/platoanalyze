@@ -11,8 +11,8 @@ LinearThermoelasticMaterial<1>(paramList)
 {
     Plato::Scalar v = paramList.get<Plato::Scalar>("Poissons Ratio");
     Plato::Scalar E = paramList.get<Plato::Scalar>("Youngs Modulus");
-    Plato::Scalar a = paramList.get<Plato::Scalar>("Thermal Expansion Coefficient");
-    Plato::Scalar k = paramList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
+    Plato::Scalar a = paramList.get<Plato::Scalar>("Thermal Expansivity");
+    Plato::Scalar k = paramList.get<Plato::Scalar>("Thermal Conductivity");
     auto c = E/((1.0+v)*(1.0-2.0*v));
     mCellStiffness(0,0)=c*(1.0-v);
     mCellThermalExpansionCoef(0)=a;
@@ -27,8 +27,8 @@ LinearThermoelasticMaterial<2>(paramList)
 {
     Plato::Scalar v = paramList.get<Plato::Scalar>("Poissons Ratio");
     Plato::Scalar E = paramList.get<Plato::Scalar>("Youngs Modulus");
-    Plato::Scalar a = paramList.get<Plato::Scalar>("Thermal Expansion Coefficient");
-    Plato::Scalar k = paramList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
+    Plato::Scalar a = paramList.get<Plato::Scalar>("Thermal Expansivity");
+    Plato::Scalar k = paramList.get<Plato::Scalar>("Thermal Conductivity");
     auto c = E/((1.0+v)*(1.0-2.0*v));
     mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;
     mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v);
@@ -47,8 +47,8 @@ LinearThermoelasticMaterial<3>(paramList)
 {
     Plato::Scalar v = paramList.get<Plato::Scalar>("Poissons Ratio");
     Plato::Scalar E = paramList.get<Plato::Scalar>("Youngs Modulus");
-    Plato::Scalar a = paramList.get<Plato::Scalar>("Thermal Expansion Coefficient");
-    Plato::Scalar k = paramList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
+    Plato::Scalar a = paramList.get<Plato::Scalar>("Thermal Expansivity");
+    Plato::Scalar k = paramList.get<Plato::Scalar>("Thermal Conductivity");
     auto c = E/((1.0+v)*(1.0-2.0*v));
     mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;       mCellStiffness(0,2)=c*v;
     mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v); mCellStiffness(1,2)=c*v;

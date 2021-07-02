@@ -44,31 +44,6 @@ template <typename ScalarType>
 using HostScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
 using HostScalarArray3D  = HostScalarArray3DT<Plato::Scalar>;
 
-struct Solution {
-  explicit
-  Solution(){}
-
-  explicit
-  Solution(ScalarMultiVector aState) : State(aState) {}
-
-  explicit
-  Solution(ScalarMultiVector aState,
-           ScalarMultiVector aStateDot
-          ) : State(aState), StateDot(aStateDot) {}
-
-  explicit
-  Solution(ScalarMultiVector aState,
-           ScalarMultiVector aStateDot,
-           ScalarMultiVector aStateDotDot
-          ) : State(aState), StateDot(aStateDot), StateDotDot(aStateDotDot) {}
-
-  ScalarMultiVector State;
-  ScalarMultiVector StateDot;
-  ScalarMultiVector StateDotDot;
-};
-typedef Solution Adjoint;
-
-
 struct DataMap
 {
   std::map<std::string, Plato::Scalar> mScalarValues;
@@ -76,7 +51,22 @@ struct DataMap
   std::map<std::string, Plato::ScalarMultiVector> scalarMultiVectors;
   std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
 
+  std::map<std::string, Plato::ScalarVectorT<Plato::OrdinalType>> ordinalVectors;
+  std::map<std::string, Plato::ScalarVector> scalarNodeFields;
+  std::map<std::string, Plato::ScalarVector> vectorNodeFields;
+
   std::vector<DataMap> stateDataMaps;
+
+  void clearAll()
+  {
+    clearStates();
+    mScalarValues.clear();
+    scalarVectors.clear();
+    scalarMultiVectors.clear();
+    scalarArray3Ds.clear();
+    scalarNodeFields.clear();
+    vectorNodeFields.clear();
+  }
 
   void clearStates()
   {
@@ -86,6 +76,14 @@ struct DataMap
   void saveState()
   {
     stateDataMaps.push_back(getState());
+
+    mScalarValues.clear();
+    scalarVectors.clear();
+    scalarMultiVectors.clear();
+    scalarArray3Ds.clear();
+
+    scalarNodeFields.clear();
+    vectorNodeFields.clear();
   }
 
   DataMap getState() const

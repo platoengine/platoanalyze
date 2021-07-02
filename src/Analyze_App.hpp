@@ -17,15 +17,12 @@
 #include <Plato_SharedData.hpp>
 #include <Plato_SharedField.hpp>
 
-// JR are these needed?
-//#include "Mechanics.hpp"
-//#include "Thermal.hpp"
-
+#include "Solutions.hpp"
+#include "AnalyzeAppUtils.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"
 
-#include "PlatoStaticsTypes.hpp"
 
 #ifdef PLATO_GEOMETRY
 #include "Plato_MLS.hpp"
@@ -46,22 +43,8 @@ typedef Plato::Geometry::ESP<double, Plato::ScalarVectorT<double>::HostMirror> E
 typedef int ESPType;
 #endif
 
-namespace Plato {
-
-Plato::ScalarVector
-getVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride);
-
-void
-parseInline(Teuchos::ParameterList& params, const std::string& target, Plato::Scalar value);
-
-std::vector<std::string>
-split(const std::string& aInputString, const char aDelimiter);
-
-Teuchos::ParameterList&
-getInnerList(Teuchos::ParameterList& params, std::vector<std::string>& tokens);
-
-void
-setParameterValue(Teuchos::ParameterList& params, std::vector<std::string> tokens, Plato::Scalar value);
+namespace Plato
+{
 
 /******************************************************************************/
 class MPMD_App : public Plato::Application
@@ -145,51 +128,51 @@ public:
     };
 
     /******************************************************************************//**
-     * @brief Multiple Program, Multiple Data (MPMD) application destructor
+     * \brief Multiple Program, Multiple Data (MPMD) application destructor
     **********************************************************************************/
     virtual ~MPMD_App();
 
     /******************************************************************************//**
-     * @brief Safely allocate PLATO Analyze data
+     * \brief Safely allocate PLATO Analyze data
     **********************************************************************************/
     void initialize();
 
     /******************************************************************************//**
-     * @brief Compute this operation
-     * @param [in] aOperationName operation name
+     * \brief Compute this operation
+     * \param [in] aOperationName operation name
     **********************************************************************************/
     void compute(const std::string & aOperationName);
 
     /******************************************************************************//**
-     * @brief Safely deallocate PLATO Analyze data
+     * \brief Safely deallocate PLATO Analyze data
     **********************************************************************************/
     void finalize();
 
     /******************************************************************************//**
-     * @brief Import shared data from PLATO Engine
-     * @param [in] aName shared data name
-     * @param [in] aSharedData shared data (i.e. data from PLATO Engine)
+     * \brief Import shared data from PLATO Engine
+     * \param [in] aName shared data name
+     * \param [in] aSharedData shared data (i.e. data from PLATO Engine)
     **********************************************************************************/
     void importData(const std::string & aName, const Plato::SharedData& aSharedField);
 
     /******************************************************************************//**
-     * @brief Export shared data to PLATO Analyze
-     * @param [in] aName shared data name
-     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
+     * \brief Export shared data to PLATO Analyze
+     * \param [in] aName shared data name
+     * \param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     void exportData(const std::string & aName, Plato::SharedData& aSharedField);
 
     /******************************************************************************//**
-     * @brief Export processor's owned global IDs to PLATO Analyze
-     * @param [in] aDataLayout data layout (e.g. node or element based data)
-     * @param [out] aMyOwnedGlobalIDs owned global IDs
+     * \brief Export processor's owned global IDs to PLATO Analyze
+     * \param [in] aDataLayout data layout (e.g. node or element based data)
+     * \param [out] aMyOwnedGlobalIDs owned global IDs
     **********************************************************************************/
     void exportDataMap(const Plato::data::layout_t & aDataLayout, std::vector<int> & aMyOwnedGlobalIDs);
 
     /******************************************************************************//**
-     * @brief Import shared data from PLATO Engine
-     * @param [in] aName shared data name
-     * @param [in] aSharedData shared data (i.e. data from PLATO Engine)
+     * \brief Import shared data from PLATO Engine
+     * \param [in] aName shared data name
+     * \param [in] aSharedData shared data (i.e. data from PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void importDataT(const std::string& aName, const SharedDataT& aSharedData)
@@ -209,9 +192,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Import scalar field from PLATO Engine
-     * @param [in] aName shared data name
-     * @param [in] aSharedData shared data (i.e. data from PLATO Engine)
+     * \brief Import scalar field from PLATO Engine
+     * \param [in] aName shared data name
+     * \param [in] aSharedData shared data (i.e. data from PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void importScalarField(const std::string& aName, SharedDataT& aSharedField)
@@ -228,16 +211,18 @@ public:
         }
         else if(aName == "Solution")
         {
+            auto tTags = mGlobalSolution.tags();
+	    auto tState = mGlobalSolution.get(tTags[0]);
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tStatesSubView = Kokkos::subview(tState, tTIME_STEP_INDEX, Kokkos::ALL());
             this->copyFieldIntoAnalyze(tStatesSubView, aSharedField);
         }
     }
 
     /******************************************************************************//**
-     * @brief Import scalar parameters from PLATO Engine
-     * @param [in] aName shared data name
-     * @param [in] aSharedData shared data (i.e. data from PLATO Engine)
+     * \brief Import scalar parameters from PLATO Engine
+     * \param [in] aName shared data name
+     * \param [in] aSharedData shared data (i.e. data from PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void importScalarParameter(const std::string& aName, SharedDataT& aSharedData)
@@ -254,9 +239,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Import scalar value
-     * @param [in] aName shared data name
-     * @param [in] aSharedData shared data (i.e. data from PLATO Engine)
+     * \brief Import scalar value
+     * \param [in] aName shared data name
+     * \param [in] aSharedData shared data (i.e. data from PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void importScalarValue(const std::string& aName, SharedDataT& aSharedData)
@@ -272,24 +257,28 @@ public:
         tValues.resize(aSharedData.size());
         aSharedData.getData(tValues);
         std::stringstream ss;
-        ss << "Importing Scalar Value: " << aName << std::endl;
+        ss << "Importing Scalar Value: " << aName << " with SharedData name '" << aSharedData.myName() << "'." << std::endl;
         ss << "[ ";
+        ss.precision(6);
+        ss << std::scientific;
         const int tMaxDisplay = 5;
         int tNumValues = tValues.size();
         int tNumDisplay = tNumValues < tMaxDisplay ? tNumValues : tMaxDisplay;
         for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
         if(tNumValues > tMaxDisplay) ss << " ... ";
+        auto tMaxValue = *std::max_element(tValues.begin(), tValues.end());
+        auto tMinValue = *std::min_element(tValues.begin(), tValues.end());
         ss << "]" << std::endl;
+        ss << "Max SharedData Value = '" << tMaxValue << "'.\n";
+        ss << "Min SharedData Value = '" << tMinValue << "'.\n";
 
-#ifdef PLATO_CONSOLE
         Plato::Console::Status(ss.str());
-#endif
     }
 
     /******************************************************************************//**
-     * @brief Export data to PLATO Analyze
-     * @param [in] aName shared data name
-     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
+     * \brief Export data to PLATO Analyze
+     * \param [in] aName shared data name
+     * \param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportDataT(const std::string& aName, SharedDataT& aSharedField)
@@ -318,9 +307,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export scalar value (i.e. global value) to PLATO Analyze
-     * @param [in] aName shared data name
-     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
+     * \brief Export scalar value (i.e. global value) to PLATO Analyze
+     * \param [in] aName shared data name
+     * \param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportScalarValue(const std::string& aName, SharedDataT& aSharedField)
@@ -328,8 +317,34 @@ public:
         if(mValueNameToCriterionName.count(aName))
         {
             auto tStrCriterion = mValueNameToCriterionName[aName];
-            std::vector<Plato::Scalar> tValue(1, mCriterionValues[tStrCriterion]);
-            aSharedField.setData(tValue);
+
+            if(mCriterionValues.count(tStrCriterion))
+            {
+                std::vector<Plato::Scalar> tValue(1, mCriterionValues[tStrCriterion]);
+                aSharedField.setData(tValue);
+            }
+            else
+            {
+                std::stringstream ss;
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
+                throw Plato::ParsingException(ss.str());
+            }
+        }
+        else
+        if(mVectorNameToCriterionName.count(aName))
+        {
+            auto tStrCriterion = mVectorNameToCriterionName[aName];
+
+            if(mCriterionVectors.count(tStrCriterion))
+            {
+                aSharedField.setData(mCriterionVectors[tStrCriterion]);
+            }
+            else
+            {
+                std::stringstream ss;
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
+                throw Plato::ParsingException(ss.str());
+            }
         }
         else
         {
@@ -344,21 +359,21 @@ public:
             tValues.resize(aSharedField.size());
             aSharedField.setData(tValues);
             std::stringstream ss;
-            ss << "Exporting Scalar Value: " << aName << std::endl;
+            ss << "Exporting Scalar Value: " << aName << " with SharedData name '" << aSharedField.myName() << "'." << std::endl;
             ss << "[ ";
+            ss.precision(6);
+            ss << std::scientific;
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
 
-#ifdef PLATO_CONSOLE
             Plato::Console::Status(ss.str());
-#endif
         }
     }
 
     /******************************************************************************//**
-     * @brief Export element field (i.e. element-based data) to PLATO Analyze
-     * @param [in] aTokens element-based shared field name
-     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
+     * \brief Export element field (i.e. element-based data) to PLATO Analyze
+     * \param [in] aTokens element-based shared field name
+     * \param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportElementField(const std::string& aName, SharedDataT& aSharedField, int aIndex=0)
@@ -380,9 +395,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export scalar field (i.e. node-based data) to PLATO Analyze
-     * @param [in] aName node-based shared field name
-     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
+     * \brief Export scalar field (i.e. node-based data) to PLATO Analyze
+     * \param [in] aName node-based shared field name
+     * \param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportScalarField(const std::string& aName, SharedDataT& aSharedField, int aIndex=0)
@@ -406,50 +421,42 @@ public:
         }
         else if(aName == "Solution")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+	        auto tScalarField = Plato::extract_solution(aName, mGlobalSolution, /*dof*/0, /*stride=*/1);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution X")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
+	        auto tScalarField = Plato::extract_solution(aName, mGlobalSolution, /*dof*/0, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSolutionDofs);
+	        auto tScalarField = Plato::extract_solution(aName, mGlobalSolution, /*dof*/1, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
+	        auto tScalarField = Plato::extract_solution(aName, mGlobalSolution, /*dof*/2, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else
         if(mGradientXNameToCriterionName.count(aName))
         {
             auto tStrCriterion = mGradientXNameToCriterionName[aName];
-            auto tScalarField = getVectorComponent(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
+            auto tScalarField = Plato::get_vector_component(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
     }
 
     /******************************************************************************//**
-     * @brief Get the scalar field size in lgr (this is used for non-fixed data sizes
+     * \brief Get the scalar field size in lgr (this is used for non-fixed data sizes
      * going through file system
      **********************************************************************************/
     void getScalarFieldHostMirror(const std::string& aName, typename Plato::ScalarVector::HostMirror & aHostMirror);
 
     /******************************************************************************//**
-     * @brief Return 2D container of coordinates (Node ID, Dimension)
-     * @return 2D container of coordinates
+     * \brief Return 2D container of coordinates (Node ID, Dimension)
+     * \return 2D container of coordinates
     **********************************************************************************/
     Plato::ScalarMultiVector getCoords();
 
@@ -555,20 +562,22 @@ private:
 
     std::shared_ptr<Plato::AbstractProblem> mProblem;
 
-    Plato::Solution          mGlobalSolution;
+    Plato::Solutions         mGlobalSolution;
     Plato::ScalarVector      mControl;
     Plato::ScalarMultiVector mCoords;
 
-    std::map<std::string, Plato::Scalar>       mCriterionValues;
+    std::map<std::string, Plato::Scalar>              mCriterionValues;
+    std::map<std::string, std::vector<Plato::Scalar>> mCriterionVectors;
+
     std::map<std::string, Plato::ScalarVector> mCriterionGradientsZ;
     std::map<std::string, Plato::ScalarVector> mCriterionGradientsX;
 
     std::map<std::string, std::string> mValueNameToCriterionName;
+    std::map<std::string, std::string> mVectorNameToCriterionName;
     std::map<std::string, std::string> mGradientZNameToCriterionName;
     std::map<std::string, std::string> mGradientXNameToCriterionName;
 
     Plato::OrdinalType mNumSpatialDims;
-    Plato::OrdinalType mNumSolutionDofs;
 
     std::map<std::string,std::shared_ptr<ESPType>> mESP;
     void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
@@ -687,7 +696,8 @@ private:
         ComputeCriterionP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        std::string mStrGradientP;
+        std::string mStrValName;
+        std::string mStrGradName;
     };
     friend class ComputeCriterionP;
     /******************************************************************************/
@@ -735,7 +745,7 @@ private:
         ComputeCriterionGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        std::string mStrGradientP;
+        std::string mStrGradName;
     };
     friend class ComputeCriterionGradientP;
     /******************************************************************************/
@@ -813,21 +823,28 @@ private:
     };
     friend class OutputToHDF5;
 
-    /******************************************************************************/
-
-    // Visualization
-    //
-    /******************************************************************************/
+    /******************************************************************************//**
+     * \class Visualization
+     * \brief Plato Analyze operation used to visualize output field data at each 
+     *        optimization iteration. This operation avoids having to send large 
+     *        field data sets through Plato Engine. 
+     * 
+     *        The output history is saved inside the 'plato_analyze_output' 
+     *        directory. One can have access to the output information for each 
+     *        optimization iteration (e.g. 'plato_analyze_output/iteration#', 
+     *        where # denotes the optimization itertion) or for the full 
+     *        optimization run (e.g. 'plato_analyze_output/history.pvd')
+    **********************************************************************************/
     class Visualization : public LocalOp
     {
     public:
         Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
-        // file output
-        std::string mOutputFile;
-        // output gradients
-        bool mOutputGradients;
+        size_t mNumSimulationTimeSteps = 0;
+        size_t mOptimizationIterationCounter = 0;
+
+        std::string mVizDirectory = "plato_analyze_output";
     };
     friend class Visualization;
 #ifdef PLATO_GEOMETRY

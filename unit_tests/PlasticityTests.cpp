@@ -13,6 +13,7 @@
 
 #include "BLAS1.hpp"
 #include "Strain.hpp"
+#include "TimeData.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "J2PlasticityLocalResidual.hpp"
 
@@ -36,8 +37,8 @@ namespace PlasticityTests
     "      <ParameterList name='Isotropic Linear Thermoelastic'>                                 \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                     \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>      \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/>   \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e2'/>      \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>   \n"
     "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>                \n"
     "      </ParameterList>                                                                      \n"
     "      <ParameterList name='Plasticity Model'>                                               \n"
@@ -72,8 +73,8 @@ namespace PlasticityTests
     "      <ParameterList name='Isotropic Linear Thermoelastic'>                                 \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
     "        <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                     \n"
-    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>      \n"
-    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/>   \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e2'/>      \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>   \n"
     "        <Parameter  name='Reference Temperature' type='double' value='100.0'/>              \n"
     "      </ParameterList>                                                                      \n"
     "      <ParameterList name='Plasticity Model'>                                               \n"
@@ -673,7 +674,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidual
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-5;
-    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-0.224745};
+    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-1.12626,-0.224745};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
@@ -731,7 +732,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidual
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-5;
-    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-0.224745,-0.303027,-0.381309};
+    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-1.44949,-1.77272,-2.09595};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
@@ -1079,6 +1080,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     constexpr Plato::OrdinalType tNodesPerCell        = PhysicsT::mNumNodesPerCell;
     constexpr Plato::OrdinalType tNumStressTerms      = PhysicsT::mNumStressTerms;
     constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    constexpr Plato::OrdinalType tTemperature         = PhysicsT::mTemperatureDofOffset;
 
     // Create configuration workset
     Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
@@ -1104,7 +1106,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "y1", tGlobalState, tDofsPerNode, tDispX, 0.1);
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "y1", tGlobalState, tDofsPerNode, tDispY, 0.1);
 
-    Plato::OrdinalType tTemperature = 3;
     set_dof_value_in_vector(tGlobalState, tDofsPerNode, tTemperature, 310.0);
 
     Plato::ScalarMultiVectorT<GlobalStateT> tGlobalStateWS("global state workset", tNumCells, tDofsPerCell);
@@ -1307,6 +1308,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     constexpr Plato::OrdinalType tNodesPerCell        = PhysicsT::mNumNodesPerCell;
     constexpr Plato::OrdinalType tNumStressTerms       = PhysicsT::mNumVoigtTerms;
     constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    constexpr Plato::OrdinalType tTemperature         = PhysicsT::mTemperatureDofOffset;
 
     // Create configuration workset
     Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
@@ -1338,7 +1340,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tGlobalState, tDofsPerNode, tDispY, 0.1);
     set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tGlobalState, tDofsPerNode, tDispZ, 0.1);
 
-    Plato::OrdinalType tTemperature = 4;
     set_dof_value_in_vector(tGlobalState, tDofsPerNode, tTemperature, 310.0);
 
     Plato::ScalarMultiVectorT<GlobalStateT> tGlobalStateWS("global state workset", tNumCells, tDofsPerCell);
@@ -1846,16 +1847,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
-                                                                   tControl, 0.0); 
+                                                                   tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-5;
     auto tHostLocalResidual = Kokkos::create_mirror(tLocalResidual);
     Kokkos::deep_copy(tHostLocalResidual, tLocalResidual);
 
     std::vector<Plato::Scalar> tGold = {-0.400000,26.941399,-0.480125,0.111393,
-        0.368732,0.022152,0.022152,0.022152,7.078994,-44.680887,37.601894,
+        0.368732,0.0443036,0.0443036,0.0443036,7.078994,-44.680887,37.601894,
         -0.829778,-0.829778,-0.829778};
     for (Plato::OrdinalType tIndex = 0; tIndex < tNumLocalDofs; ++tIndex)
         TEST_FLOATING_EQUALITY(tHostLocalResidual(tIndex), 
@@ -1943,16 +1950,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
-                                                                   tControl, 0.0); 
+                                                                   tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-4;
     auto tHostLocalResidual = Kokkos::create_mirror(tLocalResidual);
     Kokkos::deep_copy(tHostLocalResidual, tLocalResidual);
 
     std::vector<Plato::Scalar> tGold = {-0.400000,9.72218,
-                                        -0.435375,0.457842,0.0450773,0.438152,
+                                        -0.435375,0.457842,0.0901547,0.438152,
                                         7.42286,-42.0187,-0.653611,3.3669};
     for (Plato::OrdinalType tIndex = 0; tIndex < tNumLocalDofs; ++tIndex)
         TEST_FLOATING_EQUALITY(tHostLocalResidual(tIndex), 
@@ -2043,9 +2056,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
-                                         tControl, 0.0); 
+                                         tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-5;
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
@@ -2130,9 +2149,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
 
     Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                        \n"
+        "</ParameterList>                                                            \n"
+      );
+    Plato::TimeData tTimeData(*tInputs);
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
-                                         tControl, 0.0); 
+                                         tControl, tTimeData); 
 
     constexpr Plato::Scalar tTolerance = 1.0e-4;
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);

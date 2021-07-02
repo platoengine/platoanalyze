@@ -108,6 +108,20 @@ class ThermostaticResidual :
         }
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override
+    {
+      Plato::ScalarMultiVector tTemperatures = aSolutions.get("State");
+      Plato::Solutions tSolutionsOutput(aSolutions.physics(), aSolutions.pde());
+      tSolutionsOutput.set("Temperature", tTemperatures);
+      tSolutionsOutput.setNumDofs("Temperature", 1);
+      return tSolutionsOutput;
+    }
+
     /**************************************************************************/
     void
     evaluate(

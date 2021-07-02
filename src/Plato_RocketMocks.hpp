@@ -13,11 +13,11 @@ namespace RocketMocks
 {
 
 /******************************************************************************//**
- * @brief Setup example with cylindrical geometry and a constant burn rate
- * @param [in] aRadius cylinder's radius
- * @param [in] aLength cylinder's length
- * @param [in] aInitialRadius initial chamber radius
- * @param [in] aRefBurnRate reference burn rate
+ * \brief Setup example with cylindrical geometry and a constant burn rate
+ * \param [in] aRadius cylinder's radius
+ * \param [in] aLength cylinder's length
+ * \param [in] aInitialRadius initial chamber radius
+ * \param [in] aRefBurnRate reference burn rate
  **********************************************************************************/
 Plato::ProblemParams set_constant_burn_rate_problem(Plato::Scalar aMaxRadius,
                                                     Plato::Scalar aLength,
@@ -35,12 +35,12 @@ Plato::ProblemParams set_constant_burn_rate_problem(Plato::Scalar aMaxRadius,
 // function setupConstantBurnRateCylinder
 
 /******************************************************************************//**
- * @brief Setup example with cylindrical geometry and a constant burn rate
- * @param [in] aMaxRadius maximum cylinder's radius
- * @param [in] aLength cylinder's length
- * @param [in] aInitialRadius initial chamber radius
- * @param [in] aRefBurnRate reference burn rate
- * @param [in] aRefBurnRateSlopeWithRadius reference burn rate dependence on radius
+ * \brief Setup example with cylindrical geometry and a constant burn rate
+ * \param [in] aMaxRadius maximum cylinder's radius
+ * \param [in] aLength cylinder's length
+ * \param [in] aInitialRadius initial chamber radius
+ * \param [in] aRefBurnRate reference burn rate
+ * \param [in] aRefBurnRateSlopeWithRadius reference burn rate dependence on radius
  **********************************************************************************/
 Plato::ProblemParams set_linear_burn_rate_problem(Plato::Scalar aMaxRadius,
                                                   Plato::Scalar aLength,

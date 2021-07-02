@@ -40,23 +40,22 @@ struct Neumann
 *******************************************************************************/
 inline Plato::Neumann::bc_t natural_boundary_condition_type(const std::string& aType)
 {
-    if(aType == "Uniform")
+    auto tLowerTag = Plato::tolower(aType);
+    if(tLowerTag == "uniform")
     {
         return Plato::Neumann::UNIFORM;
     }
-    else if(aType == "Uniform Pressure")
+    else if(tLowerTag == "uniform pressure")
     {
         return Plato::Neumann::UNIFORM_PRESSURE;
     }
-    else if(aType == "Uniform Component")
+    else if(tLowerTag == "uniform component")
     {
         return Plato::Neumann::UNIFORM_COMPONENT;
     }
     else
     {
-        std::stringstream tMsg;
-        tMsg << "Natural Boundary Condition: 'Type' Parameter Keyword: '" << aType.c_str() << "' is not supported.";
-        THROWERR(tMsg.str().c_str())
+        THROWERR(std::string("Natural Boundary Condition: 'Type' Parameter Keyword: '") + tLowerTag + "' is not supported.")
     }
 }
 // function natural_boundary_condition_type

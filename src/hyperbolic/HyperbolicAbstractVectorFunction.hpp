@@ -4,7 +4,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "PlatoStaticsTypes.hpp"
+#include "Solutions.hpp"
 
 namespace Plato
 {
@@ -78,6 +78,13 @@ public:
         return (mDofDotNames);
     }
 
+    /**************************************************************************//**
+    * \brief Call the output state function in the residual
+    * \param [in] aSolutions State solutions database
+    * \return output solutions database
+    ******************************************************************************/
+    virtual Plato::Solutions 
+    getSolutionStateOutputData(const Plato::Solutions &aSolutions) const = 0;
 
     /******************************************************************************/
     virtual void

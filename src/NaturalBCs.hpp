@@ -23,7 +23,7 @@ class NaturalBCs
 // private member data
 private:
     /*!< list of natural boundary condition */
-    std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
+    std::vector<std::shared_ptr<Plato::NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
 
 // private functions
 private:
@@ -238,9 +238,23 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformPressureNatur
             << "Parameter Sublist: '" << aName.c_str() << "' is NOT defined.";
         THROWERR(tMsg.str().c_str())
     }
-    auto tValue = aSubList.get<Plato::Scalar>("Value");
-    Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, tValue);
-    aSubList.set("Vector", tFluxVector);
+
+    if(aSubList.isType<Plato::Scalar>("Value"))
+    {
+        Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, aSubList.get<Plato::Scalar>("Value"));
+        aSubList.set("Vector", tFluxVector);
+    } else
+    if(aSubList.isType<std::string>("Value"))
+    {
+        Teuchos::Array<std::string> tFluxVector(NumDofs, aSubList.get<std::string>("Value"));
+        aSubList.set("Vector", tFluxVector);
+    } else
+    {
+        std::stringstream tMsg;
+        tMsg << "Natural Boundary Condition: unexpected type encountered for 'Value' Parameter Keyword."
+                << "Specify 'type' of 'double' or 'string'.";
+        THROWERR(tMsg.str().c_str())
+    }
 
     auto tBC = std::make_shared<Plato::NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>(aName, aSubList);
     return tBC;

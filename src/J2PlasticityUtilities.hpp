@@ -18,6 +18,7 @@ class J2PlasticityUtilities
   private:
     const Plato::Scalar mSqrt3Over2 = std::sqrt(3.0/2.0);
     const Plato::Scalar mSqrt2Over3 = std::sqrt(2.0/3.0);
+    const Plato::Scalar mTwo = 2.0;
 
   public:
     /**************************************************************************//**
@@ -230,7 +231,7 @@ class J2PlasticityUtilities
     // Plastic Strain Tensor = {e_11, e_22, 2e_12, e_33}
     aLocalState(aCellOrdinal, 2) = aPrevLocalState(aCellOrdinal, 2) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 0);
     aLocalState(aCellOrdinal, 3) = aPrevLocalState(aCellOrdinal, 3) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 1);
-    aLocalState(aCellOrdinal, 4) = aPrevLocalState(aCellOrdinal, 4) + 2.0 * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 2);
+    aLocalState(aCellOrdinal, 4) = aPrevLocalState(aCellOrdinal, 4) + mTwo * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 2);
     aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 3);
 
     Plato::Scalar tMultiplier2 = aLocalState(aCellOrdinal, 1) * mSqrt2Over3 * aHardeningModulusKinematic;
@@ -258,9 +259,9 @@ class J2PlasticityUtilities
     aLocalState(aCellOrdinal, 2) = aPrevLocalState(aCellOrdinal, 2) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 0);
     aLocalState(aCellOrdinal, 3) = aPrevLocalState(aCellOrdinal, 3) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 1);
     aLocalState(aCellOrdinal, 4) = aPrevLocalState(aCellOrdinal, 4) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 2);
-    aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5) + 2.0 * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 3);
-    aLocalState(aCellOrdinal, 6) = aPrevLocalState(aCellOrdinal, 6) + 2.0 * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 4);
-    aLocalState(aCellOrdinal, 7) = aPrevLocalState(aCellOrdinal, 7) + 2.0 * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 5);
+    aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5) + mTwo * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 3);
+    aLocalState(aCellOrdinal, 6) = aPrevLocalState(aCellOrdinal, 6) + mTwo * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 4);
+    aLocalState(aCellOrdinal, 7) = aPrevLocalState(aCellOrdinal, 7) + mTwo * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 5);
 
     Plato::Scalar tMultiplier2 = aLocalState(aCellOrdinal, 1) * mSqrt2Over3 * aHardeningModulusKinematic;
     // Backstress Tensor
@@ -359,7 +360,7 @@ class J2PlasticityUtilities
     aDevStressMinusBackstressNorm(aCellOrdinal) = sqrt(pow(aYieldSurfaceNormal(aCellOrdinal, 0), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 1), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 3), 2) +
-                                                 2.0 * pow(aYieldSurfaceNormal(aCellOrdinal, 2), 2));
+                                                mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 2), 2));
 
     // Normalize the yield surface normal
     aYieldSurfaceNormal(aCellOrdinal, 0) /= aDevStressMinusBackstressNorm(aCellOrdinal);
@@ -393,9 +394,9 @@ class J2PlasticityUtilities
     aDevStressMinusBackstressNorm(aCellOrdinal) = sqrt(pow(aYieldSurfaceNormal(aCellOrdinal, 0), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 1), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 2), 2) +
-                                                 2.0 * pow(aYieldSurfaceNormal(aCellOrdinal, 3), 2) +
-                                                 2.0 * pow(aYieldSurfaceNormal(aCellOrdinal, 4), 2) +
-                                                 2.0 * pow(aYieldSurfaceNormal(aCellOrdinal, 5), 2));
+                                                mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 3), 2) +
+                                                mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 4), 2) +
+                                                mTwo * pow(aYieldSurfaceNormal(aCellOrdinal, 5), 2));
 
     // Normalize the yield surface normal
     aYieldSurfaceNormal(aCellOrdinal, 0) /= aDevStressMinusBackstressNorm(aCellOrdinal);
@@ -497,7 +498,7 @@ class J2PlasticityUtilities
 
       // epsilon^{p}_{12}
       aResult(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4) - aPrevLocalState(aCellOrdinal, 4)
-                             - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 2);
+                             - mTwo * mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 2);
 
       // epsilon^{p}_{33}
       aResult(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5) - aPrevLocalState(aCellOrdinal, 5)
@@ -524,11 +525,11 @@ class J2PlasticityUtilities
     aResult(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4) - aPrevLocalState(aCellOrdinal, 4)
                              - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 2);
     aResult(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5) - aPrevLocalState(aCellOrdinal, 5)
-                             - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 3);
+                             - mTwo * mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 3);
     aResult(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6) - aPrevLocalState(aCellOrdinal, 6)
-                             - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 4);
+                             - mTwo * mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 4);
     aResult(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7) - aPrevLocalState(aCellOrdinal, 7)
-                             - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 5);
+                             - mTwo * mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 5);
   }
 
   /*******************************************************************************************/

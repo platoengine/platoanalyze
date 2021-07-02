@@ -11,6 +11,7 @@
 #include "SimplexFadTypes.hpp"
 #include "LocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 #include "AbstractLocalScalarFunctionInc.hpp"
 
 namespace Plato
@@ -146,7 +147,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return function value
     *******************************************************************************/
     Plato::Scalar
@@ -156,7 +157,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         Plato::Scalar tCriterionValue(0.0);
@@ -202,7 +203,7 @@ public:
             // evaluate function
             mValueFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                 tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // sum across elements
             tCriterionValue += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
@@ -222,7 +223,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial workset derivative wrt design variables
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -232,7 +233,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         auto tTotalNumCells = mWorksetBase.numCells();
@@ -280,7 +281,7 @@ public:
             // evaluate function
             mGradientZFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                     tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                    tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                    tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // convert AD types to POD types
             Plato::transform_ad_type_to_pod_2Dview<mNumNodesPerCell>(tDomain, tResultWS, tCriterionPartialWrtControl);
@@ -297,7 +298,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt current global states
     *******************************************************************************/
     Plato::ScalarMultiVector gradient_u(
@@ -306,7 +307,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         auto tTotalNumCells = mWorksetBase.numCells();
@@ -354,7 +355,7 @@ public:
             // evaluate function
             mGlobalJacobianFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                          tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                         tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                         tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // convert AD types to POD types
             Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtGlobalStates);
@@ -371,7 +372,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt previous global states
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -381,7 +382,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         auto tTotalNumCells = mWorksetBase.numCells();
@@ -429,7 +430,7 @@ public:
             // evaluate function
             mGlobalJacobianPFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                           tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                          tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                          tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // convert AD types to POD types
             Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtPrevGlobalState);
@@ -446,7 +447,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt current local states
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -456,7 +457,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         auto tTotalNumCells = mWorksetBase.numCells();
@@ -504,7 +505,7 @@ public:
             // evaluate function
             mLocalJacobianFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                         tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                        tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                        tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // convert AD types to POD types
             Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtLocalStates);
@@ -521,7 +522,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt previous local states
     *******************************************************************************/
     Plato::ScalarMultiVector
@@ -531,7 +532,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         auto tTotalNumCells = mWorksetBase.numCells();
@@ -579,7 +580,7 @@ public:
             // evaluate function
             mLocalJacobianPFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                          tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                         tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                         tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // convert AD types to POD types
             Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtPrevLocalStates);
@@ -596,7 +597,7 @@ public:
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
-     * \param [in] aTimeStep             current time step increment
+     * \param [in] aTimeData             time data object
      * \return workset with partial derivative wrt configuration variables
      *******************************************************************************/
     Plato::ScalarMultiVector
@@ -606,7 +607,7 @@ public:
         const Plato::ScalarVector & aCurrentLocalState,
         const Plato::ScalarVector & aPreviousLocalState,
         const Plato::ScalarVector & aControls,
-              Plato::Scalar         aTimeStep = 0.0
+        const Plato::TimeData     & aTimeData
     ) const override
     {
         auto tTotalNumCells = mWorksetBase.numCells();
@@ -654,7 +655,7 @@ public:
             // evaluate function
             mGradientXFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
                                                     tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                                    tControlWS, tConfigWS, tResultWS, aTimeStep);
+                                                    tControlWS, tConfigWS, tResultWS, aTimeData);
 
             // convert AD types to POD types
             Plato::transform_ad_type_to_pod_2Dview<mNumSpatialDims>(tDomain, tResultWS, tCriterionPartialWrtConfiguration);
@@ -669,23 +670,23 @@ public:
      * \param [in] aGlobalStates global states for all time steps
      * \param [in] aLocalStates  local states for all time steps
      * \param [in] aControls     current controls, i.e. design variables
-     * \param [in] aTimeStep current time step increment
+     * \param [in] aTimeData time data object
     *******************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
                        const Plato::ScalarMultiVector & aLocalStates,
                        const Plato::ScalarVector & aControls,
-                       Plato::Scalar aTimeStep = 0.0) const override
+                       const Plato::TimeData     & aTimeData) const override
     {
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
-            mValueFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
-            mGradientZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
-            mGradientXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
-            mLocalJacobianPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
-            mGlobalJacobianPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
-            mLocalJacobianFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
-            mGlobalJacobianFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mValueFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mGradientZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mGradientXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mLocalJacobianPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mGlobalJacobianPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mLocalJacobianFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
+            mGlobalJacobianFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeData);
         }
     }
 
@@ -733,14 +734,12 @@ private:
 }
 // namespace Plato
 
-#ifdef PLATOANALYZE_1D
-extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<1>>;
-#endif
-
 #ifdef PLATOANALYZE_2D
 extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif

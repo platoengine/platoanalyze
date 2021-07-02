@@ -16,6 +16,7 @@
 
 #include "LocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 
 namespace Plato
 {
@@ -61,12 +62,15 @@ public:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif

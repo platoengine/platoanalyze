@@ -37,7 +37,7 @@ inline void write_exodus_file(const std::string& aFilepath, Omega_h::Mesh& aMesh
  * \param [in] aStateDataMap output data map
  * \param [in] aStepIndex    time step index
  **********************************************************************************/
-inline void add_element_state_tags(Omega_h::Mesh& aMesh, const Plato::DataMap& aStateDataMap, Plato::OrdinalType aStepIndex)
+inline void add_state_tags(Omega_h::Mesh& aMesh, const Plato::DataMap& aStateDataMap, Plato::OrdinalType aStepIndex)
 {
     auto tDataMap = aStateDataMap.getState(aStepIndex);
 
@@ -74,8 +74,35 @@ inline void add_element_state_tags(Omega_h::Mesh& aMesh, const Plato::DataMap& a
             }
         }
     }
+    {   // Node Vector
+        //
+        auto& tVars = tDataMap.vectorNodeFields;
+        for(auto tVar=tVars.begin(); tVar!=tVars.end(); ++tVar)
+        {
+            auto& tNodeStateName = tVar->first;
+            auto& tNodeStateData = tVar->second;
+            auto tNumData = tNodeStateData.extent(0);
+            auto tNumDims = aMesh.dim();
+            Omega_h::Write<Omega_h::Real> tNodeStateWrite(tNumData, tNodeStateName);
+            Plato::copy_1Dview_to_write(tNodeStateData, tNodeStateWrite);
+            aMesh.add_tag(Omega_h::VERT, tNodeStateName, tNumDims, Omega_h::Reals(tNodeStateWrite));
+        }
+    }
+    {   // Node Scalar
+        //
+        auto& tVars = tDataMap.scalarNodeFields;
+        for(auto tVar=tVars.begin(); tVar!=tVars.end(); ++tVar)
+        {
+            auto& tNodeStateName = tVar->first;
+            auto& tNodeStateData = tVar->second;
+            auto tNumData = tNodeStateData.extent(0);
+            Omega_h::Write<Omega_h::Real> tNodeStateWrite(tNumData, tNodeStateName);
+            Plato::copy_1Dview_to_write(tNodeStateData, tNodeStateWrite);
+            aMesh.add_tag(Omega_h::VERT, tNodeStateName, /*tNumDims=*/1, Omega_h::Reals(tNodeStateWrite));
+        }
+    }
 }
-// function add_element_state_tags
+// function add_state_tags
 
 /***************************************************************************//**
  * \brief Return the local identifiers/ordinals associated with this element face.
@@ -338,7 +365,7 @@ inline void output_element_state_to_viz_file
 {
     for(Plato::OrdinalType tSnapshot = 0; tSnapshot < aNumSnapShots; tSnapshot++)
     {
-        Plato::add_element_state_tags(aMesh, aDataMap, tSnapshot);
+        Plato::add_state_tags(aMesh, aDataMap, tSnapshot);
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpaceDim);
         aWriter.write(/*time_index*/tSnapshot, /*current_time=*/(Plato::Scalar)tSnapshot, tTags);
     }

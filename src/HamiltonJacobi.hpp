@@ -269,11 +269,11 @@ bool domain_contains_interface(Omega_h::Mesh & aMeshOmegaH, ProblemFields<Spatia
 }
 
 /******************************************************************************//**
- * @brief Initialize level set field
- * @param [in] aOmega_h_Mesh mesh database
- * @param [in/out] aFields problem fields data structure
- * @param [in] aLevelSetFunction level set function interface
- * @param [in] aMultiplier level set field multiplier (default = 1)
+ * \brief Initialize level set field
+ * \param [in] aOmega_h_Mesh mesh database
+ * \param [in/out] aFields problem fields data structure
+ * \param [in] aLevelSetFunction level set function interface
+ * \param [in] aMultiplier level set field multiplier (default = 1)
 **********************************************************************************/
 template<int SpatialDim, class Lambda>
 inline void initialize_level_set(Omega_h::Mesh & aOmega_h_Mesh,
@@ -338,10 +338,10 @@ inline void scale_field(const Plato::Scalar scale,
 }
 
 /******************************************************************************//**
- * @brief Initialize nodal speed field
- * @param [in] aOmega_h_Mesh mesh database
- * @param [in/out] aFields problem fields data structure
- * @param [in] aSpeedFunction level set interface speed interface
+ * \brief Initialize nodal speed field
+ * \param [in] aOmega_h_Mesh mesh database
+ * \param [in/out] aFields problem fields data structure
+ * \param [in] aSpeedFunction level set interface speed interface
 **********************************************************************************/
 template<int SpatialDim, class Lambda>
 inline void initialize_nodal_speed(Omega_h::Mesh & aOmega_h_Mesh,
@@ -362,10 +362,10 @@ inline void initialize_nodal_speed(Omega_h::Mesh & aOmega_h_Mesh,
 // function initialize_nodal_speed
 
 /******************************************************************************//**
- * @brief Initialize element speed field
- * @param [in] aOmega_h_Mesh mesh database
- * @param [in/out] aFields problem fields data structure
- * @param [in] aSpeedFunction level set interface speed interface
+ * \brief Initialize element speed field
+ * \param [in] aOmega_h_Mesh mesh database
+ * \param [in/out] aFields problem fields data structure
+ * \param [in] aSpeedFunction level set interface speed interface
 **********************************************************************************/
 template<int SpatialDim, class Lambda>
 inline void initialize_element_speed(Omega_h::Mesh & aOmega_h_Mesh,
@@ -397,10 +397,10 @@ inline void initialize_element_speed(Omega_h::Mesh & aOmega_h_Mesh,
 // function initialize_element_speed
 
 /******************************************************************************//**
- * @brief Initialize speed field
- * @param [in] aOmega_h_Mesh mesh database
- * @param [in/out] aFields problem fields data structure
- * @param [in] aSpeedFunction level set interface speed interface
+ * \brief Initialize speed field
+ * \param [in] aOmega_h_Mesh mesh database
+ * \param [in/out] aFields problem fields data structure
+ * \param [in] aSpeedFunction level set interface speed interface
 **********************************************************************************/
 template<int SpatialDim, class Lambda>
 inline void initialize_interface_speed(Omega_h::Mesh & aOmega_h_Mesh,
@@ -419,10 +419,10 @@ inline void initialize_interface_speed(Omega_h::Mesh & aOmega_h_Mesh,
 // function initialize_level_set
 
 /******************************************************************************//**
- * @brief normalize speed field
- * @param [in] aOmega_h_Mesh mesh database
- * @param [in/out] aFields problem fields data structure
- * @param [out] tMaxSpeed maximum interface speed
+ * \brief normalize speed field
+ * \param [in] aOmega_h_Mesh mesh database
+ * \param [in/out] aFields problem fields data structure
+ * \param [out] tMaxSpeed maximum interface speed
 **********************************************************************************/
 template<int SpatialDim>
 inline Plato::Scalar normalize_interface_speed(Omega_h::Mesh & aOmega_h_Mesh,
@@ -446,10 +446,10 @@ inline Plato::Scalar normalize_interface_speed(Omega_h::Mesh & aOmega_h_Mesh,
 // function initialize_level_set
 
 /******************************************************************************//**
- * @brief Offset level set field
- * @param [in] aOmega_h_Mesh mesh database
- * @param [in/out] aFields problem fields data structure
- * @param [in] aOffset level set offset rate
+ * \brief Offset level set field
+ * \param [in] aOmega_h_Mesh mesh database
+ * \param [in/out] aFields problem fields data structure
+ * \param [in] aOffset level set offset rate
 **********************************************************************************/
 template<int SpatialDim>
 inline void offset_level_set(Omega_h::Mesh & aOmega_h_Mesh, ProblemFields<SpatialDim> & aFields, const Plato::Scalar & aOffset)

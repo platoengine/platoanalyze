@@ -80,11 +80,11 @@ private:
 public:
     /******************************************************************************//**
      *
-     * @brief Constructor
+     * \brief Constructor
      * \param [in] aSpatialDomain Plato Analyze spatial domain
-     * @param [in] aDataMap problem-specific data storage
-     * @param [in] aProblemParams parameter list with input data
-     * @param [in] aPenaltyParams parameter list with penalty model input data
+     * \param [in] aDataMap problem-specific data storage
+     * \param [in] aProblemParams parameter list with input data
+     * \param [in] aPenaltyParams parameter list with penalty model input data
      *
     **********************************************************************************/
     explicit StructuralDynamicsResidual(
@@ -111,10 +111,10 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Constructor
-     * @param [in] aSpatialDomain Plato Analyze spatial domain
-     * @param [in] aDataMap problem-specific data storage
-     * @param [in] aProblemParams parameter list with input data
+     * \brief Constructor
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
+     * \param [in] aDataMap problem-specific data storage
+     * \param [in] aProblemParams parameter list with input data
      *
     **********************************************************************************/
     explicit StructuralDynamicsResidual(
@@ -140,9 +140,9 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Constructor
-     * @param [in] aSpatialDomain Plato Analyze spatial domain
-     * @param [in] aDataMap problem-specific data storage
+     * \brief Constructor
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
+     * \param [in] aDataMap problem-specific data storage
      *
     **********************************************************************************/
     explicit StructuralDynamicsResidual(
@@ -167,7 +167,7 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Destructor
+     * \brief Destructor
      *
     **********************************************************************************/
     ~StructuralDynamicsResidual()
@@ -176,8 +176,8 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set mass proportional damping constant
-     * @param [in] aInput mass proportional damping constant
+     * \brief Set mass proportional damping constant
+     * \param [in] aInput mass proportional damping constant
      *
     **********************************************************************************/
     void setMassPropDamping(const Plato::Scalar& aInput)
@@ -187,8 +187,8 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set stiffness proportional damping constant
-     * @param [in] aInput stiffness proportional damping constant
+     * \brief Set stiffness proportional damping constant
+     * \param [in] aInput stiffness proportional damping constant
      *
     **********************************************************************************/
     void setStiffPropDamping(const Plato::Scalar& aInput)
@@ -198,8 +198,8 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set material density
-     * @param [in] aInput material density
+     * \brief Set material density
+     * \param [in] aInput material density
      *
     **********************************************************************************/
     void setMaterialDensity(const Plato::Scalar& aInput)
@@ -209,8 +209,8 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set material stiffness constants (i.e. Lame constants)
-     * @param [in] aInput material stiffness constants
+     * \brief Set material stiffness constants (i.e. Lame constants)
+     * \param [in] aInput material stiffness constants
      *
     **********************************************************************************/
     void setMaterialStiffnessConstants(const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms>& aInput)
@@ -220,9 +220,9 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Set isotropic linear elastic material constants (i.e. Lame constants)
-     * @param [in] aYoungsModulus Young's modulus
-     * @param [in] aPoissonsRatio Poisson's ratio
+     * \brief Set isotropic linear elastic material constants (i.e. Lame constants)
+     * \param [in] aYoungsModulus Young's modulus
+     * \param [in] aPoissonsRatio Poisson's ratio
      *
     **********************************************************************************/
     void setIsotropicLinearElasticMaterial(const Plato::Scalar& aYoungsModulus, const Plato::Scalar& aPoissonsRatio)
@@ -231,9 +231,21 @@ public:
         mCellStiffness = tMaterialModel.getStiffnessMatrix();
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override 
+    {
+        THROWERR("Structural dynamics output not implemented yet.")
+        /* TODO */ Plato::Solutions tSolutions;
+        return tSolutions;
+    }
+
     /******************************************************************************//**
      *
-     * @brief Evaluate structural dynamics residual.
+     * \brief Evaluate structural dynamics residual.
      *
      * The structural dynamics residual is given by:
      *
@@ -246,11 +258,11 @@ public:
      * is the force vector, \f$\omega\f$ is the angular frequency and \f$\rho\f$ is
      * the material density.
      *
-     * @param [in] aState states per cells
-     * @param [in] aControl controls per cells
-     * @param [in] aConfiguration coordinates per cells
-     * @param [in,out] aResidual residual per cells
-     * @param [in] aAngularFrequency angular frequency
+     * \param [in] aState states per cells
+     * \param [in] aControl controls per cells
+     * \param [in] aConfiguration coordinates per cells
+     * \param [in,out] aResidual residual per cells
+     * \param [in] aAngularFrequency angular frequency
      *
     **********************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
@@ -326,13 +338,13 @@ public:
 
     /******************************************************************************//**
      *
-     * @brief Evaluate structural dynamics boundary residual
+     * \brief Evaluate structural dynamics boundary residual
      *
-     * @param [in] aState states per cells
-     * @param [in] aControl controls per cells
-     * @param [in] aConfiguration coordinates per cells
-     * @param [in,out] aResidual residual per cells
-     * @param [in] aAngularFrequency angular frequency
+     * \param [in] aState states per cells
+     * \param [in] aControl controls per cells
+     * \param [in] aConfiguration coordinates per cells
+     * \param [in,out] aResidual residual per cells
+     * \param [in] aAngularFrequency angular frequency
      *
     **********************************************************************************/
     void
@@ -412,7 +424,7 @@ private:
 
     /**************************************************************************//**
      *
-     * @brief Initialize default material stiffness constants (i.e. Lame constants).
+     * \brief Initialize default material stiffness constants (i.e. Lame constants).
      *
     ******************************************************************************/
     void initialize()
@@ -427,8 +439,8 @@ private:
 
     /**************************************************************************//**
      *
-     * @brief Initialize problem input parameters
-     * @param [in] aParamList parameter list with input data
+     * \brief Initialize problem input parameters
+     * \param [in] aParamList parameter list with input data
      *
     ******************************************************************************/
     void initialize(Teuchos::ParameterList & aParamList)

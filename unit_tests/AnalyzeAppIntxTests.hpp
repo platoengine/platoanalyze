@@ -19,6 +19,11 @@ class FauxSharedData {
       return m_data.size();
     }
 
+    std::string myName() const 
+    {
+      return "Analyze Unit Test: FauxSharedData";
+    }
+
     std::string myContext() const {return m_context;}
     void setContext(std::string context) {m_context = context;}
 
@@ -65,6 +70,11 @@ class FauxParameter {
     int size() const
     {
       return 1;
+    }
+
+    std::string myName() const 
+    {
+      return "Unit Test: Faux Parameter myName";
     }
 
     std::string myContext() const {return m_context;}

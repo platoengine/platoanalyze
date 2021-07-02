@@ -37,7 +37,7 @@ public:
      *
      * Input arguments
      *
-     * @param [in] aPenaltyFunction penalty function used to penalize a quantity of interest
+     * \param [in] aPenaltyFunction penalty function used to penalize a quantity of interest
      *
     **********************************************************************************/
     explicit ApplyPenalty(const PenaltyFunction & aPenaltyFunction) :
@@ -51,9 +51,9 @@ public:
      * 
      * Input and output arguments
      *
-     * @param [in] aCellOrdinal cell (i.e. element) ordinal
-     * @param [in] aCellDensity cell density scalar value
-     * @param [in,out] aOutput 3D scalar array
+     * \param [in] aCellOrdinal cell (i.e. element) ordinal
+     * \param [in] aCellDensity cell density scalar value
+     * \param [in,out] aOutput 3D scalar array
      *
     **********************************************************************************/
     template<typename OutputScalarType, typename WeightScalarType>
@@ -79,9 +79,9 @@ public:
      * 
      * Input and output arguments
      *
-     * @param [in] aCellOrdinal cell (i.e. element) ordinal
-     * @param [in] aCellDensity cell density scalar value
-     * @param [in,out] aOutput 2D scalar array
+     * \param [in] aCellOrdinal cell (i.e. element) ordinal
+     * \param [in] aCellDensity cell density scalar value
+     * \param [in,out] aOutput 2D scalar array
      *
     **********************************************************************************/
     template<typename OutputScalarType, typename WeightScalarType>

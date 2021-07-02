@@ -9,7 +9,9 @@
 #include "Projection.hpp"
 #include "ElasticWorkCriterion.hpp"
 #include "PlasticWorkCriterion.hpp"
+#include "TotalWorkCriterion.hpp"
 #include "InfinitesimalStrainPlasticityResidual.hpp"
+#include "Plasticity.hpp"
 
 namespace Plato
 {
@@ -96,6 +98,13 @@ struct FunctionFactory
                     (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
         }
         else
+        if(aFuncType == "Total Work")
+        {
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return ( std::make_shared<Plato::TotalWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+                    (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
+        }
+        else
         {
             const auto tError = std::string("Unknown Scalar Function with local path-dependent states. '")
                     + "User specified '" + aFuncType + "'.  This Scalar Function is not supported in PLATO.";
@@ -129,6 +138,9 @@ public:
 
     /*!< short name for projected pressure gradient physics */
     using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset>;
+
+    /*!< short name for local physics physics */
+    using LocalPhysicsT = typename Plato::Plasticity<NumSpaceDim>;
 };
 // class InfinitesimalStrainPlasticity
 

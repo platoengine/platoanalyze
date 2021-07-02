@@ -1,5 +1,5 @@
 /*
- * NaturalBCUtilities.hpp
+ * SurfaceIntegralUtilities.hpp
  *
  *  Created on: Mar 15, 2020
  */
@@ -136,13 +136,13 @@ CreateFaceLocalNode2ElemLocalNodeIndexMap<3>::operator()
  *
 *******************************************************************************/
 template<Plato::OrdinalType SpatialDim>
-class ComputeSurfaceJacobians
+class CalculateSurfaceJacobians
 {
 public:
     /***************************************************************************//**
      * \brief Constructor
     *******************************************************************************/
-    ComputeSurfaceJacobians(){}
+    CalculateSurfaceJacobians(){}
 
     /***************************************************************************//**
      * \brief Compute surface Jacobians.
@@ -152,9 +152,9 @@ public:
      *
      * \param [in]  aCellOrdinal   cell ordinal
      * \param [in]  aFaceOrdinal   face ordinal
-     * \param [in]  aLocalNodeOrd  face local node index to element local node index map
-     * \param [in]  aConfig        cell to vertices map
-     * \param [out] aJacobian      surface Jacobians
+     * \param [in]  aLocalNodeOrd  local cell node indexes on face
+     * \param [in]  aConfig        cell/element node coordinates
+     * \param [out] aJacobian      cell surface Jacobian
      *
     *******************************************************************************/
     template<typename ConfigScalarType, typename ResultScalarType>
@@ -165,7 +165,7 @@ public:
      const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
      const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const;
 };
-// class ComputeSurfaceJacobians
+// class CalculateSurfaceJacobians
 
 /***************************************************************************//**
  * \brief Compute surface Jacobians (1-D specialization)
@@ -173,14 +173,14 @@ public:
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
-ComputeSurfaceJacobians<1>::operator()
+CalculateSurfaceJacobians<1>::operator()
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::OrdinalType & aFaceOrdinal,
  const Plato::OrdinalType aLocalNodeOrd[1],
  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
  const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const
 { return; }
-// class ComputeSurfaceJacobians<1>::operator()
+// class CalculateSurfaceJacobians<1>::operator()
 
 /***************************************************************************//**
  * \brief Compute surface Jacobians (2-D specialization)
@@ -188,7 +188,7 @@ ComputeSurfaceJacobians<1>::operator()
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
-ComputeSurfaceJacobians<2>::operator()
+CalculateSurfaceJacobians<2>::operator()
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::OrdinalType & aFaceOrdinal,
  const Plato::OrdinalType aLocalNodeOrd[2],
@@ -206,7 +206,7 @@ ComputeSurfaceJacobians<2>::operator()
         }
     }
 }
-// class ComputeSurfaceJacobians<2>::operator()
+// class CalculateSurfaceJacobians<2>::operator()
 
 /***************************************************************************//**
  * \brief Compute surface Jacobians (3-D specialization)
@@ -214,7 +214,7 @@ ComputeSurfaceJacobians<2>::operator()
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
-ComputeSurfaceJacobians<3>::operator()
+CalculateSurfaceJacobians<3>::operator()
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::OrdinalType & aFaceOrdinal,
  const Plato::OrdinalType aLocalNodeOrd[3],
@@ -232,7 +232,7 @@ ComputeSurfaceJacobians<3>::operator()
         }
     }
 }
-// class ComputeSurfaceJacobians<3>::operator()
+// class CalculateSurfaceJacobians<3>::operator()
 
 
 /***************************************************************************//**
@@ -242,16 +242,36 @@ ComputeSurfaceJacobians<3>::operator()
  *
 *******************************************************************************/
 template<Plato::OrdinalType SpatialDim>
-class ComputeSurfaceIntegralWeight
+class CalculateSurfaceArea
 {
 public:
     /***************************************************************************//**
      * \brief Constructor
     *******************************************************************************/
-    ComputeSurfaceIntegralWeight(){}
+    CalculateSurfaceArea(){}
 
     /***************************************************************************//**
-     * \brief Compute cubature weight for surface integrals.
+     * \brief Calculate surface area.
+     *
+     * \tparam ConfigScalarType configuration forward automatically differentiation (FAD) type
+     * \tparam ResultScalarType output FAD type
+     *
+     * \param [in]  aFaceOrdinal  face ordinal
+     * \param [in]  aCellOrdinal  cell ordinal
+     * \param [in]  aMultiplier   scalar multiplier
+     * \param [in]  aJacobian     surface Jacobians
+     * \param [out] aOutput       surface area container
+     *
+    *******************************************************************************/
+    template<typename ConfigScalarType, typename ResultScalarType>
+    DEVICE_TYPE inline void operator()
+    (const Plato::OrdinalType & aFaceOrdinal,
+     const Plato::Scalar & aMultiplier,
+     const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
+     const Plato::ScalarVectorT<ResultScalarType> & aOutput) const;
+
+    /***************************************************************************//**
+     * \brief Calculate surface area.
      *
      * \tparam ConfigScalarType configuration forward automatically differentiation (FAD) type
      * \tparam ResultScalarType output FAD type
@@ -269,7 +289,7 @@ public:
      const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
      ResultScalarType & aOutput) const;
 };
-// class ComputeSurfaceIntegralWeight
+// class CalculateSurfaceArea
 
 /***************************************************************************//**
  * \brief Compute cubature weight for surface integrals (1-D specialization)
@@ -277,7 +297,7 @@ public:
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
-ComputeSurfaceIntegralWeight<1>::operator()
+CalculateSurfaceArea<1>::operator()
 (const Plato::OrdinalType & aFaceOrdinal,
  const Plato::Scalar & aMultiplier,
  const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
@@ -285,7 +305,7 @@ ComputeSurfaceIntegralWeight<1>::operator()
 {
     aOutput = aMultiplier;
 }
-// class ComputeSurfaceIntegralWeight<1>::operator()
+// class CalculateSurfaceArea<1>::operator()
 
 /***************************************************************************//**
  * \brief Compute cubature weight for surface integrals (2-D specialization)
@@ -293,17 +313,17 @@ ComputeSurfaceIntegralWeight<1>::operator()
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
-ComputeSurfaceIntegralWeight<2>::operator()
+CalculateSurfaceArea<2>::operator()
 (const Plato::OrdinalType & aFaceOrdinal,
  const Plato::Scalar & aMultiplier,
  const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
  ResultScalarType & aOutput) const
 {
-    auto tJ11 = aJacobian(aFaceOrdinal, 0, 0) * aJacobian(aFaceOrdinal, 0, 0);
-    auto tJ12 = aJacobian(aFaceOrdinal, 0, 1) * aJacobian(aFaceOrdinal, 0, 1);
+    ConfigScalarType tJ11 = aJacobian(aFaceOrdinal, 0, 0) * aJacobian(aFaceOrdinal, 0, 0);
+    ConfigScalarType tJ12 = aJacobian(aFaceOrdinal, 0, 1) * aJacobian(aFaceOrdinal, 0, 1);
     aOutput = aMultiplier * sqrt( tJ11 + tJ12 );
 }
-// class ComputeSurfaceIntegralWeight<2>::operator()
+// class CalculateSurfaceArea<2>::operator()
 
 /***************************************************************************//**
  * \brief Compute cubature weight for surface integrals (3-D specialization)
@@ -311,18 +331,71 @@ ComputeSurfaceIntegralWeight<2>::operator()
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
-ComputeSurfaceIntegralWeight<3>::operator()
+CalculateSurfaceArea<3>::operator()
 (const Plato::OrdinalType & aFaceOrdinal,
  const Plato::Scalar & aMultiplier,
  const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
  ResultScalarType & aOutput) const
 {
-    auto tJ23 = aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,2) - aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,1);
-    auto tJ31 = aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,0) - aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,2);
-    auto tJ12 = aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,1) - aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,0);
+    ConfigScalarType tJ23 = aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,2) - aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,1);
+    ConfigScalarType tJ31 = aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,0) - aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,2);
+    ConfigScalarType tJ12 = aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,1) - aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,0);
     aOutput = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
 }
-// class ComputeSurfaceIntegralWeight<3>::operator()
+// class CalculateSurfaceArea<3>::operator()
+
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals (1-D specialization)
+*******************************************************************************/
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+CalculateSurfaceArea<1>::operator()
+(const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
+ const Plato::ScalarVectorT<ResultScalarType> & aOutput) const
+{
+    aOutput(aFaceOrdinal) = aMultiplier;
+}
+// class CalculateSurfaceArea<1>::operator()
+
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals (2-D specialization)
+*******************************************************************************/
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+CalculateSurfaceArea<2>::operator()
+(const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
+ const Plato::ScalarVectorT<ResultScalarType> & aOutput) const
+{
+    ConfigScalarType tJ11 = aJacobian(aFaceOrdinal, 0, 0) * aJacobian(aFaceOrdinal, 0, 0);
+    ConfigScalarType tJ12 = aJacobian(aFaceOrdinal, 0, 1) * aJacobian(aFaceOrdinal, 0, 1);
+    aOutput(aFaceOrdinal) = aMultiplier * sqrt( tJ11 + tJ12 );
+}
+// class CalculateSurfaceArea<2>::operator()
+
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals (3-D specialization)
+*******************************************************************************/
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+CalculateSurfaceArea<3>::operator()
+(const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
+ const Plato::ScalarVectorT<ResultScalarType> & aOutput) const
+{
+    ConfigScalarType tJ23 = aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,2) - aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,1);
+    ConfigScalarType tJ31 = aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,0) - aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,2);
+    ConfigScalarType tJ12 = aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,1) - aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,0);
+    aOutput(aFaceOrdinal) = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
+}
+// class CalculateSurfaceArea<3>::operator()
 
 }
 // namespace Plato

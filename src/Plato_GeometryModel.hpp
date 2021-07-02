@@ -54,7 +54,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Optimization parameters for algebraic rocket model
+ * \brief Optimization parameters for algebraic rocket model
  **********************************************************************************/
 struct ProblemParams
 {
@@ -66,58 +66,58 @@ struct ProblemParams
 // struct ProblemParams
 
 /******************************************************************************//**
- * @brief Abstract geometry model class
+ * \brief Abstract geometry model class
  **********************************************************************************/
 class GeometryModel
 {
 public:
     /******************************************************************************//**
-     * @brief Default destructor
+     * \brief Default destructor
      **********************************************************************************/
     virtual ~GeometryModel()
     {
     }
 
     /******************************************************************************//**
-     * @brief Compute the surface area of a geometry
-     * @return surface area
+     * \brief Compute the surface area of a geometry
+     * \return surface area
      **********************************************************************************/
     virtual Plato::Scalar area() = 0;
 
     /******************************************************************************//**
-     * @brief Compute the reference rate that gas mass is begin produced
-     * @return mass production rate
+     * \brief Compute the reference rate that gas mass is begin produced
+     * \return mass production rate
      **********************************************************************************/
     virtual Plato::Scalar referenceMassProductionRate() = 0;
 
     /******************************************************************************//**
-     * @brief Output geometry and field data
-     * @param [in] aOutput output flag (true = output, false = do not output)
+     * \brief Output geometry and field data
+     * \param [in] aOutput output flag (true = output, false = do not output)
     **********************************************************************************/
     virtual void output(bool aOutput = false) = 0;
 
     /******************************************************************************//**
-     * @brief Compute the gradient with respect to geometry-based parameters
-     * @param [in/out] aOutput gradient with respect to geometry-based parameters
+     * \brief Compute the gradient with respect to geometry-based parameters
+     * \param [in/out] aOutput gradient with respect to geometry-based parameters
      **********************************************************************************/
     virtual void gradient(std::vector<Plato::Scalar> & aOutput) = 0;
 
     /******************************************************************************//**
-     * @brief Initialize immersed geometry
-     * @param [in] aParam optimization parameters
+     * \brief Initialize immersed geometry
+     * \param [in] aParam optimization parameters
      **********************************************************************************/
     virtual void initialize(const Plato::ProblemParams & aParam) = 0;
 
     /******************************************************************************//**
-     * @brief Set parameters that define immersed geometry.
-     * @param [in] aParam optimization parameters
+     * \brief Set parameters that define immersed geometry.
+     * \param [in] aParam optimization parameters
      **********************************************************************************/
     virtual void updateGeometry(const Plato::ProblemParams & aParam) = 0;
 
     /******************************************************************************//**
-     * @brief Evolve geometry in time
-     * @param [in] aDeltaTime time step
-     * @param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
+     * \brief Evolve geometry in time
+     * \param [in] aDeltaTime time step
+     * \param [in] aBurnRateMultiplier actual burn rate divided by the reference burn rate
      **********************************************************************************/
     virtual void evolveGeometry(const Plato::Scalar aDeltaTime, const Plato::Scalar aBurnRateMultiplier) = 0;
 };

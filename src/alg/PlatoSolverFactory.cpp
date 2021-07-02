@@ -1,8 +1,9 @@
 #include "alg/PlatoSolverFactory.hpp"
+#include "PlatoUtilities.hpp"
 
 namespace Plato {
 
-std::string determineSolverStack(const Teuchos::ParameterList& tSolverParams)
+std::string determine_solver_stack(const Teuchos::ParameterList& tSolverParams)
 {
   std::string tSolverStack;
   if(tSolverParams.isType<std::string>("Solver Stack"))
@@ -24,22 +25,23 @@ std::string determineSolverStack(const Teuchos::ParameterList& tSolverParams)
 }
 
 /******************************************************************************//**
- * @brief Solver factory for AbstractSolvers
+ * \brief Solver factory for AbstractSolvers
 **********************************************************************************/
 rcp<AbstractSolver>
 SolverFactory::create(
-    Omega_h::Mesh&          aMesh,
-    Comm::Machine           aMachine,
-    int                     aDofsPerNode
+    Omega_h::Mesh&     aMesh,
+    Comm::Machine      aMachine,
+    Plato::OrdinalType aDofsPerNode
 )
 {
-  std::string tSolverStack = determineSolverStack(mSolverParams);
+  auto tSolverStack = Plato::determine_solver_stack(mSolverParams);
+  auto tLowerSolverStack = Plato::tolower(tSolverStack);
 
-  if(tSolverStack == "Epetra")
+  if(tLowerSolverStack == "epetra")
   {
       return std::make_shared<Plato::EpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
   }
-  else if(tSolverStack == "Tpetra")
+  else if(tLowerSolverStack == "tpetra")
   {
 #ifdef PLATO_TPETRA
       return std::make_shared<Plato::TpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
@@ -47,7 +49,7 @@ SolverFactory::create(
       THROWERR("Not compiled with Tpetra");
 #endif
   }
-  else if(tSolverStack == "AmgX")
+  else if(tLowerSolverStack == "amgx")
   {
 #ifdef HAVE_AMGX
       return std::make_shared<Plato::AmgXLinearSolver>(mSolverParams, aDofsPerNode);

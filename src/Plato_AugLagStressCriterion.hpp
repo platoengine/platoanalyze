@@ -28,7 +28,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Augmented Lagrangian stress constraint criterion
+ * \brief Augmented Lagrangian stress constraint criterion
  *
  * This implementation is based on recent work by Prof. Glaucio Paulino research
  * group at Georgia Institute of Technology. Reference will be provided as soon as
@@ -77,8 +77,8 @@ private:
 
 private:
     /******************************************************************************//**
-     * @brief Allocate member data
-     * @param [in] aInputParams input parameters database
+     * \brief Allocate member data
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void initialize(Teuchos::ParameterList & aInputParams)
     {
@@ -99,8 +99,8 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Read user inputs
-     * @param [in] aInputParams input parameters database
+     * \brief Read user inputs
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void readInputs(Teuchos::ParameterList & aInputParams)
     {
@@ -120,7 +120,7 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Update augmented Lagrangian penalty and upper bound on mass multipliers.
+     * \brief Update augmented Lagrangian penalty and upper bound on mass multipliers.
     **********************************************************************************/
     void updateAugLagPenaltyMultipliers()
     {
@@ -131,10 +131,10 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary constructor
-     * @param [in] aSpatialDomain Plato Analyze spatial domain
-     * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aInputParams input parameters database
+     * \brief Primary constructor
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
+     * \param [in] aDataMap Plato Analyze data map
+     * \param [in] aInputParams input parameters database
      **********************************************************************************/
     AugLagStressCriterion(
         const Plato::SpatialDomain & aSpatialDomain,
@@ -164,9 +164,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Constructor tailored for unit testing
-     * @param [in] aSpatialDomain Plato Analyze spatial domain
-     * @param [in] aDataMap Plato Analyze data map
+     * \brief Constructor tailored for unit testing
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
+     * \param [in] aDataMap Plato Analyze data map
      **********************************************************************************/
     AugLagStressCriterion(
         const Plato::SpatialDomain & aSpatialDomain,
@@ -194,15 +194,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     virtual ~AugLagStressCriterion()
     {
     }
 
     /******************************************************************************//**
-     * @brief Return augmented Lagrangian penalty multiplier
-     * @return augmented Lagrangian penalty multiplier
+     * \brief Return augmented Lagrangian penalty multiplier
+     * \return augmented Lagrangian penalty multiplier
     **********************************************************************************/
     Plato::Scalar getAugLagPenalty() const
     {
@@ -210,8 +210,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return upper bound on mass multipliers
-     * @return upper bound on mass multipliers
+     * \brief Return upper bound on mass multipliers
+     * \return upper bound on mass multipliers
     **********************************************************************************/
     Plato::Scalar getMassMultipliersUpperBound() const
     {
@@ -219,8 +219,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return multiplier used to normalized mass contribution to the objective function
-     * @return upper mass normalization multiplier
+     * \brief Return multiplier used to normalized mass contribution to the objective function
+     * \return upper mass normalization multiplier
     **********************************************************************************/
     Plato::Scalar getMassNormalizationMultiplier() const
     {
@@ -228,8 +228,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return mass multipliers
-     * @return 1D view of mass multipliers
+     * \brief Return mass multipliers
+     * \return 1D view of mass multipliers
     **********************************************************************************/
     Plato::ScalarVector getMassMultipliers() const
     {
@@ -237,8 +237,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return Lagrange multipliers
-     * @return 1D view of Lagrange multipliers
+     * \brief Return Lagrange multipliers
+     * \return 1D view of Lagrange multipliers
     **********************************************************************************/
     Plato::ScalarVector getLagrangeMultipliers() const
     {
@@ -246,8 +246,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set stress constraint limit/upper bound
-     * @param [in] aInput stress constraint limit
+     * \brief Set stress constraint limit/upper bound
+     * \param [in] aInput stress constraint limit
     **********************************************************************************/
     void setStressLimit(const Plato::Scalar & aInput)
     {
@@ -255,8 +255,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set augmented Lagrangian function penalty multiplier
-     * @param [in] aInput penalty multiplier
+     * \brief Set augmented Lagrangian function penalty multiplier
+     * \param [in] aInput penalty multiplier
      **********************************************************************************/
     void setAugLagPenalty(const Plato::Scalar & aInput)
     {
@@ -264,8 +264,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set cell material density
-     * @param [in] aInput material density
+     * \brief Set cell material density
+     * \param [in] aInput material density
      **********************************************************************************/
     void setCellMaterialDensity(const Plato::Scalar & aInput)
     {
@@ -273,8 +273,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set mass multipliers
-     * @param [in] aInput mass multipliers
+     * \brief Set mass multipliers
+     * \param [in] aInput mass multipliers
      **********************************************************************************/
     void setMassMultipliers(const Plato::ScalarVector & aInput)
     {
@@ -283,8 +283,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set Lagrange multipliers
-     * @param [in] aInput Lagrange multipliers
+     * \brief Set Lagrange multipliers
+     * \param [in] aInput Lagrange multipliers
      **********************************************************************************/
     void setLagrangeMultipliers(const Plato::ScalarVector & aInput)
     {
@@ -293,8 +293,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set cell material stiffness matrix
-     * @param [in] aInput cell material stiffness matrix
+     * \brief Set cell material stiffness matrix
+     * \param [in] aInput cell material stiffness matrix
     **********************************************************************************/
     void setCellStiffMatrix(const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> & aInput)
     {
@@ -302,10 +302,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aStateWS,
                        const Plato::ScalarMultiVector & aControlWS,
@@ -316,12 +316,12 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate augmented Lagrangian stress constraint criterion
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Evaluate augmented Lagrangian stress constraint criterion
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void
     evaluate(
@@ -406,10 +406,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update Lagrange and mass multipliers
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
+     * \brief Update Lagrange and mass multipliers
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
     void
     updateMultipliers(
@@ -491,7 +491,7 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Compute structural mass (i.e. structural mass with ersatz densities set to one)
+     * \brief Compute structural mass (i.e. structural mass with ersatz densities set to one)
     **********************************************************************************/
     void computeStructuralMass()
     {

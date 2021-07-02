@@ -14,6 +14,7 @@
 #include "AnalyzeMacros.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
+#include "TimeData.hpp"
 
 namespace Plato
 {
@@ -48,7 +49,8 @@ struct NewtonRaphson
 *******************************************************************************/
 struct CurrentStates
 {
-    Plato::OrdinalType mCurrentStepIndex;      /*!< current time step index */
+    Plato::OrdinalType mCurrentStepIndex;       /*!< current time step index */
+    std::shared_ptr<Plato::TimeData> mTimeData; /*!< time data object */
 
     Plato::ScalarVector mDeltaGlobalState;     /*!< global state increment */
     Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
@@ -56,6 +58,29 @@ struct CurrentStates
     Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
     Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
     Plato::ScalarVector mProjectedPressGrad;   /*!< current projected pressure gradient */
+
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aInputTimeData input time data
+    *******************************************************************************/
+    explicit CurrentStates(const std::shared_ptr<Plato::TimeData> & aInputTimeData) :
+        mCurrentStepIndex(0),
+        mTimeData(aInputTimeData)
+    {
+    }
+
+    inline void print(const char my_string[]) const
+    {
+        printf("Printing CS %s Step %d : CPPG %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n\n",
+        my_string, 
+        mCurrentStepIndex,
+        Plato::blas1::norm(mProjectedPressGrad),
+        Plato::blas1::norm(mCurrentGlobalState),
+        Plato::blas1::norm(mPreviousGlobalState),
+        Plato::blas1::norm(mCurrentLocalState),
+        Plato::blas1::norm(mPreviousLocalState)
+        );
+    }
 };
 // struct CurrentStates
 

@@ -18,6 +18,7 @@
 #include "ThermoelasticMaterial.hpp"
 #include "NaturalBCs.hpp"
 #include "BodyLoads.hpp"
+#include "BLAS2.hpp"
 
 namespace Plato
 {
@@ -124,6 +125,33 @@ public:
         }
     }
 
+    /****************************************************************************//**
+    * \brief Pure virtual function to get output solution data
+    * \param [in] state solution database
+    * \return output state solution database
+    ********************************************************************************/
+    Plato::Solutions getSolutionStateOutputData(const Plato::Solutions &aSolutions) const override
+    {
+      Plato::ScalarMultiVector tSolutionFromSolutions = aSolutions.get("State");
+
+      auto tNumTimeSteps = tSolutionFromSolutions.extent(0);
+      auto tNumVertices  = mSpatialDomain.Mesh.nverts();
+
+      Plato::ScalarMultiVector tDisplacements("displacements for all time steps", tNumTimeSteps, tNumVertices*NMechDims);
+      Plato::ScalarMultiVector tTemperatures("temperatures for all time steps", tNumTimeSteps, tNumVertices*NThrmDims);
+      Plato::blas2::extract<mNumDofsPerNode/*stride*/, NMechDims/*dofs per node*/, MDofOffset/*offset*/>
+                    (tNumVertices, tSolutionFromSolutions, tDisplacements);
+      Plato::blas2::extract<mNumDofsPerNode/*stride*/, NThrmDims/*dofs per node*/, TDofOffset/*offset*/>
+                    (tNumVertices, tSolutionFromSolutions, tTemperatures);
+
+      Plato::Solutions tSolutionsOutput(aSolutions.physics(), aSolutions.pde());
+      tSolutionsOutput.set("Displacement", tDisplacements);
+      tSolutionsOutput.setNumDofs("Displacement", 3);
+      tSolutionsOutput.set("Temperature", tTemperatures);
+      tSolutionsOutput.setNumDofs("Temperature", 1);
+
+      return tSolutionsOutput;
+    }
     /**************************************************************************/
     void evaluate(
         const Plato::ScalarMultiVectorT <StateScalarType>   & state,
