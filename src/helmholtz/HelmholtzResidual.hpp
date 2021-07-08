@@ -47,7 +47,6 @@ class HelmholtzResidual :
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
-    /* std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads; */
     Plato::Scalar mLengthScale;
 
   public:
@@ -59,7 +58,6 @@ class HelmholtzResidual :
     ) :
         Plato::Helmholtz::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>())
-        /* mBoundaryLoads(nullptr) */
     /**************************************************************************/
     {
         // parse length scale parameter
@@ -72,13 +70,6 @@ class HelmholtzResidual :
             auto tLengthParamList = aProblemParams.get < Teuchos::ParameterList > ("Length Scale");
             mLengthScale = tLengthParamList.get<Plato::Scalar>("Length Scale");
         }
-
-        // parse boundary Conditions
-        // 
-        /* if(aProblemParams.isSublist("Natural Boundary Conditions")) */
-        /* { */
-        /*     mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions")); */
-        /* } */
     }
 
     /****************************************************************************//**
@@ -168,9 +159,6 @@ class HelmholtzResidual :
         tAddMassTerm(aCellOrdinal, aResult, tFilteredDensity, tUnfilteredDensity, tBasisFunctions, tCellVolume);
 
       },"helmholtz residual");
-
-      /* if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad", mSpatialDomain); */
-      /* if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" , mSpatialDomain); */
     }
 
     /**************************************************************************/
@@ -185,10 +173,7 @@ class HelmholtzResidual :
     ) const
     /**************************************************************************/
     {
-        /* if( mBoundaryLoads != nullptr ) */
-        /* { */
-        /*     mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult,  1.0 ); */
-        /* } */
+        THROWERR("HELMHOLTZ RESIDUAL: NO EVALUATE BOUNDARY FUNCTION IMPEMENTED.")
     }
 };
 // class HelmholtzResidual

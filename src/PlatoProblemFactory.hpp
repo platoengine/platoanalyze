@@ -471,7 +471,6 @@ public:
         if(tLowerPhysics == "helmholtz filter")
         {
             auto tOutput = std::make_shared < Plato::Helmholtz::Problem<::Plato::HelmholtzFilter<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-            /* tOutput->readEssentialBoundaryConditions(tInputData); // NEED THIS??!! */
             return tOutput;
         }
 #endif

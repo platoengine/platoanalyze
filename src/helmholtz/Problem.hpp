@@ -10,11 +10,8 @@
 
 #include "BLAS1.hpp"
 #include "Solutions.hpp"
-/* #include "NaturalBCs.hpp" */
-/* #include "EssentialBCs.hpp" */
 #include "AnalyzeOutput.hpp"
 #include "ImplicitFunctors.hpp"
-/* #include "ApplyConstraints.hpp" */
 #include "SpatialModel.hpp"
 
 #include "ParseTools.hpp"
@@ -22,10 +19,6 @@
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "PlatoUtilities.hpp"
-
-#include "Geometrical.hpp"
-#include "geometric/ScalarFunctionBase.hpp"
-#include "geometric/ScalarFunctionBaseFactory.hpp"
 
 #include "helmholtz/VectorFunction.hpp"
 #include "AnalyzeMacros.hpp"
@@ -141,34 +134,11 @@ public:
     **********************************************************************************/
     void output(const std::string & aFilepath) override
     {
-        THROWERR("OUTPUT: NOT SURE YET IF NEEDED FOR HELMHOLTZ")
-        /* auto tDataMap = this->getDataMap(); */
-        /* auto tSolution = this->getSolution(); */
-        /* auto tSolutionOutput = mPDE->getSolutionStateOutputData(tSolution); */
-        /* Plato::universal_solution_output<mSpatialDim>(aFilepath, tSolutionOutput, tDataMap, mSpatialModel.Mesh); */
+        auto tDataMap = this->getDataMap();
+        auto tSolution = this->getSolution();
+        auto tSolutionOutput = mPDE->getSolutionStateOutputData(tSolution);
+        Plato::universal_solution_output<mSpatialDim>(aFilepath, tSolutionOutput, tDataMap, mSpatialModel.Mesh);
     }
-
-    /******************************************************************************//**
-     * \brief Apply Dirichlet constraints
-     * \param [in] aMatrix Compressed Row Storage (CRS) matrix
-     * \param [in] aVector 1D view of Right-Hand-Side forces
-    **********************************************************************************/
-    /* void applyStateConstraints( */
-    /*   const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, */
-    /*   const Plato::ScalarVector & aVector, */
-    /*         Plato::Scalar aScale */
-    /* ) */
-    //**********************************************************************************/
-    /* { */
-    /*     if(mJacobian->isBlockMatrix()) */
-    /*     { */
-    /*         Plato::applyBlockConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale); */
-    /*     } */
-    /*     else */
-    /*     { */
-    /*         Plato::applyConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale); */
-    /*     } */
-    /* } */
 
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
@@ -199,8 +169,6 @@ public:
 
         mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
 
-        /* this->applyStateConstraints(mJacobian, mResidual); */
-
         mSolver->solve(*mJacobian, tStatesSubView, mResidual);
 
         auto tSolution = this->getSolution();
@@ -228,8 +196,6 @@ public:
         mJacobian = mPDE->gradient_u(tSolution, aControl);
 
         auto tPartialPDE_WRT_Control = mPDE->gradient_z(tSolution, aControl);
-
-        /* this->applyStateConstraints(mJacobian, mResidual); */
 
         Plato::blas1::scale(-1.0, aControl);
 
@@ -322,39 +288,6 @@ public:
     {
         THROWERR("CRITERION GRADIENT X: NO CRITERION ASSOCIATED WITH HELMHOLTZ FILTER PROBLEM.")
     }
-
-    /***************************************************************************//**
-     * \brief Read essential (Dirichlet) boundary conditions from the Exodus file.
-     * \param [in] aProblemParams input parameters database
-    *******************************************************************************/
-    /* void readEssentialBoundaryConditions(Teuchos::ParameterList& aProblemParams) */
-    /* { */
-    /*     if(aProblemParams.isSublist("Essential Boundary Conditions") == false) */
-    /*     { */
-    /*         THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE.") */
-    /*     } */
-    /*     Plato::EssentialBCs<PhysicsT> */
-    /*     tEssentialBoundaryConditions(aProblemParams.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets); */
-    /*     tEssentialBoundaryConditions.get(mBcDofs, mBcValues); */
-    /* } */
-
-    /***************************************************************************//**
-     * \brief Set essential (Dirichlet) boundary conditions
-     * \param [in] aDofs   degrees of freedom associated with Dirichlet boundary conditions
-     * \param [in] aValues values associated with Dirichlet degrees of freedom
-    *******************************************************************************/
-    /* void setEssentialBoundaryConditions(const Plato::LocalOrdinalVector & aDofs, const Plato::ScalarVector & aValues) */
-    /* { */
-    /*     if(aDofs.size() != aValues.size()) */
-    /*     { */
-    /*         std::ostringstream tError; */
-    /*         tError << "DIMENSION MISMATCH: THE NUMBER OF ELEMENTS IN INPUT DOFS AND VALUES ARRAY DO NOT MATCH." */
-    /*             << "DOFS SIZE = " << aDofs.size() << " AND VALUES SIZE = " << aValues.size(); */
-    /*         THROWERR(tError.str()) */
-    /*     } */
-    /*     mBcDofs = aDofs; */
-    /*     mBcValues = aValues; */
-    /* } */
 
 private:
     /******************************************************************************//**

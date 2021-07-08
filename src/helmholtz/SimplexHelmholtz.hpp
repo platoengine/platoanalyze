@@ -20,7 +20,7 @@ class SimplexHelmholtz : public Plato::Simplex<SpaceDim>
     static constexpr Plato::OrdinalType mNumDofsPerNode  = 1;
     static constexpr Plato::OrdinalType mNumDofsPerCell  = mNumDofsPerNode*mNumNodesPerCell;
 
-    static constexpr Plato::OrdinalType mNumControl = 1;  // for now, only one control field allowed.
+    static constexpr Plato::OrdinalType mNumControl = 1;
 
     static constexpr Plato::OrdinalType mNumNodeStatePerNode = 0;
 
