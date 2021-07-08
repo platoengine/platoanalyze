@@ -169,6 +169,33 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MassPropertiesUn
 add_test(NAME runMassPropertiesUnitTests COMMAND ${ES_MPI_TEST})
 #end: MassPropertiesTest unit test
 
+#begin: VolumeAverageCriterionTests unit test
+set(VolumeAverageCriterionTests_SOURCES
+  VolumeAverageCriterionTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(VolumeAverageCriterionTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(VolumeAverageCriterionTests
+  ${VolumeAverageCriterionTests_SOURCES}
+  ${VolumeAverageCriterionTests_HEADERS}
+)
+
+target_link_libraries(VolumeAverageCriterionTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(VolumeAverageCriterionTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/VolumeAverageCriterionTests)
+add_test(NAME runVolumeAverageCriterionTests COMMAND ${ES_MPI_TEST})
+#end: VolumeAverageCriterionTests unit test
+
 #begin: GeometryMisfitTest unit test
 set(GeometryMisfitTest_SOURCES
   GeometryMisfitTests.cpp
