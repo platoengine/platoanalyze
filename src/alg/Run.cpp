@@ -109,10 +109,7 @@ void run(
     {
 
         std::cout << "\nRunning Plato Analyze version " << version_major << "."
-                << version_minor << "." << version_patch << std::endl;
-
-        std::cout << "\n\nparameter list:" << std::endl;
-        aProblem.print(std::cout);
+                  << version_minor << "." << version_patch << std::endl;
     }
 
     if(aProblem.get<bool>("Query"))

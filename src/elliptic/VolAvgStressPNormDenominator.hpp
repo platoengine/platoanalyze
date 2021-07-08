@@ -1,5 +1,4 @@
-#ifndef STRESS_P_NORM_HPP
-#define STRESS_P_NORM_HPP
+#pragma once
 
 #include "ScalarProduct.hpp"
 #include "ApplyWeighting.hpp"
@@ -20,6 +19,7 @@
 #include "PlatoMeshExpr.hpp"
 #include "UtilsOmegaH.hpp"
 #include "alg/Cubature.hpp"
+#include "BLAS2.hpp"
 #include <Omega_h_expr.hpp>
 #include <Omega_h_mesh.hpp>
 
@@ -31,7 +31,7 @@ namespace Elliptic
 
 /******************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
-class StressPNorm : 
+class VolAvgStressPNormDenominator : 
   public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
   public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 /******************************************************************************/
@@ -50,17 +50,15 @@ class StressPNorm :
     using ControlScalarType = typename EvaluationType::ControlScalarType;
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
-
-    Omega_h::Matrix< mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;
     
     Plato::Scalar mQuadratureWeight;
 
     IndicatorFunctionType mIndicatorFunction;
-    Plato::ApplyWeighting<SpaceDim,mNumVoigtTerms,IndicatorFunctionType> mApplyWeighting;
+    Plato::ApplyWeighting<SpaceDim,1/*number of terms*/,IndicatorFunctionType> mApplyWeighting;
 
     Teuchos::RCP<TensorNormBase<mNumVoigtTerms,EvaluationType>> mNorm;
 
-    std::string mFuncString = "1.0";
+    std::string mSpatialWeightingFunctionString = "1.0";
 
     Omega_h::Reals mFxnValues;
 
@@ -96,12 +94,12 @@ class StressPNorm :
 
       // get integrand values at quadrature points
       //
-      Plato::getFunctionValues<SpaceDim>(tQuadraturePoints, mFuncString, mFxnValues);
+      Plato::getFunctionValues<SpaceDim>(tQuadraturePoints, mSpatialWeightingFunctionString, mFxnValues);
     }
 
   public:
     /**************************************************************************/
-    StressPNorm(
+    VolAvgStressPNormDenominator(
         const Plato::SpatialDomain   & aSpatialDomain,
               Plato::DataMap         & aDataMap, 
               Teuchos::ParameterList & aProblemParams, 
@@ -113,9 +111,6 @@ class StressPNorm :
         mApplyWeighting    (mIndicatorFunction)
     /**************************************************************************/
     {
-      Plato::ElasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-      auto materialModel = mmfactory.create(aSpatialDomain.getMaterialName());
-      mCellStiffness = materialModel->getStiffnessMatrix();
 
 //TODO quadrature
       mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
@@ -130,7 +125,7 @@ class StressPNorm :
       mNorm = normFactory.create(params);
 
       if (params.isType<std::string>("Function"))
-        mFuncString = params.get<std::string>("Function");
+        mSpatialWeightingFunctionString = params.get<std::string>("Function");
       
       this->computeSpatialWeightingValues(aSpatialDomain);
     }
@@ -148,49 +143,40 @@ class StressPNorm :
     {
       auto tNumCells = mSpatialDomain.numCells();
 
-      Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::Strain<SpaceDim>                 voigtStrain;
-      Plato::LinearStress<SpaceDim>           voigtStress(mCellStiffness);
+      Plato::ComputeGradientWorkset<SpaceDim> tComputeGradient;
 
       using StrainScalarType = 
         typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>,
                             StateScalarType, ConfigScalarType>;
 
       Plato::ScalarVectorT<ConfigScalarType>
-        cellVolume("cell weight", tNumCells);
-
-      Plato::ScalarMultiVectorT<StrainScalarType>
-        strain("strain", tNumCells, mNumVoigtTerms);
+        tCellVolume("cell weight", tNumCells);
 
       Plato::ScalarArray3DT<ConfigScalarType>
-        gradient("gradient", tNumCells, mNumNodesPerCell, SpaceDim);
-
+        tGradient("gradient", tNumCells, mNumNodesPerCell, SpaceDim);
+    
       Plato::ScalarMultiVectorT<ResultScalarType>
-        stress("stress", tNumCells, mNumVoigtTerms);
+        tWeightedOne("weighted one", tNumCells, mNumVoigtTerms);
+      Plato::blas2::fill(0.0, tWeightedOne);
+
+      Plato::Scalar tOne = 1.0;
 
       auto quadratureWeight = mQuadratureWeight;
       auto applyWeighting   = mApplyWeighting;
       auto tFxnValues       = mFxnValues;
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType cellOrdinal)
       {
-        computeGradient(cellOrdinal, gradient, aConfig, cellVolume);
-        cellVolume(cellOrdinal) *= quadratureWeight * tFxnValues[cellOrdinal];
+        tComputeGradient(cellOrdinal, tGradient, aConfig, tCellVolume);
+        tCellVolume(cellOrdinal) *= quadratureWeight * tFxnValues[cellOrdinal];
 
-        // compute strain
-        //
-        voigtStrain(cellOrdinal, strain, aState, gradient);
-
-        // compute stress
-        //
-        voigtStress(cellOrdinal, stress, strain);
-
+        tWeightedOne(cellOrdinal, 0) = tOne;
         // apply weighting
         //
-        applyWeighting(cellOrdinal, stress, aControl);
+        applyWeighting(cellOrdinal, tWeightedOne, aControl);
 
-      },"Compute Stress");
+      },"Compute Weighted Stress Pnorm Demoninator");
 
-      mNorm->evaluate(aResult, stress, aControl, cellVolume);
+      mNorm->evaluate(aResult, tWeightedOne, aControl, tCellVolume);
 
     }
 
@@ -212,22 +198,17 @@ class StressPNorm :
       mNorm->postEvaluate(resultValue);
     }
 };
-// class StressPNorm
+// class VolAvgStressPNormDenominator
 
 } // namespace Elliptic
 
 } // namespace Plato
 
-#ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC(Plato::Elliptic::StressPNorm, Plato::SimplexMechanics, 1)
-#endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC(Plato::Elliptic::StressPNorm, Plato::SimplexMechanics, 2)
+PLATO_EXPL_DEC(Plato::Elliptic::VolAvgStressPNormDenominator, Plato::SimplexMechanics, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC(Plato::Elliptic::StressPNorm, Plato::SimplexMechanics, 3)
-#endif
-
+PLATO_EXPL_DEC(Plato::Elliptic::VolAvgStressPNormDenominator, Plato::SimplexMechanics, 3)
 #endif

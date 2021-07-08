@@ -33,6 +33,7 @@
 #include "WorksetBase.hpp"
 #include "elliptic/VectorFunction.hpp"
 #include "elliptic/PhysicsScalarFunction.hpp"
+#include "elliptic/Problem.hpp"
 #include "StateValues.hpp"
 #include "ApplyConstraints.hpp"
 #include "SimplexThermomechanics.hpp"
@@ -352,3 +353,323 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
   }
 }
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VolAvgStressPNormAxial_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::OrdinalType tNumElemX = 1;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    const Plato::Scalar tBoxWidth = 5.0;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(tBoxWidth,tBoxWidth,tBoxWidth,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Solver Package' type='string' value='amesos2'/>                   \n"
+      "      <Parameter name='Iterations' type='int' value='500'/>                              \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Elastic'>                                    \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='10.0e0'/>                 \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+     "   <ParameterList name='volume avg stress pnorm'> \n"
+     "     <Parameter name='Type' type='string' value='Division' /> \n"
+     "       <Parameter name='Numerator' type='string' value='pnorm numerator' /> \n"
+     "       <Parameter name='Denominator' type='string' value='pnorm denominator' /> \n"
+     "   </ParameterList> \n"
+     "   <ParameterList name='pnorm numerator'> \n"
+     "     <Parameter name='Type' type='string' value='Scalar Function' /> \n"
+     "     <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm' /> \n"
+     "     <ParameterList name='Penalty Function'> \n"
+     "       <Parameter name='Type' type='string' value='SIMP' /> \n"
+     "       <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "     </ParameterList> \n"
+     "     <Parameter name='Function' type='string' value='x/5.0' /> \n"
+     "     <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "   </ParameterList> \n"
+     "   <ParameterList name='pnorm denominator'> \n"
+     "     <Parameter name='Type' type='string' value='Scalar Function' /> \n"
+     "     <Parameter name='Scalar Function Type' type='string' value='vol avg stress p-norm denominator' /> \n"
+     "     <ParameterList name='Penalty Function'> \n"
+     "       <Parameter name='Type' type='string' value='SIMP' /> \n"
+     "       <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "     </ParameterList> \n"
+     "     <Parameter name='Function' type='string' value='x/5.0' /> \n"
+     "     <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "   </ParameterList> \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "  </ParameterList>                                                                       \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Applied Disp Boundary Condition'>                             \n"
+      "       <Parameter  name='Type'     type='string' value='Fixed Value'/>                   \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Value'    type='double' value='0.1'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::Mechanics<tSpaceDim>;
+
+    Plato::Elliptic::Problem<PhysicsT> tEllipticProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tEllipticProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tEllipticProblem.solution(tControls);
+
+
+    const Plato::Scalar tSpatialWeightingFactor = 0.5;
+    const Plato::Scalar tElasticModulus = 10.0;
+    const Plato::Scalar tStrain = 0.1 / tBoxWidth;
+    const Plato::Scalar tStress = tElasticModulus * tStrain;
+    const Plato::Scalar tBoxVolume = tSpatialWeightingFactor * (tBoxWidth*tBoxWidth*tBoxWidth);
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+
+    std::string tCriterionName1("volume avg stress pnorm");
+    auto tCriterionValue1 = tEllipticProblem.criterionValue(tControls, tCriterionName1);
+    TEST_FLOATING_EQUALITY(tCriterionValue1, tStress, tTolerance);
+
+    std::string tCriterionName2("pnorm numerator");
+    auto tCriterionValue2 = tEllipticProblem.criterionValue(tControls, tCriterionName2);
+    TEST_FLOATING_EQUALITY(tCriterionValue2, tStress * tBoxVolume, tTolerance);
+
+    std::string tCriterionName3("pnorm denominator");
+    auto tCriterionValue3 = tEllipticProblem.criterionValue(tControls, tCriterionName3);
+    TEST_FLOATING_EQUALITY(tCriterionValue3, tBoxVolume, tTolerance);
+
+    // auto tCriterionGrad = tEllipticProblem.criterionGradient(tControls, tCriterionName);
+    // std::vector<Plato::Scalar> tGold = { -8.23158e-01,-2.74211e-01,-2.74205e-01,-2.74211e-01,-5.46915e-01,
+    //                                      -1.09598e+00,-5.46915e-01,-1.09091e+00,-1.07737e+00,-5.40880e-01,
+    //                                      -1.08590e+00,-5.40880e-01,-1.05793e+00,-5.26599e-01,-1.04844e+00,
+    //                                      -5.26599e-01,-1.07226e+00,-5.33831e-01,-1.06304e+00,-5.33831e-01,
+    //                                      -5.04852e-01,-1.00493e+00,-5.04852e-01,-1.01433e+00,-5.12007e-01,
+    //                                      -1.01919e+00,-1.03386e+00,-5.19301e-01,-1.04332e+00,-5.19301e-01,
+    //                                      -5.12007e-01,-1.02878e+00,-4.98050e-01,-1.00060e+00,-4.98050e-01,
+    //                                      -9.91065e-01,-9.80656e-01,-4.92349e-01,-9.88215e-01,-4.92349e-01,
+    //                                      -2.44243e-01,-7.35025e-01,-2.44243e-01,-2.43315e-01};
+    // auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    // Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    // TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    // for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    // {
+    //     //printf("%12.5e\n", tHostGrad(tIndex));
+    //     TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    // }
+
+    // 6. Output Data
+    if (false)
+    {
+        tEllipticProblem.output("VolAvgStressPNormAxial_3D");
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VolAvgStressPNormShear_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::OrdinalType tNumElemX = 1;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    const Plato::Scalar tBoxWidth = 5.0;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(tBoxWidth,tBoxWidth,tBoxWidth,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Solver Package' type='string' value='amesos2'/>                   \n"
+      "      <Parameter name='Iterations' type='int' value='500'/>                              \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Elastic'>                                    \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.1'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e1'/>                  \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+     "   <ParameterList name='volume avg stress pnorm'> \n"
+     "     <Parameter name='Type' type='string' value='Division' /> \n"
+     "       <Parameter name='Numerator' type='string' value='pnorm numerator' /> \n"
+     "       <Parameter name='Denominator' type='string' value='pnorm denominator' /> \n"
+     "   </ParameterList> \n"
+     "   <ParameterList name='pnorm numerator'> \n"
+     "     <Parameter name='Type' type='string' value='Scalar Function' /> \n"
+     "     <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm' /> \n"
+     "     <ParameterList name='Penalty Function'> \n"
+     "       <Parameter name='Type' type='string' value='SIMP' /> \n"
+     "       <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "     </ParameterList> \n"
+     "     <Parameter name='Function' type='string' value='1.0*x/5.0' /> \n"
+     "     <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "   </ParameterList> \n"
+     "   <ParameterList name='pnorm denominator'> \n"
+     "     <Parameter name='Type' type='string' value='Scalar Function' /> \n"
+     "     <Parameter name='Scalar Function Type' type='string' value='vol avg stress p-norm denominator' /> \n"
+     "     <ParameterList name='Penalty Function'> \n"
+     "       <Parameter name='Type' type='string' value='SIMP' /> \n"
+     "       <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "     </ParameterList> \n"
+     "     <Parameter name='Function' type='string' value='1.0*x/5.0' /> \n"
+     "     <Parameter name='Exponent' type='double' value='1.0' /> \n"
+     "   </ParameterList> \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "  </ParameterList>                                                                       \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition1'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition1'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Fixed Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Value'    type='double' value='0.1'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Fixed Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y1'/>                         \n"
+      "       <Parameter  name='Value'    type='double' value='0.1'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::Mechanics<tSpaceDim>;
+
+    Plato::Elliptic::Problem<PhysicsT> tEllipticProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tEllipticProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tEllipticProblem.solution(tControls);
+
+
+    const Plato::Scalar tSpatialWeightingFactor = 0.5;
+    const Plato::Scalar tElasticModulus = 10.0;
+    const Plato::Scalar tPoissonsRatio  = 0.1;
+    const Plato::Scalar tShearModulus   = tElasticModulus / (2.0 * (1.0 + tPoissonsRatio));
+    const Plato::Scalar tStrain = 2.0 * 0.1 / tBoxWidth;
+    const Plato::Scalar tStress = tShearModulus * tStrain;
+    const Plato::Scalar tBoxVolume = tSpatialWeightingFactor * (tBoxWidth*tBoxWidth*tBoxWidth);
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+
+    std::string tCriterionName1("volume avg stress pnorm");
+    auto tCriterionValue1 = tEllipticProblem.criterionValue(tControls, tCriterionName1);
+    TEST_FLOATING_EQUALITY(tCriterionValue1, tStress, tTolerance);
+
+    std::string tCriterionName2("pnorm numerator");
+    auto tCriterionValue2 = tEllipticProblem.criterionValue(tControls, tCriterionName2);
+    TEST_FLOATING_EQUALITY(tCriterionValue2, tStress * tBoxVolume, tTolerance);
+
+    std::string tCriterionName3("pnorm denominator");
+    auto tCriterionValue3 = tEllipticProblem.criterionValue(tControls, tCriterionName3);
+    TEST_FLOATING_EQUALITY(tCriterionValue3, tBoxVolume, tTolerance);
+
+    // 6. Output Data
+    if (false)
+    {
+        tEllipticProblem.output("VolAvgStressPNormShear_3D");
+    }
+}

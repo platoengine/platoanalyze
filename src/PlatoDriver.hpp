@@ -50,6 +50,18 @@ void run(Teuchos::ParameterList& aInputData,
     auto tSolution = tPlatoProblem->solution(tControl);
     if(false){ tSolution.print(); }
 
+    auto tPlatoProblemList = aInputData.sublist("Plato Problem");
+    if (tPlatoProblemList.isSublist("Criteria"))
+    {
+        auto tCriteriaList = tPlatoProblemList.sublist("Criteria");
+        for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaList.begin(); tIndex != tCriteriaList.end(); ++tIndex)
+        {
+            std::string tName = tCriteriaList.name(tIndex);
+            Plato::Scalar tCriterionValue = tPlatoProblem->criterionValue(tControl, tSolution, tName);
+            printf("Criterion '%s' , Value %0.10e\n", tName.c_str(), tCriterionValue);
+        }
+    }
+
     auto tFilepath = aInputData.get<std::string>("Output Viz");
     tPlatoProblem->output(tFilepath);
 }
