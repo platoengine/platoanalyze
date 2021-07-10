@@ -5,21 +5,21 @@
 To build the image:
 
 ```shell
-sudo docker build . --no-cache -f Dockerfile -t plato3d/plato-analyze:cpu-release
+sudo docker build . --no-cache -f Dockerfile -t plato3d/plato-analyze:cpu-develop
 ```
 
 ## Commiting
 To commit the image to docker hub:
 
 ```shell
-sudo docker push plato3d/plato-analyze:cpu-release
+sudo docker push plato3d/plato-analyze:cpu-develop
 ```
 
 ## Using
 To run the docker image:
 
 ```shell
-sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
+sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-develop
 ```
 
 The command above sets two environment variables that are required to execute mpirun as root.  The -v argument followed by $(pwd):examples mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /examples.
