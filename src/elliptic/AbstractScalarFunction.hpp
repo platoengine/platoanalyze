@@ -47,6 +47,15 @@ public:
     virtual ~AbstractScalarFunction(){}
 
     /******************************************************************************//**
+     * \brief Set spatial weights for optional spatial weighting of criteria with functions of x, y, and z
+     * \param [in] aInput scalar vector of spatial weights
+    **********************************************************************************/
+    virtual void setSpatialWeights(Plato::ScalarVector & aInput)
+    {
+        
+    }
+
+    /******************************************************************************//**
      * \brief Evaluate abstract scalar function
      * \param [in] aState 2D container of state variables
      * \param [in] aControl 2D container of control variables

@@ -8,515 +8,10 @@
 #include "PlatoTestHelpers.hpp"
 #include "Solutions.hpp"
 #include "Plato_Diagnostics.hpp"
+#include "elliptic/Problem.hpp"
 #include "elliptic/WeightedSumFunction.hpp"
 #include "elliptic/PhysicsScalarFunction.hpp"
-
-
-// START VolumeIntegralCriterion
-// #pragma once
-
-#include <algorithm>
-#include <memory>
-
-#include "Simp.hpp"
-// #include "ToMap.hpp"
-// #include "BLAS1.hpp"
-#include "WorksetBase.hpp"
-#include "SimplexFadTypes.hpp"
-#include "PlatoMathHelpers.hpp"
-// #include "Plato_TopOptFunctors.hpp"
-#include "elliptic/AbstractScalarFunction.hpp"
-#include "LinearTetCubRuleDegreeOne.hpp"
-// #include "ExpInstMacros.hpp"
-#include "AbstractLocalMeasure.hpp"
-#include "VonMisesLocalMeasure.hpp"
-
-
-namespace Plato
-{
-
-namespace Elliptic
-{
-
-/******************************************************************************//**
- * \brief Volume integral criterion of field quantites (primarily for use with VolumeAverageCriterion)
- * \tparam EvaluationType evaluation type use to determine automatic differentiation
- *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
-**********************************************************************************/
-template<typename EvaluationType, typename SimplexPhysicsT>
-class VolumeIntegralCriterion :
-        public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
-{
-private:
-    static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
-    static constexpr Plato::OrdinalType mNumVoigtTerms = SimplexPhysicsT::mNumVoigtTerms; /*!< number of Voigt terms */
-    static constexpr Plato::OrdinalType mNumNodesPerCell = SimplexPhysicsT::mNumNodesPerCell; /*!< number of nodes per cell/element */
-
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain; /*!< mesh database */
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
-
-    using StateT   = typename EvaluationType::StateScalarType;   /*!< state variables automatic differentiation type */
-    using ConfigT  = typename EvaluationType::ConfigScalarType;  /*!< configuration variables automatic differentiation type */
-    using ResultT  = typename EvaluationType::ResultScalarType;  /*!< result variables automatic differentiation type */
-    using ControlT = typename EvaluationType::ControlScalarType; /*!< control variables automatic differentiation type */
-
-    using Residual = typename Plato::ResidualTypes<SimplexPhysicsT>;
-
-    using FunctionBaseType = Plato::Elliptic::AbstractScalarFunction<EvaluationType>;
-
-    Plato::Scalar mPenalty;        /*!< penalty parameter in SIMP model */
-    Plato::Scalar mMinErsatzValue; /*!< minimum ersatz material value in SIMP model */
-
-    std::shared_ptr<Plato::AbstractLocalMeasure<EvaluationType, SimplexPhysicsT>> mLocalMeasure; /*!< Volume averaged quantity with evaluation type */
-
-private:
-    /******************************************************************************//**
-     * \brief Allocate member data
-     * \param [in] aInputParams input parameters database
-    **********************************************************************************/
-    void initialize(Teuchos::ParameterList & aInputParams)
-    {
-        this->readInputs(aInputParams);
-    }
-
-    /******************************************************************************//**
-     * \brief Read user inputs
-     * \param [in] aInputParams input parameters database
-    **********************************************************************************/
-    void readInputs(Teuchos::ParameterList & aInputParams)
-    {
-        Teuchos::ParameterList & tParams = aInputParams.sublist("Criteria").get<Teuchos::ParameterList>(this->getName());
-        mPenalty        = tParams.get<Plato::Scalar>("SIMP penalty", 3.0);
-        mMinErsatzValue = tParams.get<Plato::Scalar>("Min. Ersatz Material", 1e-9);
-    }
-
-public:
-    /******************************************************************************//**
-     * \brief Primary constructor
-     * \param [in] aPlatoDomain Plato Analyze spatial domain
-     * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams input parameters database
-     * \param [in] aFuncName user defined function name
-     **********************************************************************************/
-    VolumeIntegralCriterion(
-        const Plato::SpatialDomain   & aSpatialDomain,
-              Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
-        const std::string            & aFuncName
-    ) :
-        FunctionBaseType(aSpatialDomain, aDataMap, aFuncName),
-        mPenalty(3),
-        mMinErsatzValue(1.0e-9)
-    {
-        this->initialize(aInputParams);
-    }
-
-    /******************************************************************************//**
-     * \brief Constructor tailored for unit testing
-     * \param [in] aSpatialDomain Plato Analyze spatial domain
-     * \param [in] aDataMap PLATO Engine and Analyze data map
-     **********************************************************************************/
-    VolumeIntegralCriterion(
-        const Plato::SpatialDomain & aSpatialDomain,
-              Plato::DataMap       & aDataMap
-    ) :
-        FunctionBaseType(aSpatialDomain, aDataMap, "Volume Integral Criterion"),
-        mPenalty(3),
-        mMinErsatzValue(0.0),
-        mLocalMeasure(nullptr)
-    {
-
-    }
-
-    /******************************************************************************//**
-     * \brief Destructor
-     **********************************************************************************/
-    virtual ~VolumeIntegralCriterion()
-    {
-    }
-
-    /******************************************************************************//**
-     * \brief Set volume integrated quanitity
-     * \param [in] aInputEvaluationType evaluation type volume integrated quanitity
-    **********************************************************************************/
-    void setVolumeIntegratedQuantity(const std::shared_ptr<AbstractLocalMeasure<EvaluationType,SimplexPhysicsT>> & aInput)
-    {
-        mLocalMeasure = aInput;
-    }
-
-    /******************************************************************************//**
-     * \brief Update physics-based parameters within optimization iterations
-     * \param [in] aState 2D container of state variables
-     * \param [in] aControl 2D container of control variables
-     * \param [in] aConfig 3D container of configuration/coordinates
-    **********************************************************************************/
-    void
-    updateProblem(
-        const Plato::ScalarMultiVector & aStateWS,
-        const Plato::ScalarMultiVector & aControlWS,
-        const Plato::ScalarArray3D     & aConfigWS
-    ) override
-    {
-        // Perhaps update penalty exponent?
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate volume average criterion
-     * \param [in] aState 2D container of state variables
-     * \param [in] aControl 2D container of control variables
-     * \param [in] aConfig 3D container of configuration/coordinates
-     * \param [out] aResult 1D container of cell criterion values
-     * \param [in] aTimeStep time step (default = 0)
-    **********************************************************************************/
-    void evaluate(
-        const Plato::ScalarMultiVectorT <StateT>   & aStateWS,
-        const Plato::ScalarMultiVectorT <ControlT> & aControlWS,
-        const Plato::ScalarArray3DT     <ConfigT>  & aConfigWS,
-              Plato::ScalarVectorT      <ResultT>  & aResultWS,
-              Plato::Scalar aTimeStep = 0.0
-    ) const override
-    {
-        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
-
-        Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
-
-        // ****** COMPUTE VOLUME AVERAGED QUANTITIES AND STORE ON DEVICE ******
-        Plato::ScalarVectorT<ResultT> tVolumeIntegratedQuantity("volume integrated quantity", tNumCells);
-        (*mLocalMeasure)(aStateWS, aControlWS, aConfigWS, tVolumeIntegratedQuantity);
-        
-        // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
-        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
-
-        Plato::LinearTetCubRuleDegreeOne<mSpaceDim> tCubatureRule;
-        //auto tBasisFunc = tCubatureRule.getBasisFunctions();
-        auto tQuadratureWeight = tCubatureRule.getCubWeight();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfigWS, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-            
-            aResultWS(aCellOrdinal) = tVolumeIntegratedQuantity(aCellOrdinal) * tCellVolume(aCellOrdinal);
-        },"Compute Volume Integral Criterion");
-
-    }
-
-};
-// class VolumeIntegralCriterion
-
-}
-//namespace Elliptic
-
-}
-//namespace Plato
-// END VolumeIntegralCriterion
-
-// START VolumeAverageCriterion
-// #pragma once
-
-//#include <memory>
-//#include <cassert>
-//#include <vector>
-
-#include <Omega_h_mesh.hpp>
-
-//#include "BLAS1.hpp"
-#include "PlatoStaticsTypes.hpp"
-#include "WorksetBase.hpp"
-#include "elliptic/ScalarFunctionBaseFactory.hpp"
-#include "elliptic/PhysicsScalarFunction.hpp"
-#include "elliptic/DivisionFunction.hpp"
-#include "AnalyzeMacros.hpp"
-
-#include <Teuchos_ParameterList.hpp>
-
-namespace Plato
-{
-
-namespace Elliptic
-{
-
-/******************************************************************************//**
- * \brief Volume average criterion class
- **********************************************************************************/
-template<typename PhysicsT>
-class VolumeAverageCriterion : public Plato::Elliptic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
-{
-private:
-    using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using GradientU = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
-    using GradientX = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientX;
-    using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
-
-    std::shared_ptr<Plato::Elliptic::DivisionFunction<PhysicsT>> mDivisionFunction;
-
-    const Plato::SpatialModel & mSpatialModel;
-
-    Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
-
-    std::string mFunctionName; /*!< User defined function name */
-
-    //std::map<std::string, Plato::Scalar> mMaterialDensities; /*!< material density */
-
-    /******************************************************************************//**
-     * \brief Initialization of Mass Properties Function
-     * \param [in] aInputParams input parameters database
-    **********************************************************************************/
-    void
-    initialize(
-        Teuchos::ParameterList & aInputParams
-    )
-    {
-        for(const auto& tDomain : mSpatialModel.Domains)
-        {
-            auto tName = tDomain.getDomainName();
-
-            auto tMaterialModelsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
-            if( tMaterialModelsInputs.isSublist(tDomain.getMaterialName()) )
-            {
-                auto tMaterialModelInputs = aInputParams.sublist(tDomain.getMaterialName());
-                //mMaterialDensities[tName] = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
-            }
-        }
-        createDivisionFunction(mSpatialModel, aInputParams);
-    }
-
-
-    /******************************************************************************//**
-     * \brief Create the volume function only
-     * \param [in] aSpatialModel Plato Analyze spatial model
-     * \param [in] aInputParams parameter list
-     * \return physics scalar function
-    **********************************************************************************/
-    std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>
-    getVolumeFunction(
-        const Plato::SpatialModel & aSpatialModel,
-        Teuchos::ParameterList & aInputParams
-    )
-    {
-        auto tPenaltyParams = aInputParams.sublist("Criteria").sublist(mFunctionName).sublist("Penalty Function");
-        using PenaltyFunctionType = Plato::MSIMP;
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tVolumeFunction =
-             std::make_shared<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>(aSpatialModel, mDataMap);
-        tVolumeFunction->setFunctionName("Volume Function");
-
-        for(const auto& tDomain : mSpatialModel.Domains)
-        {
-            auto tName = tDomain.getDomainName();
-
-            std::shared_ptr<Plato::Elliptic::Volume<Residual, PenaltyFunctionType>> tValue = 
-                 std::make_shared<Plato::Elliptic::Volume<Residual, PenaltyFunctionType>>(tDomain, mDataMap, aInputParams, tPenaltyParams, mFunctionName);
-            tVolumeFunction->setEvaluator(tValue, tName);
-
-            std::shared_ptr<Plato::Elliptic::Volume<GradientU, PenaltyFunctionType>> tGradientU = 
-                 std::make_shared<Plato::Elliptic::Volume<GradientU, PenaltyFunctionType>>(tDomain, mDataMap, aInputParams, tPenaltyParams, mFunctionName);
-            tVolumeFunction->setEvaluator(tGradientU, tName);
-
-            std::shared_ptr<Plato::Elliptic::Volume<GradientZ, PenaltyFunctionType>> tGradientZ = 
-                 std::make_shared<Plato::Elliptic::Volume<GradientZ, PenaltyFunctionType>>(tDomain, mDataMap, aInputParams, tPenaltyParams, mFunctionName);
-            tVolumeFunction->setEvaluator(tGradientZ, tName);
-
-            std::shared_ptr<Plato::Elliptic::Volume<GradientX, PenaltyFunctionType>> tGradientX = 
-                 std::make_shared<Plato::Elliptic::Volume<GradientX, PenaltyFunctionType>>(tDomain, mDataMap, aInputParams, tPenaltyParams, mFunctionName);
-            tVolumeFunction->setEvaluator(tGradientX, tName);
-        }
-        return tVolumeFunction;
-    }
-
-    /******************************************************************************//**
-     * \brief Create the division function
-     * \param [in] aSpatialModel Plato Analyze spatial model
-     * \param [in] aInputParams parameter list
-    **********************************************************************************/
-    void
-    createDivisionFunction(
-        const Plato::SpatialModel & aSpatialModel,
-        Teuchos::ParameterList & aInputParams
-    )
-    {
-        const std::string tNumeratorName = "Volume Average Criterion Numerator";
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tNumerator =
-             std::make_shared<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>(aSpatialModel, mDataMap);
-        tNumerator->setFunctionName(tNumeratorName);
-
-        for(const auto& tDomain : mSpatialModel.Domains)
-        {
-            auto tName = tDomain.getDomainName();
-
-            std::shared_ptr<Plato::Elliptic::VolumeIntegralCriterion<Residual, PhysicsT>> tNumeratorValue = 
-                 std::make_shared<Plato::Elliptic::VolumeIntegralCriterion<Residual, PhysicsT>>(tDomain, mDataMap, aInputParams, mFunctionName);
-            tNumerator->setEvaluator(tNumeratorValue, tName);
-
-            std::shared_ptr<Plato::Elliptic::VolumeIntegralCriterion<GradientU, PhysicsT>> tNumeratorGradientU = 
-                 std::make_shared<Plato::Elliptic::VolumeIntegralCriterion<GradientU, PhysicsT>>(tDomain, mDataMap, aInputParams, mFunctionName);
-            tNumerator->setEvaluator(tNumeratorGradientU, tName);
-
-            std::shared_ptr<Plato::Elliptic::VolumeIntegralCriterion<GradientZ, PhysicsT>> tNumeratorGradientZ = 
-                 std::make_shared<Plato::Elliptic::VolumeIntegralCriterion<GradientZ, PhysicsT>>(tDomain, mDataMap, aInputParams, mFunctionName);
-            tNumerator->setEvaluator(tNumeratorGradientZ, tName);
-
-            std::shared_ptr<Plato::Elliptic::VolumeIntegralCriterion<GradientX, PhysicsT>> tNumeratorGradientX = 
-                 std::make_shared<Plato::Elliptic::VolumeIntegralCriterion<GradientX, PhysicsT>>(tDomain, mDataMap, aInputParams, mFunctionName);
-            tNumerator->setEvaluator(tNumeratorGradientX, tName);
-        }
-
-        const std::string tDenominatorName = "Volume Function";
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tDenominator = 
-             getVolumeFunction(aSpatialModel, aInputParams);
-        tDenominator->setFunctionName(tDenominatorName);
-
-        mDivisionFunction =
-             std::make_shared<Plato::Elliptic::DivisionFunction<PhysicsT>>(aSpatialModel, mDataMap);
-        mDivisionFunction->allocateNumeratorFunction(tNumerator);
-        mDivisionFunction->allocateDenominatorFunction(tDenominator);
-        mDivisionFunction->setFunctionName("Volume Average Criterion Division Function");
-    }
-
-
-public:
-    /******************************************************************************//**
-     * \brief Primary volume average criterion constructor
-     * \param [in] aSpatialModel Plato Analyze spatial model
-     * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams input parameters database
-     * \param [in] aName user defined function name
-    **********************************************************************************/
-    VolumeAverageCriterion(
-        const Plato::SpatialModel    & aSpatialModel,
-              Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
-              std::string            & aName
-    ) :
-        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
-        mSpatialModel (aSpatialModel),
-        mDataMap      (aDataMap),
-        mFunctionName (aName)
-    {
-        initialize(aInputParams);
-    }
-
-
-    /******************************************************************************//**
-     * \brief Update physics-based parameters within optimization iterations
-     * \param [in] aState 1D view of state variables
-     * \param [in] aControl 1D view of control variables
-     **********************************************************************************/
-    void
-    updateProblem(
-        const Plato::ScalarVector & aState,
-        const Plato::ScalarVector & aControl
-    ) const override
-    {
-        mDivisionFunction->updateProblem(aState, aControl);
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate Mass Properties Function
-     * \param [in] aSolution solution database
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aTimeStep time step (default = 0.0)
-     * \return scalar function evaluation
-    **********************************************************************************/
-    Plato::Scalar
-    value(
-        const Plato::Solutions    & aSolution,
-        const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
-    ) const override
-    {
-        Plato::Scalar tFunctionValue = mDivisionFunction->value(aSolution, aControl, aTimeStep);
-        return tFunctionValue;
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate gradient of the Mass Properties Function with respect to (wrt) the state variables
-     * \param [in] aSolution solution database
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aTimeStep time step (default = 0.0)
-     * \return 1D view with the gradient of the scalar function wrt the state variables
-    **********************************************************************************/
-    Plato::ScalarVector
-    gradient_u(
-        const Plato::Solutions    & aSolution,
-        const Plato::ScalarVector & aControl,
-              Plato::OrdinalType    aStepIndex,
-              Plato::Scalar         aTimeStep = 0.0
-    ) const override
-    {
-        Plato::ScalarVector tGradientU = mDivisionFunction->gradient_u(aSolution, aControl, aStepIndex, aTimeStep);
-        return tGradientU;
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate gradient of the Mass Properties Function with respect to (wrt) the configuration
-     * \param [in] aSolution solution database
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aTimeStep time step (default = 0.0)
-     * \return 1D view with the gradient of the scalar function wrt the state variables
-    **********************************************************************************/
-    Plato::ScalarVector
-    gradient_x(
-        const Plato::Solutions    & aSolution,
-        const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
-    ) const override
-    {
-        Plato::ScalarVector tGradientX = mDivisionFunction->gradient_x(aSolution, aControl, aTimeStep);
-        return tGradientX;
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate gradient of the Mass Properties Function with respect to (wrt) the control
-     * \param [in] aSolution solution database
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aTimeStep time step (default = 0.0)
-     * \return 1D view with the gradient of the scalar function wrt the state variables
-    **********************************************************************************/
-    Plato::ScalarVector
-    gradient_z(
-        const Plato::Solutions    & aSolution,
-        const Plato::ScalarVector & aControl,
-              Plato::Scalar         aTimeStep = 0.0
-    ) const override
-    {
-        Plato::ScalarVector tGradientZ = mDivisionFunction->gradient_z(aSolution, aControl, aTimeStep);
-        return tGradientZ;
-    }
-
-
-    /******************************************************************************//**
-     * \brief Return user defined function name
-     * \return User defined function name
-    **********************************************************************************/
-    std::string name() const
-    {
-        return mFunctionName;
-    }
-};
-// class VolumeAverageCriterion
-
-} // namespace Elliptic
-
-} // namespace Plato
-
-/* #include "Thermal.hpp"
-#include "Mechanics.hpp"
-#include "Thermomechanics.hpp"
-
-
-#ifdef PLATOANALYZE_2D
-extern template class Plato::Elliptic::VolumeAverageCriterion<::Plato::Thermal<2>>;
-extern template class Plato::Elliptic::VolumeAverageCriterion<::Plato::Mechanics<2>>;
-extern template class Plato::Elliptic::VolumeAverageCriterion<::Plato::Thermomechanics<2>>;
-#endif
-
-#ifdef PLATOANALYZE_3D
-extern template class Plato::Elliptic::VolumeAverageCriterion<::Plato::Thermal<3>>;
-extern template class Plato::Elliptic::VolumeAverageCriterion<::Plato::Mechanics<3>>;
-extern template class Plato::Elliptic::VolumeAverageCriterion<::Plato::Thermomechanics<3>>;
-#endif
-*/
-// END VolumeAverageCriterion
+#include "elliptic/VolumeAverageCriterion.hpp"
 
 
 namespace VolumeAverageCriterionTests
@@ -625,6 +120,287 @@ TEUCHOS_UNIT_TEST(VolumeAverageCriterionTests, Test1)
     // ****** TEST GLOBAL SUM ******
     auto tObjFuncVal = Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
     TEST_FLOATING_EQUALITY(0.237233, tObjFuncVal, tTolerance);
+}
+
+TEUCHOS_UNIT_TEST(VolumeAverageCriterionTests, VolumeAverageVonMisesStressAxial_3D)
+{
+    const bool tOutputData = false;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::Scalar tBoxWidth = 2.0;
+    const Plato::OrdinalType tNumElemX = 1;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(tBoxWidth,tBoxWidth,tBoxWidth,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Solver Package' type='string' value='amesos2'/>                   \n"
+      "      <Parameter name='Iterations' type='int' value='500'/>                              \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Elastic'>                                    \n"
+      "        <Parameter  name='Density' type='double' value='1'/>                             \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.2'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='VolAvgMisesStress'>                                             \n"
+      "      <Parameter name='Type' type='string' value='Volume Average Criterion'/>            \n"
+      "      <Parameter name='Local Measure Type' type='string' value='VonMises'/>              \n"
+      "      <ParameterList name='Penalty Function'>                                            \n"
+      "        <Parameter name='Type' type='string' value='SIMP'/>                              \n"
+      "        <Parameter name='Exponent' type='double' value='3.0'/>                           \n"
+      "        <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                   \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "   <ParameterList  name='Natural Boundary Conditions'>                                   \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Applied X Displacement Boundary Condition'>                   \n"
+      "       <Parameter  name='Type'     type='string' value='Fixed Value'/>                   \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Value'    type='double' value='0.2'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::Mechanics<tSpaceDim>;
+
+    Plato::Elliptic::Problem<PhysicsT> tProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+
+    // 5. Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::string tCriterionName("VolAvgMisesStress");
+    auto tCriterionValue = tProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, 1000.0, tTolerance);
+
+    auto tCriterionGrad = tProblem.criterionGradient(tControls, tSolution, tCriterionName);
+    std::vector<Plato::Scalar> tGold = { -8.23158e-01,-2.74211e-01,-2.74205e-01,-2.74211e-01,-5.46915e-01,
+                                         -1.09598e+00,-5.46915e-01,-1.09091e+00,-1.07737e+00,-5.40880e-01,
+                                         -1.08590e+00,-5.40880e-01,-1.05793e+00,-5.26599e-01,-1.04844e+00,
+                                         -5.26599e-01,-1.07226e+00,-5.33831e-01,-1.06304e+00,-5.33831e-01,
+                                         -5.04852e-01,-1.00493e+00,-5.04852e-01,-1.01433e+00,-5.12007e-01,
+                                         -1.01919e+00,-1.03386e+00,-5.19301e-01,-1.04332e+00,-5.19301e-01,
+                                         -5.12007e-01,-1.02878e+00,-4.98050e-01,-1.00060e+00,-4.98050e-01,
+                                         -9.91065e-01,-9.80656e-01,-4.92349e-01,-9.88215e-01,-4.92349e-01,
+                                         -2.44243e-01,-7.35025e-01,-2.44243e-01,-2.43315e-01};
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        printf("%12.5e\n", tHostGrad(tIndex));
+        //TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+
+    // 6. Output Data
+    if (tOutputData)
+    {
+        tProblem.output("VolumeAverageVonMisesStressAxial_3D");
+    }
+}
+
+TEUCHOS_UNIT_TEST(VolumeAverageCriterionTests, VolumeAverageVonMisesStressShear_3D)
+{
+    const bool tOutputData = false;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    const Plato::Scalar tBoxWidth = 2.0;
+    const Plato::OrdinalType tNumElemX = 1;
+    const Plato::OrdinalType tNumElemY = 1;
+    const Plato::OrdinalType tNumElemZ = 1;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(tBoxWidth,tBoxWidth,tBoxWidth,tNumElemX,tNumElemY,tNumElemZ);
+    Plato::DataMap    tDataMap;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <ParameterList name='Spatial Model'>                                                   \n"
+      "    <ParameterList name='Domains'>                                                       \n"
+      "      <ParameterList name='Design Volume'>                                               \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>                     \n"
+      "        <Parameter name='Material Model' type='string' value='Unobtainium'/>             \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Solver Package' type='string' value='amesos2'/>                   \n"
+      "      <Parameter name='Iterations' type='int' value='500'/>                              \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
+      "    </ParameterList>                                                                     \n"
+      "  <ParameterList name='Material Models'>                                                 \n"
+      "    <ParameterList name='Unobtainium'>                                                   \n"
+      "      <ParameterList name='Isotropic Linear Elastic'>                                    \n"
+      "        <Parameter  name='Density' type='double' value='1'/>                             \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.2'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Elliptic'>                                                        \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='VolAvgMisesStress'>                                             \n"
+      "      <Parameter name='Type' type='string' value='Volume Average Criterion'/>            \n"
+      "      <Parameter name='Local Measure Type' type='string' value='VonMises'/>              \n"
+      "      <ParameterList name='Penalty Function'>                                            \n"
+      "        <Parameter name='Type' type='string' value='SIMP'/>                              \n"
+      "        <Parameter name='Exponent' type='double' value='3.0'/>                           \n"
+      "        <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                   \n"
+      "      </ParameterList>                                                                   \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "   <ParameterList  name='Natural Boundary Conditions'>                                   \n"
+      "   </ParameterList>                                                                      \n"
+      "   <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+      "     <ParameterList  name='X0 Fixed Y'>                                                  \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y0 Fixed X'>                                                  \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='X1 Applied Y'>                                                \n"
+      "       <Parameter  name='Type'     type='string' value='Fixed Value'/>                   \n"
+      "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
+      "       <Parameter  name='Value'    type='double' value='0.2'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Y1 Applied X'>                                                \n"
+      "       <Parameter  name='Type'     type='string' value='Fixed Value'/>                   \n"
+      "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Y1'/>                         \n"
+      "       <Parameter  name='Value'    type='double' value='0.2'/>                           \n"
+      "     </ParameterList>                                                                    \n"
+      "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
+      "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+      "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "     </ParameterList>                                                                    \n"
+      "   </ParameterList>                                                                      \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    // 1. Construct plasticity problem
+    PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
+
+    using PhysicsT = Plato::Mechanics<tSpaceDim>;
+
+    Plato::Elliptic::Problem<PhysicsT> tProblem(*tMesh, tMeshSets, *tParamList, tMachine);
+    tProblem.readEssentialBoundaryConditions(*tParamList);
+
+    // 4. Solution
+    Plato::Scalar tDensity = 0.9;
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::blas1::fill(tDensity, tControls);
+    auto tSolution = tProblem.solution(tControls);
+
+
+    // 5. Test results
+    Plato::Scalar tSimpPenalty = 1.0e-8 + (1.0 - 1.0e-8) * std::pow(tDensity, 3);
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::string tCriterionName("VolAvgMisesStress");
+    auto tCriterionValue = tProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, tSimpPenalty*1443.3756727, tTolerance);
+
+    auto tCriterionGrad = tProblem.criterionGradient(tControls, tSolution, tCriterionName);
+    std::vector<Plato::Scalar> tGold = { -8.23158e-01,-2.74211e-01,-2.74205e-01,-2.74211e-01,-5.46915e-01,
+                                         -1.09598e+00,-5.46915e-01,-1.09091e+00,-1.07737e+00,-5.40880e-01,
+                                         -1.08590e+00,-5.40880e-01,-1.05793e+00,-5.26599e-01,-1.04844e+00,
+                                         -5.26599e-01,-1.07226e+00,-5.33831e-01,-1.06304e+00,-5.33831e-01,
+                                         -5.04852e-01,-1.00493e+00,-5.04852e-01,-1.01433e+00,-5.12007e-01,
+                                         -1.01919e+00,-1.03386e+00,-5.19301e-01,-1.04332e+00,-5.19301e-01,
+                                         -5.12007e-01,-1.02878e+00,-4.98050e-01,-1.00060e+00,-4.98050e-01,
+                                         -9.91065e-01,-9.80656e-01,-4.92349e-01,-9.88215e-01,-4.92349e-01,
+                                         -2.44243e-01,-7.35025e-01,-2.44243e-01,-2.43315e-01};
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        printf("%12.5e\n", tHostGrad(tIndex));
+        //TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+
+    // 6. Output Data
+    if (tOutputData)
+    {
+        tProblem.output("VolumeAverageVonMisesStressShear_3D");
+    }
 }
 
 } // namespace VolumeAverageCriterionTests

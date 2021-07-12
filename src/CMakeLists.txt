@@ -112,6 +112,7 @@ if(ELLIPTIC)
     elliptic/InternalElasticEnergy.cpp
     elliptic/ElastostaticResidual.cpp
     elliptic/ThermostaticResidual.cpp
+    elliptic/VolumeAverageCriterion.cpp
     IntermediateDensityPenalty.cpp
     elliptic/updated_lagrangian/Problem.cpp
     elliptic/updated_lagrangian/ElastostaticResidual.cpp

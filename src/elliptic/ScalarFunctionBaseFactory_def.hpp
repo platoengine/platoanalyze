@@ -7,6 +7,7 @@
 #include "elliptic/SolutionFunction.hpp"
 #include "elliptic/LeastSquaresFunction.hpp"
 #include "elliptic/MassPropertiesFunction.hpp"
+#include "elliptic/VolumeAverageCriterion.hpp"
 #include "AnalyzeMacros.hpp"
 
 namespace Plato
@@ -57,6 +58,11 @@ namespace Elliptic
         if(tFunctionType == "Mass Properties")
         {
             return std::make_shared<MassPropertiesFunction<PhysicsT>>(aSpatialModel, aDataMap, aProblemParams, aFunctionName);
+        }
+        else
+        if(tFunctionType == "Volume Average Criterion")
+        {
+            return std::make_shared<VolumeAverageCriterion<PhysicsT>>(aSpatialModel, aDataMap, aProblemParams, aFunctionName);
         }
         else
         if(tFunctionType == "Scalar Function")

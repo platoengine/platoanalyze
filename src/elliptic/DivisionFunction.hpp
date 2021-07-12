@@ -168,6 +168,7 @@ public:
 
         Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
         Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValueSquared = tDenominatorValue * tDenominatorValue;
 
         Plato::ScalarVector tNumeratorGradX = mScalarFunctionBaseNumerator->gradient_x(aSolution, aControl, aTimeStep);
         Plato::ScalarVector tDenominatorGradX = mScalarFunctionBaseDenominator->gradient_x(aSolution, aControl, aTimeStep);
@@ -175,7 +176,7 @@ public:
         {
             tGradientX(tDof) = (tNumeratorGradX(tDof) * tDenominatorValue - 
                                 tDenominatorGradX(tDof) * tNumeratorValue) 
-                               / (pow(tDenominatorValue, 2));
+                               / (tDenominatorValueSquared);
         },"Division Function Grad X");
         return tGradientX;
     }
@@ -198,6 +199,7 @@ public:
 
         Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
         Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValueSquared = tDenominatorValue * tDenominatorValue;
 
         Plato::ScalarVector tNumeratorGradU = mScalarFunctionBaseNumerator->gradient_u(aSolution, aControl, aTimeStep);
         Plato::ScalarVector tDenominatorGradU = mScalarFunctionBaseDenominator->gradient_u(aSolution, aControl, aTimeStep);
@@ -205,8 +207,9 @@ public:
         {
             tGradientU(tDof) = (tNumeratorGradU(tDof) * tDenominatorValue - 
                                 tDenominatorGradU(tDof) * tNumeratorValue) 
-                               / (pow(tDenominatorValue, 2));
+                               / (tDenominatorValueSquared);
         },"Division Function Grad U");
+
         return tGradientU;
     }
 
@@ -227,6 +230,7 @@ public:
         
         Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
         Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValueSquared = tDenominatorValue * tDenominatorValue;
 
         Plato::ScalarVector tNumeratorGradZ = mScalarFunctionBaseNumerator->gradient_z(aSolution, aControl, aTimeStep);
         Plato::ScalarVector tDenominatorGradZ = mScalarFunctionBaseDenominator->gradient_z(aSolution, aControl, aTimeStep);
@@ -234,7 +238,7 @@ public:
         {
             tGradientZ(tDof) = (tNumeratorGradZ(tDof) * tDenominatorValue - 
                                 tDenominatorGradZ(tDof) * tNumeratorValue) 
-                               / (pow(tDenominatorValue, 2));
+                               / (tDenominatorValueSquared);
         },"Division Function Grad Z");
 
         return tGradientZ;
