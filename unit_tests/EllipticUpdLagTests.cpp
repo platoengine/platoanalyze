@@ -1053,6 +1053,259 @@ TEUCHOS_UNIT_TEST( EllipticUpdLagProblemTests, 3D_full )
   // change mesh back 
   Plato::blas1::scale(-1.0/2.0, tStep);
   perturbMesh(*tMesh, tStep);
+
+  delete tProblem;
+}
+
+TEUCHOS_UNIT_TEST( EllipticUpdLagProblemTests, 3D_full_StressPNorm )
+{
+  // create test mesh
+  //
+  constexpr int cMeshWidth=2;
+  constexpr int cSpaceDim=3;
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
+
+  // create mesh sets
+  //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(cSpaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tInputParams =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                   \n"
+    "  <Parameter name='Physics' type='string' value='Mechanics'/>                          \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Updated Lagrangian Elliptic'/> \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                           \n"
+    "  <ParameterList name='Updated Lagrangian Elliptic'>                                   \n"
+    "    <ParameterList name='Penalty Function'>                                            \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                              \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                           \n"
+    "      <Parameter name='Minimum Value' type='double' value='1e-5'/>                     \n"
+    "    </ParameterList>                                                                   \n"
+    "  </ParameterList>                                                                     \n"
+    "  <ParameterList name='Spatial Model'>                                                 \n"
+    "    <ParameterList name='Domains'>                                                     \n"
+    "      <ParameterList name='Design Volume'>                                             \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                   \n"
+    "        <Parameter name='Material Model' type='string' value='316 Stainless'/>         \n"
+    "      </ParameterList>                                                                 \n"
+    "    </ParameterList>                                                                   \n"
+    "  </ParameterList>                                                                     \n"
+    "  <ParameterList name='Criteria'>                                                      \n"
+    "    <ParameterList name='Globalized Stress'>                                           \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>                   \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm'/>     \n"
+    "      <Parameter name='Exponent' type='double' value='2.0'/>                           \n"
+    "      <ParameterList name='Penalty Function'>                                          \n"
+    "        <Parameter name='Exponent' type='double' value='0.5'/>                         \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>                    \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                            \n"
+    "      </ParameterList>                                                                 \n"
+    "    </ParameterList>                                                                   \n"
+    "  </ParameterList>                                                                     \n"
+    "  <ParameterList name='Material Models'>                                               \n"
+    "    <ParameterList name='316 Stainless'>                                               \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                                  \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.30'/>                 \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.00e10'/>              \n"
+    "        <Parameter  name='e11' type='double' value='-1e-3'/>                           \n"
+    "        <Parameter  name='e22' type='double' value='-1e-3'/>                           \n"
+    "        <Parameter  name='e33' type='double' value='2.0e-3'/>                          \n"
+    "      </ParameterList>                                                                 \n"
+    "    </ParameterList>                                                                   \n"
+    "  </ParameterList>                                                                     \n"
+    "  <ParameterList name='Sequence'>                                                      \n"
+    "    <Parameter name='Sequence Type' type='string' value='Explicit'/>                   \n"
+    "    <ParameterList name='Steps'>                                                       \n"
+    "      <ParameterList name='Layer 1'>                                                   \n"
+    "        <ParameterList name='Mask'>                                                    \n"
+    "          <Parameter name='Mask Type' type='string' value='Brick'/>                    \n"
+    "          <Parameter name='Maximum Z' type='double' value='0.50'/>                     \n"
+    "        </ParameterList>                                                               \n"
+    "      </ParameterList>                                                                 \n"
+    "      <ParameterList name='Layer 2'>                                                   \n"
+    "        <ParameterList name='Mask'>                                                    \n"
+    "          <Parameter name='Mask Type' type='string' value='Brick'/>                    \n"
+    "          <Parameter name='Maximum Z' type='double' value='1.00'/>                     \n"
+    "        </ParameterList>                                                               \n"
+    "      </ParameterList>                                                                 \n"
+    "    </ParameterList>                                                                   \n"
+    "  </ParameterList>                                                                     \n"
+    "  <ParameterList  name='Essential Boundary Conditions'>                                \n"
+    "    <ParameterList  name='X Fixed Displacement - bottom'>                              \n"
+    "      <Parameter name='Type'  type='string' value='Zero Value'/>                       \n"
+    "      <Parameter name='Index' type='int'    value='0'/>                                \n"
+    "      <Parameter name='Sides' type='string' value='z-'/>                               \n"
+    "    </ParameterList>                                                                   \n"
+    "    <ParameterList  name='Y Fixed Displacement - bottom'>                              \n"
+    "      <Parameter name='Type'  type='string' value='Zero Value'/>                       \n"
+    "      <Parameter name='Index' type='int'    value='1'/>                                \n"
+    "      <Parameter name='Sides' type='string' value='z-'/>                               \n"
+    "    </ParameterList>                                                                   \n"
+    "    <ParameterList  name='Z Fixed Displacement - bottom'>                              \n"
+    "      <Parameter name='Type'  type='string' value='Zero Value'/>                       \n"
+    "      <Parameter name='Index' type='int'    value='2'/>                                \n"
+    "      <Parameter name='Sides' type='string' value='z-'/>                               \n"
+    "    </ParameterList>                                                                   \n"
+    "  </ParameterList>                                                                     \n"
+    "</ParameterList>                                                                       \n"
+  );
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  using PhysicsType = Plato::Elliptic::UpdatedLagrangian::Mechanics<cSpaceDim>;
+  auto* tProblem = new Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> (*tMesh, tMeshSets, *tInputParams, tMachine);
+
+  TEST_ASSERT(tProblem != nullptr);
+
+  int tNumNodes = tMesh->nverts();
+  Plato::ScalarVector tControl("control", tNumNodes);
+  Plato::blas1::fill(1.0, tControl);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tInputParams);
+  Plato::Sequence<cSpaceDim> tSequence(tSpatialModel, *tInputParams);
+  Plato::DataMap tDataMap;
+
+  auto tSolution = tProblem->solution(tControl);
+
+  // create objective
+  //
+  std::string tMyFunction("Globalized Stress");
+  using FunctionType = Plato::Elliptic::UpdatedLagrangian::PhysicsScalarFunction<PhysicsType>;
+  FunctionType scalarFunction(tSpatialModel, tSequence, tDataMap, *tInputParams, tMyFunction);
+
+  // compute and test criterion gradient_z
+  //
+  auto t_dFdz_error = testScalarFunction_Partial_z(scalarFunction, tSolution, tControl);
+  TEST_ASSERT(t_dFdz_error < 1.0e-10);
+
+  // compute and test criterion gradient_x
+  //
+  {
+    // compute initial F and dFdx
+    auto tLocalState = tSolution.get("Local State");
+    auto t_value0 = scalarFunction.value(tSolution, tLocalState, tControl);
+    auto t_dFdx = scalarFunction.gradient_x(tSolution, tLocalState, tControl);
+
+    Plato::Scalar tAlpha = 1.0e-6;
+    auto tNorm = Plato::blas1::norm(t_dFdx);
+
+    Plato::ScalarVector tStep("step", t_dFdx.extent(0));
+    Kokkos::deep_copy(tStep, t_dFdx);
+    Plato::blas1::scale(-tAlpha/tNorm, tStep);
+
+    // compute F at z - deltaZ
+    perturbMesh(*tMesh, tStep);
+    FunctionType scalarFunctionNeg(tSpatialModel, tSequence, tDataMap, *tInputParams, tMyFunction);
+    auto t_valueNeg = scalarFunctionNeg.value(tSolution, tLocalState, tControl);
+
+    // compute F at z + deltaZ
+    Plato::blas1::scale(-2.0, tStep);
+    perturbMesh(*tMesh, tStep);
+    FunctionType scalarFunctionPos(tSpatialModel, tSequence, tDataMap, *tInputParams, tMyFunction);
+    auto t_valuePos = scalarFunctionPos.value(tSolution, tLocalState, tControl);
+
+    Plato::blas1::scale(-1.0/2.0, tStep);
+    perturbMesh(*tMesh, tStep);
+
+    // compute actual change in F over 2 * deltaZ
+    auto tDeltaFD = (t_valuePos - t_valueNeg);
+
+    // compute predicted change in F over 2 * deltaZ
+    Plato::blas1::scale(-2.0, tStep);
+    auto tDeltaAD = Plato::blas1::dot(t_dFdx, tStep);
+
+    // return error
+    Plato::Scalar tPer = fabs(tDeltaFD) + fabs(tDeltaAD);
+    Plato::Scalar t_dFdx_error = std::fabs(tDeltaFD - tDeltaAD) / (tPer != 0 ? tPer : 1.0);
+    TEST_ASSERT(t_dFdx_error < 1.0e-10);
+  }
+
+
+  // compute and test criterion gradient_c
+  //
+  auto t_dFdc0_error = testScalarFunction_Partial_c(scalarFunction, tSolution, tControl, /*timeStep=*/ 0);
+  TEST_ASSERT(t_dFdc0_error < 1.0e-10);
+
+  auto t_dFdc1_error = testScalarFunction_Partial_c(scalarFunction, tSolution, tControl, /*timeStep=*/ 1);
+  TEST_ASSERT(t_dFdc1_error < 1.0e-10);
+
+
+  // compute and test criterion gradient_u
+  //
+  auto t_dFdu0_error = testScalarFunction_Partial_u(scalarFunction, tSolution, tControl, /*timeStep=*/ 0);
+  TEST_ASSERT(t_dFdu0_error < 1.0e-10);
+
+  auto t_dFdu1_error = testScalarFunction_Partial_u(scalarFunction, tSolution, tControl, /*timeStep=*/ 1);
+  TEST_ASSERT(t_dFdu1_error < 1.0e-10);
+
+
+
+  /*****************************************************
+   Test Problem::criterionGradient(aControl);
+   *****************************************************/
+
+  auto t_dPdz_error = testProblem_Total_z(*tProblem, tControl, "Globalized Stress", 1.0e-4);
+  TEST_ASSERT(t_dPdz_error < 1.0e-6);
+
+
+  /*****************************************************
+   Call Problem::criterionGradientX(aControl);
+   *****************************************************/
+  auto tCriterionName = "Globalized Stress";
+
+  // compute initial F and dFdx
+  tSolution = tProblem->solution(tControl);
+  auto t_dFdx = tProblem->criterionGradientX(tControl, tCriterionName);
+
+  Plato::Scalar tAlpha = 1.0e-4;
+  auto tNorm = Plato::blas1::norm(t_dFdx);
+
+  Plato::ScalarVector tStep("step", t_dFdx.extent(0));
+  Kokkos::deep_copy(tStep, t_dFdx);
+  Plato::blas1::scale(-tAlpha/tNorm, tStep);
+
+  // compute F at x - deltax
+  perturbMesh(*tMesh, tStep);
+  delete tProblem;
+  tProblem = new Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> (*tMesh, tMeshSets, *tInputParams, tMachine);
+  tSolution = tProblem->solution(tControl);
+  auto t_valueNeg = tProblem->criterionValue(tControl, tCriterionName);
+
+  delete tProblem;
+  tProblem = new Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> (*tMesh, tMeshSets, *tInputParams, tMachine);
+  tSolution = tProblem->solution(tControl);
+  auto t_valueNegToo = tProblem->criterionValue(tControl, tCriterionName);
+  TEST_FLOATING_EQUALITY(t_valueNeg, t_valueNegToo, 1e-15);
+
+  // compute F at x + deltax
+  Plato::blas1::scale(-2.0, tStep);
+  perturbMesh(*tMesh, tStep);
+  delete tProblem;
+  tProblem = new Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType> (*tMesh, tMeshSets, *tInputParams, tMachine);
+  tSolution = tProblem->solution(tControl);
+  auto t_valuePos = tProblem->criterionValue(tControl, tCriterionName);
+
+  // compute actual change in F over 2 * deltax
+  auto tDeltaFD = (t_valuePos - t_valueNeg);
+
+  // compute predicted change in F over 2 * deltaZ
+  auto tDeltaAD = Plato::blas1::dot(t_dFdx, tStep);
+
+  // check error
+  Plato::Scalar tPer = fabs(tDeltaFD) + fabs(tDeltaAD);
+  auto t_dPdx_error = std::fabs(tDeltaFD - tDeltaAD) / (tPer != 0 ? tPer : 1.0);
+  TEST_ASSERT(t_dPdx_error < 1.0e-6);
+
+  // change mesh back 
+  Plato::blas1::scale(-1.0/2.0, tStep);
+  perturbMesh(*tMesh, tStep);
+
+  delete tProblem;
 }
 
 

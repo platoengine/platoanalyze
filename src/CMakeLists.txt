@@ -118,6 +118,7 @@ if(ELLIPTIC)
     elliptic/updated_lagrangian/ScalarFunctionBaseFactory.cpp
     elliptic/updated_lagrangian/PhysicsScalarFunction.cpp
     elliptic/updated_lagrangian/InternalElasticEnergy.cpp
+    elliptic/updated_lagrangian/StressPNorm.cpp
   )
 endif()
 

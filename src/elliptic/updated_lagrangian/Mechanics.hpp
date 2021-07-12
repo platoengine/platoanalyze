@@ -5,10 +5,8 @@
 #include "elliptic/updated_lagrangian/SimplexMechanics.hpp"
 #include "elliptic/updated_lagrangian/AbstractScalarFunction.hpp"
 #include "elliptic/updated_lagrangian/InternalElasticEnergy.hpp"
+#include "elliptic/updated_lagrangian/StressPNorm.hpp"
 #include "elliptic/updated_lagrangian/ElastostaticResidual.hpp"
-
-// TODO
-// #include "elliptic/StressPNorm.hpp"
 
 #include "AnalyzeMacros.hpp"
 
@@ -121,8 +119,6 @@ internal_elastic_energy(
 }
 // function internal_elastic_energy
 
-// TODO
-#ifdef COMING_SOON
 
 /******************************************************************************//**
  * \brief Create stress p-norm criterion
@@ -169,8 +165,6 @@ stress_p_norm(
     return (tOutput);
 }
 // function stress_p_norm
-
-#endif
 
 
 /******************************************************************************//**
@@ -228,14 +222,11 @@ struct FunctionFactory
             return Plato::Elliptic::UpdatedLagrangian::MechanicsFactory::internal_elastic_energy<EvaluationType>
                 (aSpatialDomain, aDataMap, aProblemParams, aFuncName);
         }
-// TODO
-#ifdef COMING_SOON
         else if(aFuncType == "Stress P-Norm")
         {
-            return Plato::MechanicsFactory::stress_p_norm<EvaluationType>
+            return Plato::Elliptic::UpdatedLagrangian::MechanicsFactory::stress_p_norm<EvaluationType>
                 (aSpatialDomain, aDataMap, aProblemParams, aFuncName);
         }
-#endif
         else
         {
             return nullptr;
