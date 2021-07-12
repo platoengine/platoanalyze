@@ -98,7 +98,7 @@ class VolumeAverageCriterionDenominator :
         tComputeGradient(cellOrdinal, tGradient, aConfig, tCellVolume);
         tCellVolume(cellOrdinal) *= quadratureWeight;
 
-        aResult(cellOrdinal) = tCellVolume(cellOrdinal) * mSpatialWeights(cellOrdinal);
+        aResult(cellOrdinal) = tCellVolume(cellOrdinal) * tSpatialWeights(cellOrdinal);
       },"Compute Weighted Volume Average Criterion Demoninator");
 
     }

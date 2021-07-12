@@ -4,25 +4,23 @@
 #include <cassert>
 #include <vector>
 
+#include <Omega_h_expr.hpp>
 #include <Omega_h_mesh.hpp>
 
-//#include "BLAS1.hpp"
+#include "alg/Cubature.hpp"
+#include "AnalyzeMacros.hpp"
+#include "PlatoMeshExpr.hpp"
+#include "UtilsOmegaH.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "WorksetBase.hpp"
 #include "elliptic/ScalarFunctionBaseFactory.hpp"
 #include "elliptic/PhysicsScalarFunction.hpp"
 #include "elliptic/DivisionFunction.hpp"
-#include "AnalyzeMacros.hpp"
-#include <Omega_h_expr.hpp>
-#include "alg/Cubature.hpp"
-#include "PlatoMeshExpr.hpp"
-#include "UtilsOmegaH.hpp"
 
 #include "Thermal.hpp"
 #include "Mechanics.hpp"
 #include "Electromechanics.hpp"
 #include "Thermomechanics.hpp"
-
 #ifdef PLATO_STABILIZED
 #include "StabilizedMechanics.hpp"
 #include "StabilizedThermomechanics.hpp"
@@ -59,8 +57,6 @@ private:
     std::string mFunctionName; /*!< User defined function name */
 
     std::string mSpatialWeightingFunctionString = "1.0"; /*!< Spatial weighting function string of x, y, z coordinates  */
-
-    //std::map<std::string, Plato::Scalar> mMaterialDensities; /*!< material density */
 
     /******************************************************************************//**
      * \brief Initialization of Mass Properties Function
