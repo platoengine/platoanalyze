@@ -74,67 +74,8 @@ private:
         auto params = aInputParams.sublist("Criteria").get<Teuchos::ParameterList>(mFunctionName);
         if (params.isType<std::string>("Function"))
             mSpatialWeightingFunctionString = params.get<std::string>("Function");
-        
-        for(const auto& tDomain : mSpatialModel.Domains)
-        {
-            auto tName = tDomain.getDomainName();
 
-            auto tMaterialModelsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
-            if( tMaterialModelsInputs.isSublist(tDomain.getMaterialName()) )
-            {
-                auto tMaterialModelInputs = aInputParams.sublist(tDomain.getMaterialName());
-                //mMaterialDensities[tName] = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
-            }
-        }
         createDivisionFunction(mSpatialModel, aInputParams);
-    }
-
-    /******************************************************************************//**
-     * \brief Compute values of the spatial weighting function
-     * \param [in] aSpatialDomain Plato Analyze spatial domain
-     * \return scalar vector containing the spatial weights for the specified domain
-    **********************************************************************************/
-    Plato::ScalarVector computeSpatialWeightingValues(const Plato::SpatialDomain & aSpatialDomain)
-    {
-      // get refCellQuadraturePoints, quadratureWeights
-      //
-      Plato::OrdinalType tQuadratureDegree = 1;
-
-      Plato::OrdinalType tNumPoints = Plato::Cubature::getNumCubaturePoints(mSpaceDim, tQuadratureDegree);
-
-      Plato::ScalarMultiVector tRefCellQuadraturePoints("ref quadrature points", tNumPoints, mSpaceDim);
-      Plato::ScalarVector      tQuadratureWeights("quadrature weights", tNumPoints);
-
-      Plato::Cubature::getCubature(mSpaceDim, tQuadratureDegree, tRefCellQuadraturePoints, tQuadratureWeights);
-
-      // get basis values
-      //
-      Plato::Basis tBasis(mSpaceDim);
-      Plato::OrdinalType tNumFields = tBasis.basisCardinality();
-      Plato::ScalarMultiVector tRefCellBasisValues("ref basis values", tNumFields, tNumPoints);
-      tBasis.getValues(tRefCellQuadraturePoints, tRefCellBasisValues);
-
-      // map points to physical space
-      //
-      Plato::OrdinalType tNumCells = aSpatialDomain.numCells();
-      Plato::ScalarArray3D tQuadraturePoints("quadrature points", tNumCells, tNumPoints, mSpaceDim);
-
-      Plato::mapPoints<mSpaceDim>(aSpatialDomain, tRefCellQuadraturePoints, tQuadraturePoints);
-
-      // get integrand values at quadrature points
-      //
-      Omega_h::Reals tFxnValues;
-      Plato::getFunctionValues<mSpaceDim>(tQuadraturePoints, mSpatialWeightingFunctionString, tFxnValues);
-
-      // Copy the result into a ScalarVector
-      Plato::ScalarVector tSpatialWeightingValues("spatial weights", tFxnValues.size());
-      Plato::OrdinalType tNumLocalVals = tFxnValues.size();
-      Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-      {
-          tSpatialWeightingValues(aOrdinal) = tFxnValues[aOrdinal];
-      }, "copy vector");
-
-      return tSpatialWeightingValues;
     }
 
 
@@ -280,6 +221,54 @@ public:
     ) const override
     {
         mDivisionFunction->updateProblem(aState, aControl);
+    }
+
+    /******************************************************************************//**
+     * \brief Compute values of the spatial weighting function
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
+     * \return scalar vector containing the spatial weights for the specified domain
+    **********************************************************************************/
+    Plato::ScalarVector computeSpatialWeightingValues(const Plato::SpatialDomain & aSpatialDomain)
+    {
+      // get refCellQuadraturePoints, quadratureWeights
+      //
+      Plato::OrdinalType tQuadratureDegree = 1;
+
+      Plato::OrdinalType tNumPoints = Plato::Cubature::getNumCubaturePoints(mSpaceDim, tQuadratureDegree);
+
+      Plato::ScalarMultiVector tRefCellQuadraturePoints("ref quadrature points", tNumPoints, mSpaceDim);
+      Plato::ScalarVector      tQuadratureWeights("quadrature weights", tNumPoints);
+
+      Plato::Cubature::getCubature(mSpaceDim, tQuadratureDegree, tRefCellQuadraturePoints, tQuadratureWeights);
+
+      // get basis values
+      //
+      Plato::Basis tBasis(mSpaceDim);
+      Plato::OrdinalType tNumFields = tBasis.basisCardinality();
+      Plato::ScalarMultiVector tRefCellBasisValues("ref basis values", tNumFields, tNumPoints);
+      tBasis.getValues(tRefCellQuadraturePoints, tRefCellBasisValues);
+
+      // map points to physical space
+      //
+      Plato::OrdinalType tNumCells = aSpatialDomain.numCells();
+      Plato::ScalarArray3D tQuadraturePoints("quadrature points", tNumCells, tNumPoints, mSpaceDim);
+
+      Plato::mapPoints<mSpaceDim>(aSpatialDomain, tRefCellQuadraturePoints, tQuadraturePoints);
+
+      // get integrand values at quadrature points
+      //
+      Omega_h::Reals tFxnValues;
+      Plato::getFunctionValues<mSpaceDim>(tQuadraturePoints, mSpatialWeightingFunctionString, tFxnValues);
+
+      // Copy the result into a ScalarVector
+      Plato::ScalarVector tSpatialWeightingValues("spatial weights", tFxnValues.size());
+      Plato::OrdinalType tNumLocalVals = tFxnValues.size();
+      Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+      {
+          tSpatialWeightingValues(aOrdinal) = tFxnValues[aOrdinal];
+      }, "copy vector");
+
+      return tSpatialWeightingValues;
     }
 
     /******************************************************************************//**
