@@ -105,7 +105,6 @@ public:
         auto tNumCells = mSpatialDomain.numCells();
         Kokkos::resize(mSpatialWeights, tNumCells);
         Plato::blas1::fill(static_cast<Plato::Scalar>(1.0), mSpatialWeights);
-printf("Warning: SIMP is still hard coded in the VolumeIntegralCriterion.hpp ");
     }
 
     /******************************************************************************//**
